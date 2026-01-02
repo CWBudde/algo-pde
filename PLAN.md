@@ -38,8 +38,8 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 - [x] Implement `Apply1D(dst, src []float64, h float64, bc BCType)`
 - [x] Implement `Apply2D(dst, src []float64, shape Shape, h [2]float64, bc [2]BCType)`
-- [ ] Implement `Apply3D(...)`
-- [ ] Write tests verifying Δu matches expected for known u
+- [x] Implement `Apply3D(...)`
+- [x] Write tests verifying Δu matches expected for known u
 
 ---
 
