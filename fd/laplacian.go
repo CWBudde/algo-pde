@@ -49,16 +49,15 @@ func Apply1D(dst, src []float64, h float64, bc poisson.BCType) {
 			var left, right float64
 			switch {
 			case i == 0:
+				left = src[0]
 				if n == 1 {
-					left = src[0]
 					right = src[0]
 				} else {
-					left = src[1]
 					right = src[1]
 				}
 			case i == n-1:
 				left = src[n-2]
-				right = src[n-2]
+				right = src[n-1]
 			default:
 				left = src[i-1]
 				right = src[i+1]
@@ -107,11 +106,7 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bc [2]poisson.B
 			case bc[0] == poisson.Periodic:
 				left = src[(nx-1)*ny+j]
 			case bc[0] == poisson.Neumann:
-				if nx == 1 {
-					left = src[j]
-				} else {
-					left = src[1*ny+j]
-				}
+				left = src[idx]
 			default:
 				left = 0
 			}
@@ -122,11 +117,7 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bc [2]poisson.B
 			case bc[0] == poisson.Periodic:
 				right = src[j]
 			case bc[0] == poisson.Neumann:
-				if nx == 1 {
-					right = src[j]
-				} else {
-					right = src[(nx-2)*ny+j]
-				}
+				right = src[idx]
 			default:
 				right = 0
 			}
@@ -138,11 +129,7 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bc [2]poisson.B
 			case bc[1] == poisson.Periodic:
 				down = src[row+ny-1]
 			case bc[1] == poisson.Neumann:
-				if ny == 1 {
-					down = src[row]
-				} else {
-					down = src[row+1]
-				}
+				down = src[idx]
 			default:
 				down = 0
 			}
@@ -153,11 +140,7 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bc [2]poisson.B
 			case bc[1] == poisson.Periodic:
 				up = src[row]
 			case bc[1] == poisson.Neumann:
-				if ny == 1 {
-					up = src[row]
-				} else {
-					up = src[row+ny-2]
-				}
+				up = src[idx]
 			default:
 				up = 0
 			}

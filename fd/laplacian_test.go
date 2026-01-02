@@ -70,7 +70,8 @@ func TestApply1DNeumannModes(t *testing.T) {
 
 	m := 1
 	for i := range n {
-		src[i] = math.Cos(math.Pi * float64(m) * float64(i) / float64(n))
+		x := (float64(i) + 0.5) / float64(n)
+		src[i] = math.Cos(math.Pi * float64(m) * x)
 	}
 
 	Apply1D(dst, src, h, poisson.Neumann)
