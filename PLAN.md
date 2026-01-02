@@ -47,32 +47,32 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 4.1 1D Periodic Solver
 
-- [ ] Implement `Plan1DPeriodic` struct
-- [ ] Implement `NewPlan1DPeriodic(nx int, hx float64, opts ...Option) (*Plan1DPeriodic, error)`
-- [ ] Pre-compute eigenvalues in plan creation
-- [ ] Pre-allocate FFT plan from algo-fft
-- [ ] Pre-allocate work buffers
-- [ ] Implement `Plan.Solve(dst, rhs []float64) error`
-- [ ] Implement `Plan.SolveInPlace(buf []float64) error`
-- [ ] Implement zero-mode (mean) handling:
-  - [ ] Option: RequireMeanZeroRHS (error if not)
-  - [ ] Option: SubtractMean (auto-subtract before solve)
-  - [ ] Option: SetSolutionMean (set u's mean to specified value)
-- [ ] Write unit tests with manufactured solutions
-- [ ] Write benchmark tests
+- [x] Implement `Plan1DPeriodic` struct
+- [x] Implement `NewPlan1DPeriodic(nx int, hx float64, opts ...Option) (*Plan1DPeriodic, error)`
+- [x] Pre-compute eigenvalues in plan creation
+- [x] Pre-allocate FFT plan from algo-fft
+- [x] Pre-allocate work buffers
+- [x] Implement `Plan.Solve(dst, rhs []float64) error`
+- [x] Implement `Plan.SolveInPlace(buf []float64) error`
+- [x] Implement zero-mode (mean) handling:
+  - [x] Option: RequireMeanZeroRHS (error if not)
+  - [x] Option: SubtractMean (auto-subtract before solve)
+  - [x] Option: SetSolutionMean (set u's mean to specified value)
+- [x] Write unit tests with manufactured solutions
+- [x] Write benchmark tests
 
 ### 4.2 2D Periodic Solver
 
-- [ ] Implement `Plan2DPeriodic` struct
-- [ ] Implement `NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPeriodic, error)`
+- [x] Implement `Plan2DPeriodic` struct
+- [x] Implement `NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPeriodic, error)`
 - [ ] Use algo-fft's 2D real FFT plans where possible
-- [ ] Implement eigenvalue division in spectral space
-- [ ] Implement zero-mode handling (same options as 1D)
-- [ ] Write manufactured solution tests:
-  - [ ] u = sin(2πx/Lx) \* sin(2πy/Ly)
-  - [ ] u = cos(2πx/Lx) \* cos(4πy/Ly) (mixed frequencies)
-- [ ] Write convergence tests (error vs grid spacing)
-- [ ] Benchmark: 64², 128², 256², 512², 1024²
+- [x] Implement eigenvalue division in spectral space
+- [x] Implement zero-mode handling (same options as 1D)
+- [x] Write manufactured solution tests:
+  - [x] u = sin(2πx/Lx) \* sin(2πy/Ly)
+  - [x] u = cos(2πx/Lx) \* cos(4πy/Ly) (mixed frequencies)
+- [x] Write convergence tests (error vs grid spacing)
+- [x] Benchmark: 64², 128², 256², 512², 1024²
 
 ### 4.3 3D Periodic Solver
 

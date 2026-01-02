@@ -12,8 +12,10 @@ import (
 // It provides a convenience method to apply the 1D FFT along all lines of an
 // N-dimensional grid stored in row-major order.
 type FFTPlan struct {
-	n       int
-	fftPlan *algofft.Plan[complex128]
+	n        int
+	fftPlan  *algofft.Plan[complex128]
+	scratchA []complex128
+	scratchB []complex128
 }
 
 // NewFFTPlan creates a new complex FFT plan for length n.
@@ -27,7 +29,12 @@ func NewFFTPlan(n int) (*FFTPlan, error) {
 		return nil, fmt.Errorf("creating FFT plan: %w", err)
 	}
 
-	return &FFTPlan{n: n, fftPlan: fftPlan}, nil
+	return &FFTPlan{
+		n:        n,
+		fftPlan:  fftPlan,
+		scratchA: make([]complex128, n),
+		scratchB: make([]complex128, n),
+	}, nil
 }
 
 // Len returns the transform length.
@@ -55,21 +62,73 @@ func (p *FFTPlan) TransformLines(data []complex128, shape grid.Shape, axis int, 
 		return ErrSizeMismatch
 	}
 
+	useOutOfPlace := !isPowerOfTwo(p.n)
 	it := grid.NewLineIterator(shape, axis)
 	lineStride := it.LineStride()
 
 	// Process first line (iterator starts at position 0)
 	start := it.StartIndex()
-	if err := p.fftPlan.TransformStrided(data[start:], data[start:], lineStride, inverse); err != nil {
+	if err := p.transformLine(data, start, lineStride, inverse, useOutOfPlace); err != nil {
 		return err
 	}
 
 	for it.Next() {
 		start = it.StartIndex()
-		if err := p.fftPlan.TransformStrided(data[start:], data[start:], lineStride, inverse); err != nil {
+		if err := p.transformLine(data, start, lineStride, inverse, useOutOfPlace); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (p *FFTPlan) transformLine(
+	data []complex128,
+	start int,
+	stride int,
+	inverse bool,
+	useOutOfPlace bool,
+) error {
+	if !useOutOfPlace {
+		return p.fftPlan.TransformStrided(data[start:], data[start:], stride, inverse)
+	}
+
+	if stride == 1 {
+		line := data[start : start+p.n]
+		var err error
+		if inverse {
+			err = p.fftPlan.Inverse(p.scratchB, line)
+		} else {
+			err = p.fftPlan.Forward(p.scratchB, line)
+		}
+		if err != nil {
+			return err
+		}
+		copy(line, p.scratchB)
+		return nil
+	}
+
+	for i := 0; i < p.n; i++ {
+		p.scratchA[i] = data[start+i*stride]
+	}
+
+	var err error
+	if inverse {
+		err = p.fftPlan.Inverse(p.scratchB, p.scratchA)
+	} else {
+		err = p.fftPlan.Forward(p.scratchB, p.scratchA)
+	}
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < p.n; i++ {
+		data[start+i*stride] = p.scratchB[i]
+	}
+
+	return nil
+}
+
+func isPowerOfTwo(n int) bool {
+	return n > 0 && (n&(n-1)) == 0
 }

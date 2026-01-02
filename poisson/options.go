@@ -24,6 +24,10 @@ type Options struct {
 	// Nullspace handling for problems with zero eigenvalues.
 	Nullspace NullspaceHandling
 
+	// SolutionMean sets the mean of the solution for nullspace problems.
+	// When nil, the solver leaves the mean as computed (typically zero-mode).
+	SolutionMean *float64
+
 	// Workers is the number of parallel workers for transforms.
 	// 0 means use runtime.GOMAXPROCS.
 	Workers int
@@ -39,9 +43,10 @@ type Option func(*Options)
 // DefaultOptions returns the default solver options.
 func DefaultOptions() Options {
 	return Options{
-		Nullspace: NullspaceZeroMode,
-		Workers:   0,
-		InPlace:   false,
+		Nullspace:    NullspaceZeroMode,
+		SolutionMean: nil,
+		Workers:      0,
+		InPlace:      false,
 	}
 }
 
@@ -63,6 +68,14 @@ func WithSubtractMean() Option {
 func WithWorkers(n int) Option {
 	return func(o *Options) {
 		o.Workers = n
+	}
+}
+
+// WithSolutionMean sets the desired mean value for the solution.
+func WithSolutionMean(mean float64) Option {
+	return func(o *Options) {
+		m := mean
+		o.SolutionMean = &m
 	}
 }
 
