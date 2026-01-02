@@ -4,55 +4,11 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ---
 
-## Phase 0: Project Setup & Foundation ✅ COMPLETE
-
-### 0.1 Repository initialization
-
-- [x] Initialize Go module (`go mod init github.com/MeKo-Tech/algo-pde`)
-- [x] Add `algo-fft` as dependency
-- [x] Create basic directory structure:
-  ```
-  algo-pde/
-  ├── poisson/     # Main Poisson solver package
-  ├── r2r/         # Real-to-real transforms (DST/DCT)
-  ├── grid/        # Shape, stride, indexing helpers
-  ├── fd/          # Finite difference operators
-  ├── internal/    # Internal utilities
-  └── examples/    # Usage examples
-  ```
-- [x] Set up justfile with common commands (test, bench, lint, coverage)
-- [x] Configure golangci-lint (.golangci.toml)
-- [ ] Create initial README.md with project overview
-
-### 0.2 Core types and interfaces
-
-- [x] Define `BCType` enum (Periodic, Dirichlet, Neumann)
-- [x] Define `AxisBC` struct for per-axis boundary conditions
-- [x] Define `Shape` type for N-dimensional grid dimensions
-- [x] Define `Stride` type for memory layout
-- [x] Define `Options` struct for solver configuration
-- [x] Define `AxisTransform` interface for transform abstraction
-- [x] Create `errors.go` with custom error types
-
----
-
 ## Phase 1: Grid Package (`grid/`) ✅ COMPLETE
 
-### 1.1 Shape and indexing
-
-- [x] Implement `Shape` type with 1D/2D/3D support
-- [x] Implement `Shape.Size()` - total element count
-- [x] Implement `Shape.Dim()` - dimensionality
-- [x] Implement index conversion: `(i,j,k) <-> linear`
-- [x] Implement row-major stride computation
-- [x] Write unit tests for indexing correctness
-
-### 1.2 Grid iteration helpers
-
-- [x] Implement line iterator (for axis-wise transforms)
-- [ ] Implement plane iterator (for 3D operations)
-- [ ] Implement strided copy utilities
-- [x] Write tests for iteration patterns
+- Shape/stride types, indexing helpers, and row-major stride computation.
+- Iterators for lines and planes, plus strided copy utilities.
+- Unit tests covering indexing and iterator behavior.
 
 ---
 
@@ -63,24 +19,24 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 - [x] Research DST-I vs DST-II conventions for FD grids
 - [x] Implement `DST1Forward(dst, src []float64)` using odd extension + FFT
 - [x] Implement `DST1Inverse(dst, src []float64)`
-- [ ] Implement `DST2Forward(dst, src []float64)` (alternative formulation)
-- [ ] Implement `DST2Inverse(dst, src []float64)`
-- [ ] Add normalization options (orthogonal vs unnormalized)
+- [x] Implement `DST2Forward(dst, src []float64)` (alternative formulation)
+- [x] Implement `DST2Inverse(dst, src []float64)`
+- [x] Add normalization options (orthogonal vs unnormalized)
 - [x] Write round-trip tests: `inverse(forward(x)) ≈ x`
 - [x] Write correctness tests against known analytic values
-- [ ] Benchmark against theoretical O(N log N)
+- [x] Benchmark against theoretical O(N log N)
 
 ### 2.2 DCT (Discrete Cosine Transform) via FFT
 
 - [x] Research DCT-I vs DCT-II conventions for FD grids
 - [x] Implement `DCT1Forward(dst, src []float64)` using even extension + FFT
 - [x] Implement `DCT1Inverse(dst, src []float64)`
-- [ ] Implement `DCT2Forward(dst, src []float64)` (alternative formulation)
-- [ ] Implement `DCT2Inverse(dst, src []float64)`
-- [ ] Add normalization options
+- [x] Implement `DCT2Forward(dst, src []float64)` (alternative formulation)
+- [x] Implement `DCT2Inverse(dst, src []float64)`
+- [x] Add normalization options
 - [x] Write round-trip tests
 - [x] Write correctness tests against known analytic values
-- [ ] Benchmark performance
+- [x] Benchmark performance
 
 ### 2.3 Transform plan types
 

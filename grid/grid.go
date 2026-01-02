@@ -204,3 +204,127 @@ func (it *LineIterator) NumLines() int {
 
 	return total
 }
+
+// CopyStrided copies n elements from src to dst using the given strides.
+// dstStride and srcStride are element strides (not bytes).
+func CopyStrided(dst []float64, dstStride int, src []float64, srcStride int, n int) {
+	di := 0
+	si := 0
+
+	for range n {
+		dst[di] = src[si]
+		di += dstStride
+		si += srcStride
+	}
+}
+
+// CopyStridedToContiguous copies a strided source into a contiguous slice.
+func CopyStridedToContiguous(dst []float64, src []float64, srcStride int) {
+	CopyStrided(dst, 1, src, srcStride, len(dst))
+}
+
+// CopyContiguousToStrided copies a contiguous source into a strided destination.
+func CopyContiguousToStrided(dst []float64, dstStride int, src []float64) {
+	CopyStrided(dst, dstStride, src, 1, len(src))
+}
+
+// PlaneIterator iterates over planes orthogonal to a given axis.
+// A plane is defined by fixing one coordinate along the axis and varying
+// the other two coordinates.
+type PlaneIterator struct {
+	shape  Shape
+	stride Stride
+	axis   int
+
+	pos   int
+	max   int
+	other [2]int
+
+	done bool
+}
+
+// NewPlaneIterator creates an iterator over planes orthogonal to the given axis.
+// For axis=0 in a 3D grid, it iterates over all YZ planes (varying i).
+func NewPlaneIterator(shape Shape, axis int) *PlaneIterator {
+	stride := RowMajorStride(shape)
+	it := &PlaneIterator{
+		shape:  shape,
+		stride: stride,
+		axis:   axis,
+		max:    shape[axis],
+	}
+
+	idx := 0
+	for d := range 3 {
+		if d != axis {
+			it.other[idx] = d
+			idx++
+			if idx >= 2 {
+				break
+			}
+		}
+	}
+
+	return it
+}
+
+// Next advances to the next plane. Returns false when done.
+func (it *PlaneIterator) Next() bool {
+	if it.done {
+		return false
+	}
+
+	it.pos++
+	if it.pos >= it.max {
+		it.done = true
+		return false
+	}
+
+	return true
+}
+
+// Reset resets the iterator to the beginning.
+func (it *PlaneIterator) Reset() {
+	it.pos = 0
+	it.done = false
+}
+
+// StartIndex returns the starting linear index for the current plane.
+func (it *PlaneIterator) StartIndex() int {
+	var coords [3]int
+
+	coords[it.axis] = it.pos
+	coords[it.other[0]] = 0
+	coords[it.other[1]] = 0
+
+	return Index(coords[0], coords[1], coords[2], it.stride)
+}
+
+// PlaneStride0 returns the stride along the first plane axis.
+func (it *PlaneIterator) PlaneStride0() int {
+	return it.stride[it.other[0]]
+}
+
+// PlaneStride1 returns the stride along the second plane axis.
+func (it *PlaneIterator) PlaneStride1() int {
+	return it.stride[it.other[1]]
+}
+
+// PlaneSize0 returns the size along the first plane axis.
+func (it *PlaneIterator) PlaneSize0() int {
+	return it.shape[it.other[0]]
+}
+
+// PlaneSize1 returns the size along the second plane axis.
+func (it *PlaneIterator) PlaneSize1() int {
+	return it.shape[it.other[1]]
+}
+
+// NumPlanes returns the total number of planes.
+func (it *PlaneIterator) NumPlanes() int {
+	if it.max < 1 {
+		return 0
+	}
+
+	return it.max
+}

@@ -219,6 +219,108 @@ func TestLineIterator_2D_Axis1(t *testing.T) {
 	}
 }
 
+func TestPlaneIterator_3D_Axis0(t *testing.T) {
+	// 3x4x5 grid, planes orthogonal to axis 0 (YZ planes).
+	shape := NewShape3D(3, 4, 5)
+	it := NewPlaneIterator(shape, 0)
+
+	if it.NumPlanes() != 3 {
+		t.Errorf("NumPlanes() = %d, want 3", it.NumPlanes())
+	}
+
+	if it.PlaneSize0() != 4 || it.PlaneSize1() != 5 {
+		t.Errorf("PlaneSize() = (%d,%d), want (4,5)", it.PlaneSize0(), it.PlaneSize1())
+	}
+
+	if it.PlaneStride0() != 5 || it.PlaneStride1() != 1 {
+		t.Errorf("PlaneStride() = (%d,%d), want (5,1)", it.PlaneStride0(), it.PlaneStride1())
+	}
+
+	starts := []int{it.StartIndex()}
+	for it.Next() {
+		starts = append(starts, it.StartIndex())
+	}
+
+	expected := []int{0, 20, 40}
+	if len(starts) != len(expected) {
+		t.Fatalf("got %d planes, want %d", len(starts), len(expected))
+	}
+
+	for i, v := range expected {
+		if starts[i] != v {
+			t.Errorf("starts[%d] = %d, want %d", i, starts[i], v)
+		}
+	}
+}
+
+func TestPlaneIterator_3D_Axis1(t *testing.T) {
+	// 3x4x5 grid, planes orthogonal to axis 1 (XZ planes).
+	shape := NewShape3D(3, 4, 5)
+	it := NewPlaneIterator(shape, 1)
+
+	if it.NumPlanes() != 4 {
+		t.Errorf("NumPlanes() = %d, want 4", it.NumPlanes())
+	}
+
+	if it.PlaneSize0() != 3 || it.PlaneSize1() != 5 {
+		t.Errorf("PlaneSize() = (%d,%d), want (3,5)", it.PlaneSize0(), it.PlaneSize1())
+	}
+
+	if it.PlaneStride0() != 20 || it.PlaneStride1() != 1 {
+		t.Errorf("PlaneStride() = (%d,%d), want (20,1)", it.PlaneStride0(), it.PlaneStride1())
+	}
+
+	starts := []int{it.StartIndex()}
+	for it.Next() {
+		starts = append(starts, it.StartIndex())
+	}
+
+	expected := []int{0, 5, 10, 15}
+	if len(starts) != len(expected) {
+		t.Fatalf("got %d planes, want %d", len(starts), len(expected))
+	}
+
+	for i, v := range expected {
+		if starts[i] != v {
+			t.Errorf("starts[%d] = %d, want %d", i, starts[i], v)
+		}
+	}
+}
+
+func TestPlaneIterator_3D_Axis2(t *testing.T) {
+	// 3x4x5 grid, planes orthogonal to axis 2 (XY planes).
+	shape := NewShape3D(3, 4, 5)
+	it := NewPlaneIterator(shape, 2)
+
+	if it.NumPlanes() != 5 {
+		t.Errorf("NumPlanes() = %d, want 5", it.NumPlanes())
+	}
+
+	if it.PlaneSize0() != 3 || it.PlaneSize1() != 4 {
+		t.Errorf("PlaneSize() = (%d,%d), want (3,4)", it.PlaneSize0(), it.PlaneSize1())
+	}
+
+	if it.PlaneStride0() != 20 || it.PlaneStride1() != 5 {
+		t.Errorf("PlaneStride() = (%d,%d), want (20,5)", it.PlaneStride0(), it.PlaneStride1())
+	}
+
+	starts := []int{it.StartIndex()}
+	for it.Next() {
+		starts = append(starts, it.StartIndex())
+	}
+
+	expected := []int{0, 1, 2, 3, 4}
+	if len(starts) != len(expected) {
+		t.Fatalf("got %d planes, want %d", len(starts), len(expected))
+	}
+
+	for i, v := range expected {
+		if starts[i] != v {
+			t.Errorf("starts[%d] = %d, want %d", i, starts[i], v)
+		}
+	}
+}
+
 func TestIndexRoundTrip2D(t *testing.T) {
 	nx, ny := 7, 11
 	for i := range nx {
@@ -246,6 +348,48 @@ func TestIndexRoundTrip3D(t *testing.T) {
 						i, j, k, idx, gotI, gotJ, gotK)
 				}
 			}
+		}
+	}
+}
+
+func TestCopyStrided(t *testing.T) {
+	src := []float64{0, 1, 2, 3, 4, 5}
+	dst := make([]float64, 3)
+
+	CopyStrided(dst, 1, src, 2, 3)
+
+	want := []float64{0, 2, 4}
+	for i, v := range want {
+		if dst[i] != v {
+			t.Errorf("dst[%d] = %v, want %v", i, dst[i], v)
+		}
+	}
+}
+
+func TestCopyStridedToContiguous(t *testing.T) {
+	src := []float64{10, 11, 12, 13, 14, 15}
+	dst := make([]float64, 3)
+
+	CopyStridedToContiguous(dst, src, 2)
+
+	want := []float64{10, 12, 14}
+	for i, v := range want {
+		if dst[i] != v {
+			t.Errorf("dst[%d] = %v, want %v", i, dst[i], v)
+		}
+	}
+}
+
+func TestCopyContiguousToStrided(t *testing.T) {
+	src := []float64{7, 8, 9}
+	dst := make([]float64, 6)
+
+	CopyContiguousToStrided(dst, 2, src)
+
+	want := []float64{7, 8, 9}
+	for i, v := range want {
+		if dst[i*2] != v {
+			t.Errorf("dst[%d] = %v, want %v", i*2, dst[i*2], v)
 		}
 	}
 }
