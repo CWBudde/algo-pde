@@ -12,47 +12,12 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ---
 
-## Phase 2: Real-to-Real Transforms (`r2r/`) - PARTIAL ✅
+## Phase 2: Real-to-Real & Line Transforms (`r2r/`) ✅
 
-### 2.1 DST (Discrete Sine Transform) via FFT
-
-- [x] Research DST-I vs DST-II conventions for FD grids
-- [x] Implement `DST1Forward(dst, src []float64)` using odd extension + FFT
-- [x] Implement `DST1Inverse(dst, src []float64)`
-- [x] Implement `DST2Forward(dst, src []float64)` (alternative formulation)
-- [x] Implement `DST2Inverse(dst, src []float64)`
-- [x] Add normalization options (orthogonal vs unnormalized)
-- [x] Write round-trip tests: `inverse(forward(x)) ≈ x`
-- [x] Write correctness tests against known analytic values
-- [x] Benchmark against theoretical O(N log N)
-
-### 2.2 DCT (Discrete Cosine Transform) via FFT
-
-- [x] Research DCT-I vs DCT-II conventions for FD grids
-- [x] Implement `DCT1Forward(dst, src []float64)` using even extension + FFT
-- [x] Implement `DCT1Inverse(dst, src []float64)`
-- [x] Implement `DCT2Forward(dst, src []float64)` (alternative formulation)
-- [x] Implement `DCT2Inverse(dst, src []float64)`
-- [x] Add normalization options
-- [x] Write round-trip tests
-- [x] Write correctness tests against known analytic values
-- [x] Benchmark performance
-
-### 2.3 Transform plan types
-
-- [x] Create `DSTPlan` with pre-allocated buffers
-- [x] Create `DCTPlan` with pre-allocated buffers
-- [x] Implement `NewDSTPlan(n int, opts ...Option) *DSTPlan`
-- [x] Implement `NewDCTPlan(n int, opts ...Option) *DCTPlan`
-- [x] Document thread safety (plans are NOT thread-safe, use separate instances)
-- [x] Add `Plan.Bytes()` for memory introspection
-
-### 2.4 Line-wise transforms (for multi-D)
-
-- [x] Implement `DSTPlan.ForwardLines/InverseLines(data []float64, shape Shape, axis int)`
-- [x] Implement `DCTPlan.ForwardLines/InverseLines(data []float64, shape Shape, axis int)`
-- [ ] Implement `FFTPlan.TransformLines(...)` wrapper for periodic
-- [x] Write tests for 2D/3D line-wise transforms
+- [x] **DST/DCT Core**: DST-I/II and DCT-I/II implemented via FFT embedding with full normalization and correctness tests.
+- [x] **Plan API**: `DSTPlan`, `DCTPlan`, and `FFTPlan` for allocation-conscious, axis-wise transforms on N-D grids.
+- [x] **Multi-D Support**: `ForwardLines`/`InverseLines` for all transform types with 2D/3D unit tests.
+- [x] **Performance**: Verified O(N log N) scaling and optimized buffer management.
 
 ---
 
