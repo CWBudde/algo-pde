@@ -36,8 +36,8 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 3.2 Laplacian stencil (for testing/validation)
 
-- [ ] Implement `Apply1D(dst, src []float64, h float64, bc BCType)`
-- [ ] Implement `Apply2D(dst, src []float64, shape Shape, h [2]float64, bc [2]BCType)`
+- [x] Implement `Apply1D(dst, src []float64, h float64, bc BCType)`
+- [x] Implement `Apply2D(dst, src []float64, shape Shape, h [2]float64, bc [2]BCType)`
 - [ ] Implement `Apply3D(...)`
 - [ ] Write tests verifying Δu matches expected for known u
 
