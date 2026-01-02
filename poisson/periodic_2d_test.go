@@ -11,6 +11,7 @@ import (
 )
 
 const periodic2dTol = 1e-10
+const periodic2dRealTol = 1e-6
 
 func TestNewPlan2DPeriodic_InvalidInputs(t *testing.T) {
 	if _, err := poisson.NewPlan2DPeriodic(0, 4, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
@@ -93,6 +94,43 @@ func TestPlan2DPeriodic_Solve_Manufactured_CosCos(t *testing.T) {
 
 	if max := maxAbsDiff(got, u); max > periodic2dTol {
 		t.Fatalf("max error %g exceeds tol %g", max, periodic2dTol)
+	}
+}
+
+func TestPlan2DPeriodic_Solve_RealFFT(t *testing.T) {
+	nx, ny := 32, 32
+	hx := 1.0 / float64(nx)
+	hy := 1.0 / float64(ny)
+	Lx := float64(nx) * hx
+	Ly := float64(ny) * hy
+
+	plan, err := poisson.NewPlan2DPeriodic(nx, ny, hx, hy, poisson.WithRealFFT(true))
+	if err != nil {
+		t.Fatalf("NewPlan2DPeriodic failed: %v", err)
+	}
+
+	u := make([]float64, nx*ny)
+	for i := range nx {
+		x := float64(i) * hx
+		row := i * ny
+		for j := range ny {
+			y := float64(j) * hy
+			u[row+j] = math.Sin(2.0*math.Pi*x/Lx) * math.Cos(2.0*math.Pi*y/Ly)
+		}
+	}
+
+	rhs := make([]float64, nx*ny)
+	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+		poisson.Periodic, poisson.Periodic,
+	})
+
+	got := make([]float64, nx*ny)
+	if err := plan.Solve(got, rhs); err != nil {
+		t.Fatalf("Solve failed: %v", err)
+	}
+
+	if max := maxAbsDiff(got, u); max > periodic2dRealTol {
+		t.Fatalf("max error %g exceeds tol %g", max, periodic2dRealTol)
 	}
 }
 

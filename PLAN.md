@@ -65,7 +65,7 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 - [x] Implement `Plan2DPeriodic` struct
 - [x] Implement `NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPeriodic, error)`
-- [ ] Use algo-fft's 2D real FFT plans where possible
+- [x] Use algo-fft's 2D real FFT plans where possible
 - [x] Implement eigenvalue division in spectral space
 - [x] Implement zero-mode handling (same options as 1D)
 - [x] Write manufactured solution tests:
@@ -76,13 +76,13 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 4.3 3D Periodic Solver
 
-- [ ] Implement `Plan3DPeriodic` struct
-- [ ] Implement `NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option)`
-- [ ] Use algo-fft's 3D real FFT plans
-- [ ] Implement eigenvalue division
-- [ ] Implement zero-mode handling
-- [ ] Write manufactured solution tests
-- [ ] Benchmark: 32³, 64³, 128³
+- [x] Implement `Plan3DPeriodic` struct
+- [x] Implement `NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option)`
+- [x] Use algo-fft's 3D real FFT plans
+- [x] Implement eigenvalue division
+- [x] Implement zero-mode handling
+- [x] Write manufactured solution tests
+- [x] Benchmark: 32³, 64³, 128³
 
 ### 4.4 ND Periodic Solver (generic)
 

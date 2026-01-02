@@ -28,6 +28,10 @@ type Options struct {
 	// When nil, the solver leaves the mean as computed (typically zero-mode).
 	SolutionMean *float64
 
+	// UseRealFFT enables real FFT plans when available (2D/3D periodic).
+	// This uses algo-fft's real FFT plans, which operate on float32 buffers.
+	UseRealFFT bool
+
 	// Workers is the number of parallel workers for transforms.
 	// 0 means use runtime.GOMAXPROCS.
 	Workers int
@@ -45,6 +49,7 @@ func DefaultOptions() Options {
 	return Options{
 		Nullspace:    NullspaceZeroMode,
 		SolutionMean: nil,
+		UseRealFFT:   false,
 		Workers:      0,
 		InPlace:      false,
 	}
@@ -76,6 +81,13 @@ func WithSolutionMean(mean float64) Option {
 	return func(o *Options) {
 		m := mean
 		o.SolutionMean = &m
+	}
+}
+
+// WithRealFFT enables or disables real FFT plans when available.
+func WithRealFFT(enabled bool) Option {
+	return func(o *Options) {
+		o.UseRealFFT = enabled
 	}
 }
 
