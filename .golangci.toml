@@ -1,0 +1,60 @@
+version = '2'
+
+[linters]
+default = 'all'
+disable = [
+  'depguard',
+  'err113',           # Using errors.Is for sentinel errors is not always appropriate
+  'exhaustruct',      # Don't require all struct fields
+  'godoclint',
+  'gomoddirectives',
+  'gosec',
+  'ireturn',
+  'musttag',
+  'nlreturn',
+  'noctx',
+  'nonamedreturns',   # Named returns are fine for multi-value returns
+  'noinlineerr',      # Inline error handling is fine
+  'paralleltest',     # Not all tests need t.Parallel()
+  'recvcheck',
+  'wrapcheck',        # Wrapping errors from same package is not always needed
+  'wsl',
+  'wsl_v5',           # Whitespace linting is too strict
+]
+
+[linters.settings.revive]
+[[linters.settings.revive.rules]]
+name = "var-naming"
+disabled = true
+
+[linters.settings.varnamelen]
+# Common math/grid variable names
+ignore-names = ['a', 'b', 'x', 'y', 'z', 'i', 'j', 'k', 'n', 'm', 'h', 'ok', 'bc', 'nx', 'ny', 'nz', 'hx', 'hy', 'hz', 'tt', 'h2', 'pi', 'it', 'w', 'k1', 'k2']
+ignore-decls = ['T any']
+
+[linters.exclusions]
+generated = 'lax'
+presets = ['comments', 'common-false-positives', 'legacy', 'std-error-handling']
+paths = ['third_party$', 'builtin$', 'examples$']
+
+[[linters.exclusions.rules]]
+linters = ['mnd']
+path = '.*\.go'
+
+[[linters.exclusions.rules]]
+linters = ['testpackage']
+path = '.*_test\.go'
+
+[severity]
+default = 'warn'
+
+[[severity.rules]]
+linters = ['exhaustive', 'exhaustruct', 'godox']
+severity = 'info'
+
+[formatters]
+enable = ['gofumpt', 'goimports']
+
+[formatters.exclusions]
+generated = 'lax'
+paths = ['third_party$', 'builtin$', 'examples$']
