@@ -2,11 +2,11 @@
 
 Even without reading the code contents, the repo structure indicates it already contains:
 
-* **2D/3D/ND FFT planning** (`plan_2d.go`, `plan_3d.go`, `plan_nd.go`) ([GitHub][3])
-* **Real FFT planning** (`plan_real.go`, `plan_real_2d.go`, `plan_real_3d.go`) ([GitHub][3])
-* **Bluestein support** (`plan_bluestein.go`) for “awkward sizes” ([GitHub][3])
-* **Batch / strided / executor-related pieces** (`plan_batch.go`, `plan_strided.go`, `executor.go`) ([GitHub][3])
-* Already has **convolution/correlation helpers** (`convolve.go`, `convolve_real.go`, `correlate.go`) ([GitHub][3])
+- **2D/3D/ND FFT planning** (`plan_2d.go`, `plan_3d.go`, `plan_nd.go`) ([GitHub][3])
+- **Real FFT planning** (`plan_real.go`, `plan_real_2d.go`, `plan_real_3d.go`) ([GitHub][3])
+- **Bluestein support** (`plan_bluestein.go`) for “awkward sizes” ([GitHub][3])
+- **Batch / strided / executor-related pieces** (`plan_batch.go`, `plan_strided.go`, `executor.go`) ([GitHub][3])
+- Already has **convolution/correlation helpers** (`convolve.go`, `convolve_real.go`, `correlate.go`) ([GitHub][3])
 
 That’s excellent: your Poisson solver can be mostly “thin math + orchestration”, delegating transforms to those plans/executors.
 
@@ -20,10 +20,10 @@ To support **physical boundaries** efficiently, the cleanest “fast Poisson sol
 
 Then the operator is diagonalized by:
 
-* **Periodic** → FFT
-* **Dirichlet (u=0 at boundary)** → DST (sine transform)
-* **Neumann (∂u/∂n=0 at boundary)** → DCT (cosine transform)
-* **Mixed** → use a different transform per axis
+- **Periodic** → FFT
+- **Dirichlet (u=0 at boundary)** → DST (sine transform)
+- **Neumann (∂u/∂n=0 at boundary)** → DCT (cosine transform)
+- **Mixed** → use a different transform per axis
 
 This gives you a direct solver via **separation of variables**:
 
@@ -43,10 +43,10 @@ This approach is “general purpose” for **1D/2D/3D** on rectangles/boxes and 
 
 Create a repo like `algo-pde` or `algo-poisson` with packages:
 
-* `poisson/` – Poisson solvers, plans, boundary handling
-* `r2r/` – real-to-real transforms layer (DST/DCT wrappers implemented via `algo-fft`)
-* `grid/` – indexing, shapes, strides, small helpers
-* `fd/` – finite difference operators (optional but useful for tests + PDE building blocks)
+- `poisson/` – Poisson solvers, plans, boundary handling
+- `r2r/` – real-to-real transforms layer (DST/DCT wrappers implemented via `algo-fft`)
+- `grid/` – indexing, shapes, strides, small helpers
+- `fd/` – finite difference operators (optional but useful for tests + PDE building blocks)
 
 ### The key type: a reusable “plan”
 
@@ -92,19 +92,18 @@ You need **axis-wise transforms** for each axis depending on BC:
 
 ### 4.1 Periodic axis: FFT / RFFT
 
-* If the overall solve is real-valued (common), prefer **real FFT plans** to cut work roughly in half.
-* `algo-fft` appears to have real 2D/3D planning which is perfect. ([GitHub][3])
+- If the overall solve is real-valued (common), prefer **real FFT plans** to cut work roughly in half.
+- `algo-fft` appears to have real 2D/3D planning which is perfect. ([GitHub][3])
 
 ### 4.2 Dirichlet axis: DST via FFT
 
 Implement DST by embedding into an FFT with an **odd extension**.
 
-* You can implement DST-I / DST-II (pick one consistent with your FD grid convention).
-* The wrapper should:
-
-  * map length N real line to an “extended length” M (often `2*(N+1)` or `2*N`)
-  * call `algo-fft` on that extended buffer
-  * extract sine coefficients
+- You can implement DST-I / DST-II (pick one consistent with your FD grid convention).
+- The wrapper should:
+  - map length N real line to an “extended length” M (often `2*(N+1)` or `2*N`)
+  - call `algo-fft` on that extended buffer
+  - extract sine coefficients
 
 ### 4.3 Neumann axis: DCT via FFT
 
@@ -114,8 +113,8 @@ Implement DCT via **even extension** similarly.
 
 In 2D/3D, you’ll do:
 
-* transform along X lines, then Y lines, then Z lines
-* each axis uses its own operator (FFT/DST/DCT)
+- transform along X lines, then Y lines, then Z lines
+- each axis uses its own operator (FFT/DST/DCT)
 
 **Implementation strategy:** build an internal interface like:
 
@@ -135,15 +134,15 @@ Then your `Plan` composes `[3]AxisTransform` (one per axis). That way, adding a 
 
 For a **standard 2nd-order FD Laplacian**, the 1D eigenvalues are:
 
-* **Periodic** (m = 0..N-1):
+- **Periodic** (m = 0..N-1):
   [
   \lambda_m = \frac{2 - 2\cos(2\pi m/N)}{h^2}
   ]
-* **Dirichlet** (m = 1..N):
+- **Dirichlet** (m = 1..N):
   [
   \lambda_m = \frac{2 - 2\cos(\pi m/(N+1))}{h^2}
   ]
-* **Neumann** (m = 0..N-1):
+- **Neumann** (m = 0..N-1):
   [
   \lambda_m = \frac{2 - 2\cos(\pi m/N)}{h^2}
   ]
@@ -156,17 +155,16 @@ In multi-D:
 
 ### Practical plan
 
-* Precompute `eigX`, `eigY`, `eigZ` once in `NewPlan(...)`.
-* During solve, when you’re in spectral space:
+- Precompute `eigX`, `eigY`, `eigZ` once in `NewPlan(...)`.
+- During solve, when you’re in spectral space:
+  - divide coefficient-wise by `eigX[i] + eigY[j] (+ eigZ[k])`
 
-  * divide coefficient-wise by `eigX[i] + eigY[j] (+ eigZ[k])`
-* Avoid building a full 3D denominator array unless it’s faster for your memory/CPU tradeoff. Start “sum on the fly”.
+- Avoid building a full 3D denominator array unless it’s faster for your memory/CPU tradeoff. Start “sum on the fly”.
 
 ### Nullspace constraints (critical!)
 
-* Periodic and Neumann have **a zero eigenvalue** in the constant mode.
-* Enforce one of:
-
+- Periodic and Neumann have **a zero eigenvalue** in the constant mode.
+- Enforce one of:
   1. require RHS has mean zero and set the zero-mode of solution to 0, or
   2. pin one value (or mean) with an explicit constraint option
 
@@ -190,9 +188,9 @@ This must be explicit in API; otherwise users get NaNs or huge drift.
 
 Deliverables:
 
-* `poisson.NewPlanPeriodic1D/2D/3D(...)`
-* `Plan.Solve(dst, rhs)` and `Plan.SolveInPlace(buf)` variants
-* Benchmarks + manufactured-solution tests.
+- `poisson.NewPlanPeriodic1D/2D/3D(...)`
+- `Plan.Solve(dst, rhs)` and `Plan.SolveInPlace(buf)` variants
+- Benchmarks + manufactured-solution tests.
 
 ### Phase B: Add Dirichlet / Neumann via DST/DCT wrappers
 
@@ -200,22 +198,21 @@ Now replace the periodic axis transform with the DST/DCT axis transform where re
 
 Deliverables:
 
-* `NewPlan(...)` that accepts per-axis BCs
-* axis transforms: `dstTransform`, `dctTransform`, `fftTransform`
-* tests per BC type.
+- `NewPlan(...)` that accepts per-axis BCs
+- axis transforms: `dstTransform`, `dctTransform`, `fftTransform`
+- tests per BC type.
 
 ### Phase C: Mixed boundaries + inhomogeneous boundaries
 
-* Start with homogeneous BCs (zero Dirichlet, zero Neumann).
-* Then support nonzero boundary data by **RHS modification** (standard FD trick):
-
-  * For Dirichlet: add boundary contributions to the nearest interior cells
-  * For Neumann: incorporate ghost-point elimination or modified stencil
+- Start with homogeneous BCs (zero Dirichlet, zero Neumann).
+- Then support nonzero boundary data by **RHS modification** (standard FD trick):
+  - For Dirichlet: add boundary contributions to the nearest interior cells
+  - For Neumann: incorporate ghost-point elimination or modified stencil
 
 Deliverables:
 
-* `BoundaryValues` optional argument with callbacks or arrays for each face
-* `Plan.SolveWithBC(dst, rhs, bcValues)`
+- `BoundaryValues` optional argument with callbacks or arrays for each face
+- `Plan.SolveWithBC(dst, rhs, bcValues)`
 
 ---
 
@@ -223,14 +220,14 @@ Deliverables:
 
 Make the primary API accept **flat slices** with shape:
 
-* 1D: `[]float64` length `nx`
-* 2D: row-major `[]float64` length `nx*ny`
-* 3D: row-major `[]float64` length `nx*ny*nz`
+- 1D: `[]float64` length `nx`
+- 2D: row-major `[]float64` length `nx*ny`
+- 3D: row-major `[]float64` length `nx*ny*nz`
 
 Add a small `Shape/Stride` type internally so you can support:
 
-* contiguous buffers (fast path)
-* strided views later (nice-to-have)
+- contiguous buffers (fast path)
+- strided views later (nice-to-have)
 
 Since `algo-fft` already hints at “strided” planning (`plan_strided.go`) ([GitHub][3]), keep your architecture ready to exploit that later.
 
@@ -240,22 +237,22 @@ Since `algo-fft` already hints at “strided” planning (`plan_strided.go`) ([G
 
 ### 8.1 Plan caching
 
-* Planning + twiddle generation is expensive; Poisson is typically “same grid, many solves”.
-* Provide a plan that is safe for repeated `Solve` calls.
+- Planning + twiddle generation is expensive; Poisson is typically “same grid, many solves”.
+- Provide a plan that is safe for repeated `Solve` calls.
 
 ### 8.2 Zero allocations in Solve
 
-* Own scratch buffers inside the plan (`work`).
-* Expose `Plan.WorkBytes()` for introspection if you like.
-* Offer `Solve(dst, rhs)` (no alloc) and a convenience `SolveNew(rhs)` (alloc).
+- Own scratch buffers inside the plan (`work`).
+- Expose `Plan.WorkBytes()` for introspection if you like.
+- Offer `Solve(dst, rhs)` (no alloc) and a convenience `SolveNew(rhs)` (alloc).
 
 ### 8.3 Parallelism
 
 You likely want parallelism in the transform layer, not in the denominator division.
 Since `algo-fft` has an `executor.go` and batch planning hooks ([GitHub][3]), design your plan to:
 
-* accept `Options{Workers:int}` or `Options{Executor:...}` (whatever fits `algo-fft`)
-* reuse that executor for line-wise DST/DCT too
+- accept `Options{Workers:int}` or `Options{Executor:...}` (whatever fits `algo-fft`)
+- reuse that executor for line-wise DST/DCT too
 
 ---
 
@@ -263,8 +260,8 @@ Since `algo-fft` has an `executor.go` and batch planning hooks ([GitHub][3]), de
 
 ### Unit tests
 
-* Eigenvalue formulas per BC and small N.
-* Round-trip tests for your DST/DCT wrappers: inverse(forward(x)) ≈ x.
+- Eigenvalue formulas per BC and small N.
+- Round-trip tests for your DST/DCT wrappers: inverse(forward(x)) ≈ x.
 
 ### Manufactured solution tests (the gold standard)
 
@@ -272,16 +269,16 @@ Pick an analytic `u(x,y,z)` consistent with BCs, compute discrete RHS using your
 
 Examples:
 
-* Periodic: `u = sin(2πx/Lx) sin(2πy/Ly)`
-* Dirichlet: `u = sin(πx/Lx) sin(πy/Ly)`
-* Neumann: `u = cos(πx/Lx) cos(πy/Ly)` (careful with compatibility)
+- Periodic: `u = sin(2πx/Lx) sin(2πy/Ly)`
+- Dirichlet: `u = sin(πx/Lx) sin(πy/Ly)`
+- Neumann: `u = cos(πx/Lx) cos(πy/Ly)` (careful with compatibility)
 
 ### Cross-check against a slow reference
 
 For small sizes (e.g., 8³, 16²):
 
-* build the sparse Laplacian and solve with Gaussian elimination / simple CG (internal reference)
-* compare solution vectors
+- build the sparse Laplacian and solve with Gaussian elimination / simple CG (internal reference)
+- compare solution vectors
 
 ---
 
@@ -291,15 +288,15 @@ Once Poisson is solid, you can build:
 
 1. **Diffusion / heat equation**:
 
-* implicit step `(I - νΔtΔ)u_{n+1} = u_n` → same diagonalization trick (divide by `1 + νΔtΛ`)
+- implicit step `(I - νΔtΔ)u_{n+1} = u_n` → same diagonalization trick (divide by `1 + νΔtΛ`)
 
 2. **Projection step for incompressible flow (Navier–Stokes)**:
 
-* solve Poisson for pressure from divergence → huge practical use-case
+- solve Poisson for pressure from divergence → huge practical use-case
 
 3. **Helmholtz**:
 
-* `(α - Δ)u = f` → again just modify denominator
+- `(α - Δ)u = f` → again just modify denominator
 
 All of those reuse the exact same transform stack and eigenvalues.
 
@@ -309,23 +306,23 @@ All of those reuse the exact same transform stack and eigenvalues.
 
 ### Milestone 1 (fast win): Periodic 1D/2D/3D
 
-* Use `algo-fft` ND or dedicated 2D/3D plans ([GitHub][3])
-* Real-valued API, real FFT where possible ([GitHub][3])
-* Mean-zero handling
+- Use `algo-fft` ND or dedicated 2D/3D plans ([GitHub][3])
+- Real-valued API, real FFT where possible ([GitHub][3])
+- Mean-zero handling
 
 ### Milestone 2: Homogeneous Dirichlet + Neumann
 
-* Implement DST/DCT wrappers using `algo-fft` under the hood
-* Mixed per-axis in 2D/3D
+- Implement DST/DCT wrappers using `algo-fft` under the hood
+- Mixed per-axis in 2D/3D
 
 ### Milestone 3: Inhomogeneous BCs
 
-* RHS modification utilities
-* Good docs and examples
+- RHS modification utilities
+- Good docs and examples
 
 ### Milestone 4: Helmholtz / diffusion / projection helpers
 
-* same plan, different denominators
+- same plan, different denominators
 
 ---
 

@@ -37,10 +37,13 @@ lint:
 lint-fix:
     golangci-lint run --fix
 
-# Format code
+# Format code using treefmt
 fmt:
-    go fmt ./...
-    gofumpt -w .
+    treefmt . --allow-missing-formatter
+
+# Check if code is formatted
+fmt-check:
+    treefmt --allow-missing-formatter --fail-on-change
 
 # Tidy dependencies
 tidy:
