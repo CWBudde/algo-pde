@@ -180,6 +180,61 @@ func TestDSTPlan_Bytes(t *testing.T) {
 	}
 }
 
+func TestDSTPlan_ConcurrentSeparatePlans(t *testing.T) {
+	// Verify that separate plan instances can be used concurrently.
+	// Note: A single plan instance is NOT safe for concurrent use.
+	const size = 16
+	const numGoroutines = 4
+	const iterations = 100
+
+	done := make(chan error, numGoroutines)
+
+	for workerID := range numGoroutines {
+		go func(worker int) {
+			done <- runConcurrentWorker(size, worker, iterations)
+		}(workerID)
+	}
+
+	// Wait for all goroutines and check for errors
+	for range numGoroutines {
+		if err := <-done; err != nil {
+			t.Errorf("concurrent test error: %v", err)
+		}
+	}
+}
+
+func runConcurrentWorker(size, worker, iterations int) error {
+	plan, err := NewDSTPlan(size)
+	if err != nil {
+		return err
+	}
+
+	src := make([]float64, size)
+	dst := make([]float64, size)
+
+	for iter := range iterations {
+		for i := range size {
+			src[i] = float64(worker*1000 + iter*10 + i)
+		}
+
+		if err := plan.Forward(dst, src); err != nil {
+			return err
+		}
+		if err := plan.Inverse(dst, dst); err != nil {
+			return err
+		}
+
+		for i := range size {
+			expected := float64(worker*1000 + iter*10 + i)
+			if math.Abs(dst[i]-expected) > tolerance {
+				return ErrSizeMismatch // Use existing error as a placeholder
+			}
+		}
+	}
+
+	return nil
+}
+
 func BenchmarkDSTPlan_Forward(b *testing.B) {
 	sizes := []int{64, 256, 1024}
 

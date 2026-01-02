@@ -45,6 +45,10 @@ path = '.*\.go'
 linters = ['testpackage']
 path = '.*_test\.go'
 
+[[linters.exclusions.rules]]
+linters = ['dupl']
+path = '.*_test\.go'
+
 [severity]
 default = 'warn'
 

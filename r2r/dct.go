@@ -19,6 +19,9 @@ import (
 //
 // For N points, DCT-I produces N coefficients.
 // Note: DCT-I requires N >= 2.
+//
+// Thread safety: A single DCTPlan instance is NOT safe for concurrent use.
+// For parallel transforms, create separate plan instances per goroutine.
 type DCTPlan struct {
 	n int // Original transform size
 

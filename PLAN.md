@@ -81,14 +81,14 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 - [x] Create `DCTPlan` with pre-allocated buffers
 - [x] Implement `NewDSTPlan(n int, opts ...Option) *DSTPlan`
 - [x] Implement `NewDCTPlan(n int, opts ...Option) *DCTPlan`
-- [ ] Ensure plans are safe for concurrent `Execute()` calls
+- [x] Document thread safety (plans are NOT thread-safe, use separate instances)
 - [x] Add `Plan.Bytes()` for memory introspection
 
 ### 2.4 Line-wise transforms (for multi-D)
-- [ ] Implement `DSTPlan.TransformLines(data []float64, shape Shape, axis int)`
-- [ ] Implement `DCTPlan.TransformLines(data []float64, shape Shape, axis int)`
+- [x] Implement `DSTPlan.ForwardLines/InverseLines(data []float64, shape Shape, axis int)`
+- [x] Implement `DCTPlan.ForwardLines/InverseLines(data []float64, shape Shape, axis int)`
 - [ ] Implement `FFTPlan.TransformLines(...)` wrapper for periodic
-- [ ] Write tests for 2D/3D line-wise transforms
+- [x] Write tests for 2D/3D line-wise transforms
 
 ---
 

@@ -18,6 +18,9 @@ import (
 //	X[k] = Σ x[n] * sin(π(n+1)(k+1)/(N+1)) for k = 0..N-1
 //
 // The inverse is the same transform scaled by 2/(N+1).
+//
+// Thread safety: A single DSTPlan instance is NOT safe for concurrent use.
+// For parallel transforms, create separate plan instances per goroutine.
 type DSTPlan struct {
 	n int // Original transform size
 
