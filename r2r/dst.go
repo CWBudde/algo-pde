@@ -22,7 +22,7 @@ import (
 // Thread safety: A single DSTPlan instance is NOT safe for concurrent use.
 // For parallel transforms, create separate plan instances per goroutine.
 type DSTPlan struct {
-	n int // Original transform size
+	n    int // Original transform size
 	opts Options
 
 	// Extended FFT size: 2*(N+1) for DST-I
@@ -48,7 +48,7 @@ type DSTPlan struct {
 //
 // Thread safety: A single DST2Plan instance is NOT safe for concurrent use.
 type DST2Plan struct {
-	n int // Original transform size
+	n    int // Original transform size
 	opts Options
 
 	// Extended FFT size: 2*N for DST-II
@@ -378,5 +378,5 @@ func DST3Coefficient(n, k, size int) float64 {
 		return 0
 	}
 
-	return math.Sin(math.Pi * float64(n+1) * (float64(k)+0.5) / float64(size))
+	return math.Sin(math.Pi * float64(n+1) * (float64(k) + 0.5) / float64(size))
 }

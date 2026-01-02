@@ -23,7 +23,7 @@ import (
 // Thread safety: A single DCTPlan instance is NOT safe for concurrent use.
 // For parallel transforms, create separate plan instances per goroutine.
 type DCTPlan struct {
-	n int // Original transform size
+	n    int // Original transform size
 	opts Options
 
 	// Extended FFT size: 2*(N-1) for DCT-I
@@ -49,7 +49,7 @@ type DCTPlan struct {
 //
 // Thread safety: A single DCT2Plan instance is NOT safe for concurrent use.
 type DCT2Plan struct {
-	n int // Original transform size
+	n    int // Original transform size
 	opts Options
 
 	// Extended FFT size: 2*N for DCT-II

@@ -3,6 +3,7 @@
 Fast spectral Poisson and Helmholtz solvers for Go, built on top of `algo-fft`. The library uses plan-based APIs (like FFTW) to precompute eigenvalues and reuse transform plans for many solves on the same grid.
 
 ## Features
+
 - O(N log N) solvers for Poisson and Helmholtz on 1D/2D/3D regular grids.
 - Boundary conditions per axis: Periodic, Dirichlet, Neumann, and mixed.
 - Real-to-real transforms (DST/DCT) implemented via FFT for physical boundaries.
@@ -55,6 +56,7 @@ plan, err := poisson.NewHelmholtzPlan2D(
 ```
 
 ## Package Layout
+
 - `poisson/`: Poisson/Helmholtz solvers, plans, boundary handling.
 - `r2r/`: DST/DCT transforms and plans.
 - `grid/`: Shape, stride, indexing utilities.
@@ -62,6 +64,7 @@ plan, err := poisson.NewHelmholtzPlan2D(
 - `examples/`: End-to-end examples (periodic, Dirichlet, Neumann, mixed, Helmholtz).
 
 ## Usage Notes
+
 - Reuse plans when solving multiple RHS on the same grid.
 - Periodic/Neumann problems have a nullspace; configure handling via options such as `WithNullspace` or `WithSubtractMean`.
 - Data layout is row-major for 2D/3D, stored in flat `[]float64` slices.
@@ -79,6 +82,7 @@ just fmt        # treefmt (gofumpt + gci + prettier)
 ```
 
 ## Performance
+
 - Expected complexity: O(N log N).
 - Plans precompute eigenvalues and buffers to avoid per-solve allocations.
 - Benchmarks live alongside packages and can be run with `just bench`.

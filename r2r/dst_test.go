@@ -76,6 +76,7 @@ func TestDSTPlan_RoundTripOrtho(t *testing.T) {
 		}
 	}
 }
+
 func TestDST2Plan_RoundTrip(t *testing.T) {
 	sizes := []int{3, 4, 7, 8, 15, 16, 31, 32, 63, 64}
 
@@ -141,6 +142,7 @@ func TestDST2Plan_RoundTripOrtho(t *testing.T) {
 		}
 	}
 }
+
 func TestDSTPlan_Orthogonality(t *testing.T) {
 	// DST-I basis functions should be orthogonal
 	n := 7

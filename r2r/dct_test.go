@@ -75,6 +75,7 @@ func TestDCTPlan_RoundTripOrtho(t *testing.T) {
 		}
 	}
 }
+
 func TestDCTPlan_Orthogonality(t *testing.T) {
 	// DCT-I basis functions should be orthogonal (with endpoint weights)
 	n := 8
