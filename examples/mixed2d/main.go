@@ -8,39 +8,39 @@ import (
 )
 
 func main() {
-	// For Dirichlet, N is the number of internal grid points.
-	// The domain length L = (N+1)*h.
+	// Mixed BC: Periodic in X, Dirichlet in Y.
+	// X: [0, 1), hx = 1/Nx
+	// Y: [0, 1], hy = 1/(Ny+1), points at (j+1)*hy
 	
 	nx, ny := 64, 64
-	// If nx=64 points, L = (64+1)*h = 1 => h = 1/65.
-	hx := 1.0 / float64(nx+1)
+	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny+1)
 
-	fmt.Printf("2D Dirichlet Poisson Solver\n")
-	
+	fmt.Printf("2D Mixed Poisson Solver (X: Periodic, Y: Dirichlet)\n")
+
 	plan, err := poisson.NewPlan(
 		2,
 		[]int{nx, ny},
 		[]float64{hx, hy},
-		[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet},
+		[]poisson.BCType{poisson.Periodic, poisson.Dirichlet},
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	// u_exact = sin(pi*x) * sin(pi*y)
-	// -Lap u = 2*pi^2 * u
-	// Grid points are at x_i = (i+1)*h for i=0..N-1
+	// u_exact = sin(2*pi*x) * sin(pi*y)
+	// -Lap u = (4*pi^2 + pi^2) * u = 5*pi^2 * u
+	
 	rhs := make([]float64, nx*ny)
 	uExact := make([]float64, nx*ny)
 
 	for i := 0; i < nx; i++ {
-		x := float64(i+1) * hx
+		x := float64(i) * hx
 		for j := 0; j < ny; j++ {
 			y := float64(j+1) * hy
-			val := math.Sin(math.Pi*x) * math.Sin(math.Pi*y)
+			val := math.Sin(2.0*math.Pi*x) * math.Sin(math.Pi*y)
 			uExact[i*ny+j] = val
-			rhs[i*ny+j] = 2.0 * math.Pi * math.Pi * val
+			rhs[i*ny+j] = 5.0 * math.Pi * math.Pi * val
 		}
 	}
 

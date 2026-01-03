@@ -33,17 +33,11 @@ func main() {
 
 	// 4. Solve
 	u := make([]float64, nx)
-	// We use SubtractMean option to handle the zero mode (singular matrix for periodic Poisson)
+
+	// We use WithSubtractMean() to handle the zero mode (singular matrix for periodic Poisson)
 	// automatically by subtracting the mean from RHS (which should be 0 anyway for sin)
-	// and setting the mean of solution to 0.
-	// Actually NewPlan1DPeriodic doesn't take solve options, it takes plan options.
-	// But the Solve method itself handles the zero mode based on plan configuration?
-	// Let's check NewPlan1DPeriodic options.
-	// Ah, options are passed to NewPlan1DPeriodic.
-	
-	// Re-create plan with explicit mean subtraction just to be safe/demonstrate, 
-	// though for this RHS mean is already 0.
-	plan, err = poisson.NewPlan1DPeriodic(nx, hx, poisson.SubtractMean(true))
+	// and setting the mean of the solution to 0.
+	plan, err = poisson.NewPlan1DPeriodic(nx, hx, poisson.WithSubtractMean())
 	if err != nil {
 		panic(err)
 	}

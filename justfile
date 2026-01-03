@@ -80,3 +80,22 @@ profile-cpu pkg bench:
 profile-mem pkg bench:
     go test -bench={{bench}} -memprofile=mem.pprof ./{{pkg}}
     go tool pprof -http=:8080 mem.pprof
+
+# Build WASM module for web demo
+wasm:
+    @echo "Building WASM module..."
+    GOOS=js GOARCH=wasm go build -buildvcs=false -ldflags="-s -w" -trimpath -o demo/public/acoustics.wasm ./cmd/acoustics-wasm
+    @echo "Copying wasm_exec.js runtime..."
+    cp "`go env GOROOT`/lib/wasm/wasm_exec.js" demo/public/
+    @echo "WASM build complete: demo/public/acoustics.wasm"
+
+# Run demo in development mode (requires npm)
+demo-dev: wasm
+    @echo "Starting development server..."
+    cd demo && npm install && npm run dev
+
+# Build demo for production (requires npm)
+demo-build: wasm
+    @echo "Building demo for production..."
+    cd demo && npm install && npm run build
+    @echo "Production build complete: demo/dist/"

@@ -1,0 +1,27 @@
+# Test coverage
+coverage.txt
+coverage.html
+
+# Profiling
+*.pprof
+
+# Build artifacts
+*.wasm
+
+# Demo build artifacts
+demo/public/acoustics.wasm
+demo/public/wasm_exec.js
+demo/node_modules/
+demo/dist/
+demo/.vite/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

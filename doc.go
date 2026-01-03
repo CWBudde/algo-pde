@@ -31,10 +31,9 @@
 // # Example
 //
 //	// Create a 2D periodic Poisson solver
-//	plan, err := poisson.NewPlan2D(
-//	    128, 128,           // grid size
-//	    1.0/128, 1.0/128,   // grid spacing
-//	    poisson.Periodic,
+//	plan, err := poisson.NewPlan2DPeriodic(
+//	    128, 128,         // grid size
+//	    1.0/128, 1.0/128, // grid spacing
 //	)
 //	if err != nil {
 //	    log.Fatal(err)
