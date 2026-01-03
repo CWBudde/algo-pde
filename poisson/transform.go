@@ -9,11 +9,11 @@ type AxisTransform interface {
 	// The data is modified in-place.
 	// shape defines the N-dimensional grid shape.
 	// axis specifies which axis to transform along (0=x, 1=y, 2=z).
-	Forward(data []float64, shape grid.Shape, axis int) error
+	Forward(data []complex128, shape grid.Shape, axis int) error
 
 	// Inverse applies the inverse transform along lines of the given axis.
 	// The data is modified in-place.
-	Inverse(data []float64, shape grid.Shape, axis int) error
+	Inverse(data []complex128, shape grid.Shape, axis int) error
 
 	// Length returns the transform size along the axis.
 	Length() int

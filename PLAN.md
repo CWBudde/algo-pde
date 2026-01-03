@@ -96,7 +96,7 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 5.1 Unified Plan type with per-axis BC
 
-- [ ] Implement main `Plan` struct:
+- [x] Implement main `Plan` struct:
   ```go
   type Plan struct {
       dim      int
@@ -109,29 +109,29 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
       opts     Options
   }
   ```
-- [ ] Implement `NewPlan(dim int, n []int, h []float64, bc []BCType, opts ...Option) (*Plan, error)`
-- [ ] Select appropriate eigenvalue formula per axis based on BC
-- [ ] Select appropriate transform (FFT/DST/DCT) per axis based on BC
-- [ ] Validate BC combinations (document restrictions if any)
+- [x] Implement `NewPlan(dim int, n []int, h []float64, bc []BCType, opts ...Option) (*Plan, error)`
+- [x] Select appropriate eigenvalue formula per axis based on BC
+- [x] Select appropriate transform (FFT/DST/DCT) per axis based on BC
+- [x] Validate BC combinations (document restrictions if any)
 
 ### 5.2 1D Dirichlet Solver
 
-- [ ] Wire DST transform for Dirichlet BC
-- [ ] Compute Dirichlet eigenvalues
-- [ ] Write manufactured solution tests:
-  - [ ] u = sin(πx/L) (fundamental mode)
-  - [ ] u = sin(2πx/L) \* sin(πx/L) (combination)
-- [ ] Verify boundary values are exactly zero
+- [x] Wire DST transform for Dirichlet BC
+- [x] Compute Dirichlet eigenvalues
+- [x] Write manufactured solution tests:
+  - [x] u = sin(πx/L) (fundamental mode)
+  - [x] u = sin(2πx/L) \* sin(πx/L) (combination)
+- [x] Verify boundary values are exactly zero
 
 ### 5.3 1D Neumann Solver
 
-- [ ] Wire DCT transform for Neumann BC
-- [ ] Compute Neumann eigenvalues
-- [ ] Handle nullspace (constant mode has zero eigenvalue)
-- [ ] Write manufactured solution tests:
-  - [ ] u = cos(πx/L)
-  - [ ] u = cos(2πx/L)
-- [ ] Verify derivative at boundaries is zero (finite difference check)
+- [x] Wire DCT transform for Neumann BC
+- [x] Compute Neumann eigenvalues
+- [x] Handle nullspace (constant mode has zero eigenvalue)
+- [x] Write manufactured solution tests:
+  - [x] u = cos(πx/L)
+  - [x] u = cos(2πx/L)
+- [x] Verify derivative at boundaries is zero (finite difference check)
 
 ### 5.4 2D Mixed BC Solver
 
