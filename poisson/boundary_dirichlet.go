@@ -53,7 +53,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 				row := base + j*nz
 				valRow := j * nz
 				for k := 0; k < nz; k++ {
-					rhs[row+k] -= data.Values[valRow+k] * invHx2
+					rhs[row+k] += data.Values[valRow+k] * invHx2
 				}
 			}
 
@@ -79,7 +79,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 				base := i*plane + j*nz
 				valRow := i * nz
 				for k := 0; k < nz; k++ {
-					rhs[base+k] -= data.Values[valRow+k] * invHy2
+					rhs[base+k] += data.Values[valRow+k] * invHy2
 				}
 			}
 
@@ -105,7 +105,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 				base := i * plane
 				valRow := i * ny
 				for j := 0; j < ny; j++ {
-					rhs[base+j*nz+k] -= data.Values[valRow+j] * invHz2
+					rhs[base+j*nz+k] += data.Values[valRow+j] * invHz2
 				}
 			}
 
