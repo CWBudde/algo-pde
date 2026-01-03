@@ -86,9 +86,9 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 4.4 ND Periodic Solver (generic)
 
-- [ ] Implement `PlanNDPeriodic` for arbitrary dimensions
-- [ ] Implement `NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option)`
-- [ ] Write tests for 4D case (stress test)
+- [x] Implement `PlanNDPeriodic` for arbitrary dimensions
+- [x] Implement `NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option)`
+- [x] Write tests for 4D case (stress test)
 
 ---
 
