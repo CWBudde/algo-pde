@@ -154,8 +154,8 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 6.1 Boundary value data structures
 
-- [ ] Define `BoundaryFace` enum (XLow, XHigh, YLow, YHigh, ZLow, ZHigh)
-- [ ] Define `BoundaryData` struct:
+- [x] Define `BoundaryFace` enum (XLow, XHigh, YLow, YHigh, ZLow, ZHigh)
+- [x] Define `BoundaryData` struct:
   ```go
   type BoundaryData struct {
       Face   BoundaryFace
@@ -163,27 +163,27 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
       Values []float64  // boundary values (shape of face)
   }
   ```
-- [ ] Define `BoundaryConditions` as collection of `BoundaryData`
+- [x] Define `BoundaryConditions` as collection of `BoundaryData`
 
 ### 6.2 RHS modification for inhomogeneous Dirichlet
 
-- [ ] Implement RHS contribution from boundary values
-- [ ] For each boundary cell: `rhs[i] -= u_boundary / h²`
-- [ ] Write tests with non-zero Dirichlet values
-- [ ] Verify solution matches boundary values at edges
+- [x] Implement RHS contribution from boundary values
+- [x] For each boundary cell: `rhs[i] -= u_boundary / h²`
+- [x] Write tests with non-zero Dirichlet values
+- [x] Verify solution matches boundary values at edges
 
 ### 6.3 RHS modification for inhomogeneous Neumann
 
-- [ ] Implement ghost point elimination or modified stencil
-- [ ] For each boundary cell: adjust RHS based on derivative condition
-- [ ] Write tests with non-zero Neumann values
-- [ ] Verify derivative at boundary matches specified value
+- [x] Implement ghost point elimination or modified stencil
+- [x] For each boundary cell: adjust RHS based on derivative condition
+- [x] Write tests with non-zero Neumann values
+- [x] Verify derivative at boundary matches specified value
 
 ### 6.4 Unified inhomogeneous API
 
-- [ ] Implement `Plan.SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error`
-- [ ] Write comprehensive tests for 2D and 3D
-- [ ] Add examples to examples/ directory
+- [x] Implement `Plan.SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error`
+- [x] Write comprehensive tests for 2D and 3D
+- [x] Add examples to examples/ directory
 
 ---
 

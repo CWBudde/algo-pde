@@ -49,3 +49,26 @@ type AxisBC struct {
 func NewAxisBC(t BCType) AxisBC {
 	return AxisBC{Type: t}
 }
+
+// BoundaryFace identifies a specific boundary face of the domain.
+// The low/high names refer to the coordinate direction.
+type BoundaryFace int
+
+const (
+	XLow BoundaryFace = iota
+	XHigh
+	YLow
+	YHigh
+	ZLow
+	ZHigh
+)
+
+// BoundaryData associates boundary values with a face and BC type.
+type BoundaryData struct {
+	Face   BoundaryFace
+	Type   BCType
+	Values []float64
+}
+
+// BoundaryConditions is a collection of boundary data entries.
+type BoundaryConditions []BoundaryData

@@ -39,6 +39,10 @@
 //	    return err
 //	}
 //
+// For inhomogeneous Dirichlet/Neumann data, use SolveWithBC and provide
+// boundary values per face. The solver applies the boundary contributions
+// before solving.
+//
 // # Nullspace Handling
 //
 // Periodic and Neumann boundary conditions have a nullspace (constant mode).
