@@ -47,13 +47,32 @@ func main() {
 ## Helmholtz Example
 
 ```go
-plan, err := poisson.NewHelmholtzPlan2D(
-	128, 128,
-	1.0/128, 1.0/128,
-	poisson.Dirichlet, poisson.Dirichlet,
-	poisson.WithAlpha(1.5),
+plan, err := poisson.NewHelmholtzPlan(
+	2,
+	[]int{128, 128},
+	[]float64{1.0 / 128, 1.0 / 128},
+	[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet},
+	1.5,
 )
 ```
+
+## Screened Poisson / Diffusion Step
+
+The screened Poisson form
+
+```
+u - nu * Delta u = f
+```
+
+appears in implicit diffusion and reaction-diffusion steady states. Divide by
+`nu` to match the Helmholtz form:
+
+```
+(1/nu - Delta)u = f/nu
+```
+
+For an implicit Euler diffusion step `u^{n+1} - nu*dt*Delta u^{n+1} = u^n`, set
+`alpha = 1/(nu*dt)` and `rhs = u^n / (nu*dt)`.
 
 ## Package Layout
 
@@ -61,7 +80,7 @@ plan, err := poisson.NewHelmholtzPlan2D(
 - `r2r/`: DST/DCT transforms and plans.
 - `grid/`: Shape, stride, indexing utilities.
 - `fd/`: Finite-difference eigenvalues and validation helpers.
-- `examples/`: End-to-end examples (periodic, Dirichlet, Neumann, mixed, Helmholtz).
+- `examples/`: End-to-end examples (inhomogeneous BCs, diffusion step).
 
 ## Usage Notes
 

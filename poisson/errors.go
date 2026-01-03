@@ -27,6 +27,9 @@ var (
 
 	// ErrNilBuffer is returned when a required buffer is nil.
 	ErrNilBuffer = errors.New("buffer is nil")
+
+	// ErrResonant is returned when the Helmholtz operator is singular.
+	ErrResonant = errors.New("helmholtz operator is singular: alpha cancels eigenvalue")
 )
 
 // SizeError provides details about a size mismatch.

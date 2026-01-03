@@ -6,20 +6,32 @@ import (
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
 
-// Plan is a reusable Poisson solver plan with per-axis boundary conditions.
+// Plan is a reusable Poisson/Helmholtz solver plan with per-axis boundary conditions.
 type Plan struct {
-	dim  int
-	n    [3]int
-	h    [3]float64
-	bc   [3]BCType
-	eig  [3][]float64
-	tr   [3]AxisTransform
-	work Workspace
-	opts Options
+	dim   int
+	n     [3]int
+	h     [3]float64
+	bc    [3]BCType
+	eig   [3][]float64
+	tr    [3]AxisTransform
+	work  Workspace
+	opts  Options
+	alpha float64
 }
 
 // NewPlan creates a new Poisson plan with per-axis boundary conditions.
 func NewPlan(dim int, n []int, h []float64, bc []BCType, opts ...Option) (*Plan, error) {
+	return newPlanWithAlpha(dim, n, h, bc, 0, opts...)
+}
+
+// NewHelmholtzPlan creates a new Helmholtz plan for (alpha - Δ)u = f.
+// Negative alpha values are allowed but may lead to singular operators when
+// alpha cancels an eigenvalue; Solve will return ErrResonant in that case.
+func NewHelmholtzPlan(dim int, n []int, h []float64, bc []BCType, alpha float64, opts ...Option) (*Plan, error) {
+	return newPlanWithAlpha(dim, n, h, bc, alpha, opts...)
+}
+
+func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64, opts ...Option) (*Plan, error) {
 	if dim < 1 || dim > 3 {
 		return nil, &ValidationError{
 			Field:   "dim",
@@ -50,11 +62,12 @@ func NewPlan(dim int, n []int, h []float64, bc []BCType, opts ...Option) (*Plan,
 
 	options := ApplyOptions(DefaultOptions(), opts)
 	plan := &Plan{
-		dim:  dim,
-		n:    [3]int{1, 1, 1},
-		h:    [3]float64{1, 1, 1},
-		bc:   [3]BCType{Periodic, Periodic, Periodic},
-		opts: options,
+		dim:   dim,
+		n:     [3]int{1, 1, 1},
+		h:     [3]float64{1, 1, 1},
+		bc:    [3]BCType{Periodic, Periodic, Periodic},
+		opts:  options,
+		alpha: alpha,
 	}
 
 	size := 1
@@ -143,7 +156,9 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 		}
 	}
 
-	p.applyEigenvalues()
+	if err := p.applyEigenvalues(); err != nil {
+		return err
+	}
 
 	for axis := p.dim - 1; axis >= 0; axis-- {
 		if err := p.tr[axis].Inverse(p.work.Complex, shape, axis); err != nil {
@@ -181,6 +196,10 @@ func (p *Plan) size() int {
 }
 
 func (p *Plan) hasNullspace() bool {
+	if p.alpha != 0 {
+		return false
+	}
+
 	for axis := 0; axis < p.dim; axis++ {
 		if !p.bc[axis].HasNullspace() {
 			return false
@@ -189,21 +208,26 @@ func (p *Plan) hasNullspace() bool {
 	return true
 }
 
-func (p *Plan) applyEigenvalues() {
+func (p *Plan) applyEigenvalues() error {
 	dims := make([]int, p.dim)
 	for axis := 0; axis < p.dim; axis++ {
 		dims[axis] = p.n[axis]
 	}
 
 	indices := make([]int, p.dim)
+	allowZeroMode := p.hasNullspace()
 	for idx := range p.work.Complex {
-		denom := 0.0
+		denom := p.alpha
 		for axis := 0; axis < p.dim; axis++ {
 			denom += p.eig[axis][indices[axis]]
 		}
 
 		if denom == 0 {
-			p.work.Complex[idx] = 0
+			if allowZeroMode && isZeroMode(indices) {
+				p.work.Complex[idx] = 0
+			} else {
+				return ErrResonant
+			}
 		} else {
 			p.work.Complex[idx] /= complex(denom, 0)
 		}
@@ -216,4 +240,15 @@ func (p *Plan) applyEigenvalues() {
 			indices[axis] = 0
 		}
 	}
+
+	return nil
+}
+
+func isZeroMode(indices []int) bool {
+	for _, idx := range indices {
+		if idx != 0 {
+			return false
+		}
+	}
+	return true
 }

@@ -5,6 +5,11 @@
 //	-Δu = f
 //
 // where Δ is the Laplacian operator and f is the source term.
+// The solver also supports Helmholtz / screened Poisson forms:
+//
+//	(α - Δ)u = f
+//
+// For diffusion steps u - νΔu = f, divide by ν to set α = 1/ν and RHS = f/ν.
 //
 // # Boundary Conditions
 //

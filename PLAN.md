@@ -191,18 +191,18 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 7.1 Helmholtz operator: (α - Δ)u = f
 
-- [ ] Extend `Plan` with `alpha` parameter (shift)
-- [ ] Modify eigenvalue division: divide by `α + λ` instead of just `λ`
-- [ ] Implement `NewHelmholtzPlan(...)` constructor
-- [ ] Handle α = 0 case (reduces to Poisson with nullspace)
-- [ ] Write tests for positive α (well-posed problem)
-- [ ] Write tests for negative α (potential resonance issues - document)
+- [x] Extend `Plan` with `alpha` parameter (shift)
+- [x] Modify eigenvalue division: divide by `α + λ` instead of just `λ`
+- [x] Implement `NewHelmholtzPlan(...)` constructor
+- [x] Handle α = 0 case (reduces to Poisson with nullspace)
+- [x] Write tests for positive α (well-posed problem)
+- [x] Write tests for negative α (potential resonance issues - document)
 
 ### 7.2 Screened Poisson / reaction-diffusion steady state
 
-- [ ] Document use case: `u - νΔu = f` (implicit diffusion step)
-- [ ] Add example for diffusion time-stepping
-- [ ] Benchmark against iterative methods for comparison
+- [x] Document use case: `u - νΔu = f` (implicit diffusion step)
+- [x] Add example for diffusion time-stepping
+- [x] Benchmark against iterative methods for comparison
 
 ---
 
