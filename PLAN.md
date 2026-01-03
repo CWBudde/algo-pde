@@ -135,18 +135,18 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 5.4 2D Mixed BC Solver
 
-- [ ] Test Dirichlet-Dirichlet (both axes)
-- [ ] Test Neumann-Neumann (both axes)
-- [ ] Test Periodic-Dirichlet (mixed)
-- [ ] Test Dirichlet-Neumann (mixed)
-- [ ] Write manufactured solution tests for each combination
-- [ ] Document which combinations have nullspace issues
+- [x] Test Dirichlet-Dirichlet (both axes)
+- [x] Test Neumann-Neumann (both axes)
+- [x] Test Periodic-Dirichlet (mixed)
+- [x] Test Dirichlet-Neumann (mixed)
+- [x] Write manufactured solution tests for each combination
+- [x] Document which combinations have nullspace issues
 
 ### 5.5 3D Mixed BC Solver
 
-- [ ] Implement 3D with arbitrary BC per axis
-- [ ] Test all 27 combinations (3³) or representative subset
-- [ ] Benchmark against periodic-only solver
+- [x] Implement 3D with arbitrary BC per axis
+- [x] Test all 27 combinations (3³) or representative subset
+- [x] Benchmark against periodic-only solver
 
 ---
 

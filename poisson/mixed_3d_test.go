@@ -257,3 +257,50 @@ func axisBasis(bc poisson.BCType, n int) (float64, []float64) {
 		return h, values
 	}
 }
+
+func BenchmarkPlan3DMixed_Solve_32(b *testing.B) {
+	benchmarkPlan3DSolve(b, 32, [3]poisson.BCType{poisson.Periodic, poisson.Dirichlet, poisson.Neumann})
+}
+
+func BenchmarkPlan3DPeriodic_Solve_NewPlan_32(b *testing.B) {
+	benchmarkPlan3DSolve(b, 32, [3]poisson.BCType{poisson.Periodic, poisson.Periodic, poisson.Periodic})
+}
+
+func benchmarkPlan3DSolve(b *testing.B, n int, bc [3]poisson.BCType) {
+	hx, fx := axisBasis(bc[0], n)
+	hy, fy := axisBasis(bc[1], n)
+	hz, fz := axisBasis(bc[2], n)
+
+	plan, err := poisson.NewPlan(
+		3,
+		[]int{n, n, n},
+		[]float64{hx, hy, hz},
+		[]poisson.BCType{bc[0], bc[1], bc[2]},
+	)
+	if err != nil {
+		b.Fatalf("NewPlan failed: %v", err)
+	}
+
+	u := make([]float64, n*n*n)
+	for i := range n {
+		for j := range n {
+			for k := range n {
+				u[(i*n+j)*n+k] = fx[i] * fy[j] * fz[k]
+			}
+		}
+	}
+
+	rhs := make([]float64, len(u))
+	fd.Apply3D(rhs, u, grid.NewShape3D(n, n, n), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+		bc[0], bc[1], bc[2],
+	})
+
+	dst := make([]float64, len(u))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := plan.Solve(dst, rhs); err != nil {
+			b.Fatalf("Solve failed: %v", err)
+		}
+	}
+}
