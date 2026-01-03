@@ -25,13 +25,13 @@
 //
 // The solver uses a plan-based API for efficiency:
 //
-//  1. Create a plan once with NewPlan2D or similar
+//  1. Create a plan once with NewPlan2DPeriodic or NewPlan
 //  2. The plan pre-computes eigenvalues and allocates buffers
 //  3. Call Solve() repeatedly for different right-hand sides
 //
 // Example:
 //
-//	plan, err := NewPlan2D(128, 128, 1.0/128, 1.0/128, Periodic, Periodic)
+//	plan, err := NewPlan2DPeriodic(128, 128, 1.0/128, 1.0/128)
 //	if err != nil {
 //	    return err
 //	}

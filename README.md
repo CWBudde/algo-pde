@@ -2,6 +2,12 @@
 
 Fast spectral Poisson and Helmholtz solvers for Go, built on top of `algo-fft`. The library uses plan-based APIs (like FFTW) to precompute eigenvalues and reuse transform plans for many solves on the same grid.
 
+## Motivation
+
+- Fast repeated solves on fixed, regular grids without per-solve allocations.
+- FFT-based diagonalization handles periodic/Dirichlet/Neumann BCs cleanly.
+- Lightweight Go API with explicit control over nullspace handling.
+
 ## Features
 
 - O(N log N) solvers for Poisson and Helmholtz on 1D/2D/3D regular grids.
@@ -29,7 +35,7 @@ import (
 
 func main() {
 	// 2D periodic Poisson solve on a 128x128 grid.
-	plan, err := poisson.NewPlan2D(128, 128, 1.0/128, 1.0/128, poisson.Periodic, poisson.Periodic)
+	plan, err := poisson.NewPlan2DPeriodic(128, 128, 1.0/128, 1.0/128)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -105,6 +111,12 @@ just fmt        # treefmt (gofumpt + gci + prettier)
 - Expected complexity: O(N log N).
 - Plans precompute eigenvalues and buffers to avoid per-solve allocations.
 - Benchmarks live alongside packages and can be run with `just bench`.
+
+## Comparison with alternatives
+
+- Iterative sparse solvers (CG/GMRES) are more flexible for irregular domains and variable coefficients, but require preconditioning and more tuning.
+- Direct sparse solvers provide robust accuracy but can be much slower and memory-heavy at scale.
+- Multigrid is competitive for large problems; this library favors simplicity and throughput on regular grids with FFT-friendly BCs.
 
 ## License
 

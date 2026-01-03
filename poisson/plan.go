@@ -112,7 +112,11 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		}
 	}
 
-	plan.work = NewWorkspace(0, size)
+	realSize := 0
+	if !options.InPlace {
+		realSize = size
+	}
+	plan.work = NewWorkspace(realSize, size)
 
 	return plan, nil
 }
@@ -183,6 +187,11 @@ func (p *Plan) SolveInPlace(buf []float64) error {
 	return p.Solve(buf, buf)
 }
 
+// WorkBytes returns the size of the plan's workspace buffers in bytes.
+func (p *Plan) WorkBytes() int {
+	return p.work.Bytes()
+}
+
 func (p *Plan) shape() grid.Shape {
 	return grid.Shape{p.n[0], p.n[1], p.n[2]}
 }
@@ -209,12 +218,12 @@ func (p *Plan) hasNullspace() bool {
 }
 
 func (p *Plan) applyEigenvalues() error {
-	dims := make([]int, p.dim)
+	var dims [3]int
 	for axis := 0; axis < p.dim; axis++ {
 		dims[axis] = p.n[axis]
 	}
 
-	indices := make([]int, p.dim)
+	var indices [3]int
 	allowZeroMode := p.hasNullspace()
 	for idx := range p.work.Complex {
 		denom := p.alpha
@@ -223,7 +232,7 @@ func (p *Plan) applyEigenvalues() error {
 		}
 
 		if denom == 0 {
-			if allowZeroMode && isZeroMode(indices) {
+			if allowZeroMode && isZeroMode(&indices, p.dim) {
 				p.work.Complex[idx] = 0
 			} else {
 				return ErrResonant
@@ -244,8 +253,9 @@ func (p *Plan) applyEigenvalues() error {
 	return nil
 }
 
-func isZeroMode(indices []int) bool {
-	for _, idx := range indices {
+func isZeroMode(indices *[3]int, dim int) bool {
+	for axis := 0; axis < dim; axis++ {
+		idx := indices[axis]
 		if idx != 0 {
 			return false
 		}

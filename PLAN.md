@@ -210,11 +210,11 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 8.1 Zero-allocation solve path
 
-- [ ] Audit `Solve()` for heap allocations using benchmarks
-- [ ] Ensure all scratch memory is pre-allocated in Plan
-- [ ] Add `Plan.WorkBytes()` method for memory introspection
-- [ ] Write allocation benchmarks: `go test -bench=. -benchmem`
-- [ ] Target: 0 allocs/op for Solve with pre-made plan
+- [x] Audit `Solve()` for heap allocations using benchmarks
+- [x] Ensure all scratch memory is pre-allocated in Plan
+- [x] Add `Plan.WorkBytes()` method for memory introspection
+- [x] Write allocation benchmarks: `go test -bench=. -benchmem`
+- [x] Target: 0 allocs/op for Solve with pre-made plan
 
 ### 8.2 Parallelism support
 
@@ -242,33 +242,33 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 9.1 Manufactured solution test suite
 
-- [ ] Create `testdata/` with analytic test cases
-- [ ] 1D periodic: u = sin(2πx/L)
-- [ ] 1D Dirichlet: u = sin(πx/L)
-- [ ] 1D Neumann: u = cos(πx/L) + x (linear + cosine)
-- [ ] 2D periodic: u = sin(2πx/Lx) \* sin(2πy/Ly)
-- [ ] 2D Dirichlet: u = sin(πx/Lx) \* sin(πy/Ly)
-- [ ] 2D Neumann: u = cos(πx/Lx) \* cos(πy/Ly)
-- [ ] 2D mixed: combinations of above
-- [ ] 3D cases for each BC type
+- [x] Create `testdata/` with analytic test cases
+- [x] 1D periodic: u = sin(2πx/L)
+- [x] 1D Dirichlet: u = sin(πx/L)
+- [x] 1D Neumann: u = cos(πx/L) + x (linear + cosine)
+- [x] 2D periodic: u = sin(2πx/Lx) \* sin(2πy/Ly)
+- [x] 2D Dirichlet: u = sin(πx/Lx) \* sin(πy/Ly)
+- [x] 2D Neumann: u = cos(πx/Lx) \* cos(πy/Ly)
+- [x] 2D mixed: combinations of above
+- [x] 3D cases for each BC type
 
 ### 9.2 Convergence tests
 
-- [ ] Implement `TestConvergence_*` tests
-- [ ] Verify O(h²) error convergence for 2nd-order FD
+- [x] Implement `TestConvergence_*` tests
+- [x] Verify O(h²) error convergence for 2nd-order FD
 - [ ] Plot convergence (log-log) in documentation
 
 ### 9.3 Reference solver comparison
 
-- [ ] Implement naive dense solver for small grids (8x8, 16x16)
-- [ ] Compare spectral solution against direct solve
+- [x] Implement naive dense solver for small grids (8x8, 16x16)
+- [x] Compare spectral solution against direct solve
 - [ ] Maximum error should be O(machine epsilon \* condition number)
 
 ### 9.4 Fuzzing
 
-- [ ] Add fuzz tests for robustness
-- [ ] Fuzz input sizes, values, BC combinations
-- [ ] Ensure no panics on edge cases
+- [x] Add fuzz tests for robustness
+- [x] Fuzz input sizes, values, BC combinations
+- [x] Ensure no panics on edge cases
 
 ---
 
@@ -283,11 +283,11 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 10.2 README.md
 
-- [ ] Project overview and motivation
-- [ ] Installation instructions
-- [ ] Quick start example
-- [ ] Performance characteristics
-- [ ] Comparison with alternatives
+- [x] Project overview and motivation
+- [x] Installation instructions
+- [x] Quick start example
+- [x] Performance characteristics
+- [x] Comparison with alternatives
 
 ### 10.3 Examples
 
@@ -325,6 +325,373 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 - [ ] Research immersed boundary methods
 - [ ] Consider mask-based approaches
+
+---
+
+## Phase 12: Simple WebAssembly Wave Demo
+
+A minimal, shippable browser demo showcasing wave propagation using the Helmholtz solver. No UI controls - just click to ping.
+
+### 12.1 Minimal UI Specification
+
+**Interface:**
+
+- [ ] Fullscreen canvas
+- [ ] Top-left tiny text overlay (optional): resolution + "Click to ping"
+- [ ] Interactions:
+  - [ ] **Click:** set source position; restart animation
+  - [ ] **(Optional) R:** cycle resolution 128²/256²/512²
+  - [ ] **(Optional) B:** cycle boundary preset (Rigid / Open / Periodic)
+- [ ] No forms, no sliders
+
+### 12.2 Simulation Approach
+
+**Approach A (Recommended): Multi-frequency synthesis animation**
+
+- [ ] Pick a small set of frequencies (16–64 bins)
+- [ ] For each f_i:
+  - [ ] Solve steady field p_i(x,y) for source at click position
+- [ ] During animation frame t, render:
+  ```
+  u(x,y,t) = Σ_i w_i * p_i(x,y) * cos(2π f_i t + φ_i)
+  ```
+- [ ] Add damping via exp(-t/τ) or per-frequency weights
+- [ ] Result: expanding/rippling patterns that reflect and decay
+
+**Approach B (Even simpler): Single-frequency phase animation**
+
+- [ ] Solve once for chosen f
+- [ ] Animate: `u(x,y,t) = p(x,y) * cos(2π f t)`
+- [ ] Result: "breathing" standing-wave style
+
+### 12.3 Core Pipeline
+
+**On startup:**
+
+- [ ] Set grid: nx=256, ny=256
+- [ ] Set BC preset (e.g. rigid: Neumann on both axes)
+- [ ] Build and cache Helmholtz plan(s) for grid/BC
+
+**On click(x,y):**
+
+- [ ] Convert click to grid indices (sx, sy)
+- [ ] Build source blob s(x,y) (Gaussian over ~3–7 cells)
+- [ ] For each frequency bin f_i:
+  - [ ] Compute k_i = 2π f_i / c
+  - [ ] Set Helmholtz parameter (alpha = k_i²)
+  - [ ] Solve → store p_i (Float32Array)
+- [ ] Send ack to UI: "ready to animate"
+
+**Each animation frame:**
+
+- [ ] Worker computes frame field u(x,y,t) and sends pixels
+- [ ] Best for simplicity: Worker returns Uint8ClampedArray rgba (already colormapped)
+- [ ] UI blits ImageData to canvas
+
+### 12.4 Web/WASM Structure
+
+**Files:**
+
+- [ ] `demo/index.html` - canvas + small script
+- [ ] `demo/main.ts` - UI + worker
+- [ ] `demo/sim.worker.ts` - loads wasm + does all compute
+- [ ] `cmd/acoustics-wasm/main.go` - exports functions
+
+**Worker message protocol:**
+
+- [ ] `init {nx, ny, bcPreset}`
+- [ ] `ping {sx, sy}`
+- [ ] `frame {t}`
+- [ ] Worker → UI: `pixels {rgba, nx, ny}` or `error`
+
+### 12.5 WASM Exports (Minimal API)
+
+**Two core entrypoints:**
+
+- [ ] `Init(nx, ny, dx, dy, bcX, bcY) -> handle`
+- [ ] `Solve(handle, alpha, damping, sx, sy, srcRadius) -> []float32`
+
+Everything else (synthesis, colormap, animation loop) lives in Worker JS/TS.
+
+### 12.6 Visual Design
+
+- [ ] Render signed field with diverging colormap
+- [ ] Auto-scale using percentile clamp (5th–95th percentile)
+- [ ] Add faint outline box showing room boundary
+- [ ] (Optional) Draw small dot at last click position
+
+### 12.7 Performance Knobs (No UI)
+
+**Hardcode defaults with tiny key bindings:**
+
+- [ ] **R:** cycle resolution (128²/256²/512²)
+- [ ] **B:** cycle boundary conditions
+- [ ] **F:** number of frequency bins (16/32/64)
+- [ ] **D:** damping strength
+- [ ] Display current values as single text line in corner
+
+### 12.8 Milestones
+
+- [ ] **Milestone 1:** Canvas + Worker + WASM loads, renders dummy gradient
+- [ ] **Milestone 2:** Single solve on click, display amplitude heatmap
+- [ ] **Milestone 3:** Single-frequency animation (cheap "breathing")
+- [ ] **Milestone 4:** Multi-frequency synthesis for "ping" effect
+- [ ] **Milestone 5:** Polish: clamp scaling, blur-free pixel scaling, FPS stable
+
+---
+
+## Phase 13: Full-Featured WebAssembly Acoustic Room Demo
+
+A comprehensive browser-based interactive demo showcasing the Helmholtz solver for 2D acoustic room simulation with full controls and audio output.
+
+### 13.1 Product Specification (MVP User Journey)
+
+**What users can do:**
+
+1. Pick a **room preset** (Rectangular, Lx×Ly)
+2. Drag **Source (🔊)** and **Mic (🎤)** points on the room
+3. Scrub a **frequency slider**
+4. See:
+   - a **pressure field heatmap** (amplitude; optional animated phase)
+   - a **mic response plot** (amplitude vs frequency)
+5. Click **Play** to auralize using an impulse response generated from the sweep
+
+**Controls (MVP):**
+
+- Room: width/height (meters), grid resolution (e.g. 128²/256²/512²)
+- BC per edge (or per axis):
+  - **Rigid** (Neumann)
+  - **Open** (Dirichlet)
+  - **Periodic** (for "waveguide loop" fun)
+- Medium:
+  - speed of sound `c` (default 343 m/s)
+  - damping/loss knob (needed for nice, stable resonances)
+- Source:
+  - type: monopole (point-ish blob)
+  - gain
+- Mic:
+  - readouts: SPL-ish (relative), phase (optional), transfer magnitude
+
+**Nice-to-have:**
+
+- [ ] "**Mode explorer**": show resonant patterns + highlight peaks
+- [ ] "**Quality while dragging**": low-res preview then refine
+- [ ] Shareable URLs encoding parameters
+
+**Design constraint:**
+
+- ✅ Rectangular rooms with clean BCs → perfect fit for separable spectral solver
+- ⚠️ Arbitrary internal obstacles/polygons → **not directly supported** (MVP uses rectangular rooms only; obstacles can come later via iterative wrapper)
+
+### 13.2 Architecture & Data Flow
+
+**Runtime components:**
+
+- [ ] **UI thread (React/TS)**
+  - [ ] Canvas/WebGL rendering
+  - [ ] Controls + plots
+  - [ ] Audio playback
+- [ ] **Simulation Worker**
+  - [ ] Owns the WASM instance (runs hot without blocking UI)
+  - [ ] Caching of plans/results
+- [ ] **Go WASM module**
+  - [ ] Wraps `algo-pde` plans
+  - [ ] Performs field solve + sweep sampling
+  - [ ] Returns arrays/buffers to worker
+
+**Data flow:**
+
+- UI → Worker: params, source/mic positions, "solve" requests
+- Worker → WASM: numeric solve/sweep
+- Worker → UI: field buffer, response arrays, progress updates
+- UI → WebAudio: IR buffer (AudioBuffer) + dry audio input → ConvolverNode
+
+### 13.3 Repository Structure
+
+**Monorepo layout:**
+
+- [ ] `/cmd/acoustics-wasm/` - Go `main` for wasm exports
+- [ ] `/demo/` - Vite + React + TS
+  - [ ] `/src/worker/sim.worker.ts`
+  - [ ] `/src/wasm/loader.ts`
+  - [ ] `/src/render/fieldRenderer.ts`
+  - [ ] `/src/audio/auralizer.ts`
+  - [ ] `/public/wasm/` - built artifacts: `acoustics.wasm`, `wasm_exec.js`
+
+### 13.4 WASM Build & Integration
+
+**Build strategy:**
+
+- [ ] Compile with `GOOS=js GOARCH=wasm go build -o acoustics.wasm`
+- [ ] Bundle/copy `wasm_exec.js` from Go's distribution
+
+**Vite integration:**
+
+- [ ] Treat `acoustics.wasm` as static asset
+- [ ] Load in worker via `fetch()` + `WebAssembly.instantiateStreaming`
+- [ ] (Optional later) Use Vite plugin for cleaner bundling
+
+### 13.5 Go WASM API Design
+
+**Exported functions (MVP):**
+
+- [ ] `init() -> version/info`
+- [ ] `createPlan2D(nx, ny, dx, dy, bcX, bcY, nullspaceMode) -> planHandle`
+  - [ ] Implement plan caching by key: `(nx,ny,dx,dy,bcX,bcY)`
+- [ ] `solveField(planHandle, k, damping, sourceX, sourceY, sourceWidthCells) -> Float32Array field`
+  - [ ] Returns amplitude field (or signed pressure)
+- [ ] `sampleAt(planHandle, lastFieldOrSolveResult, micX, micY) -> float`
+- [ ] `sweepResponse(planHandle, fMin, fMax, nBins, damping, source…, mic…) -> Float32Array mags`
+  - [ ] Return log-spaced frequencies
+
+**Memory strategy:**
+
+- [ ] Return raw `[]float32` to JS as `Uint8Array/Float32Array` (copied buffer)
+- [ ] (Optional perf) Implement pinned "output buffer" in wasm for zero-copy reads
+
+### 13.6 Acoustic Physics Mapping
+
+**Helmholtz form:**
+
+- [ ] Use stable shifted form: `(-Δ + k²) p = s` (screened Poisson)
+- [ ] Map: `k = 2π f / c`, set `alpha = k²`
+- [ ] Add damping as frequency-dependent smoothing or effective loss parameter
+
+**Source injection:**
+
+- [ ] Implement small Gaussian-ish blob over a few cells
+- [ ] Normalize energy so loudness doesn't explode with resolution changes
+
+**Field visualization:**
+
+- [ ] Output `field = p(x,y)` (signed) or `abs(p)` (amplitude)
+- [ ] (Optional) Animation: `frame(t) = p(x,y) * cos(2π f t)`
+
+### 13.7 Frontend Implementation (React + Canvas/WebGL)
+
+**UI components:**
+
+- [ ] **RoomCanvas**
+  - [ ] Draw border/BC icons
+  - [ ] Draggable source/mic handles
+  - [ ] Mouse events → normalized coordinates
+- [ ] **ControlPanel**
+  - [ ] Sliders + dropdowns
+  - [ ] Preset selector
+  - [ ] "Compute" + "auto update" toggle
+- [ ] **Plots**
+  - [ ] Mic magnitude vs freq (line plot)
+  - [ ] (Optional) Show peaks / modal markers
+
+**Rendering approach:**
+
+- [ ] MVP: **Canvas2D ImageData** (fast enough for 256², OK for 512²)
+- [ ] Later: **WebGL2 texture** upload for smoother scaling and faster colormaps
+
+**Rendering pipeline:**
+
+- [ ] Receive `Float32Array field`
+- [ ] Compute min/max (robust: percentile clamp)
+- [ ] Map to pixels via colormap LUT
+- [ ] Paint to canvas (nearest-neighbor scaling)
+
+**Interaction performance:**
+
+- [ ] While dragging source/mic: run low-res plan (128²) quickly
+- [ ] On release / idle: recompute at chosen quality (256²/512²)
+
+### 13.8 Audio Auralization
+
+**Tier A (MVP): Magnitude-only → minimum-phase IR**
+
+- [ ] Sweep frequencies, get magnitude response at mic: `|H(f)|`
+- [ ] Assume minimum phase and reconstruct phase from log-magnitude (Hilbert / cepstrum method)
+- [ ] Build complex spectrum `H(f)` and IFFT → impulse response
+- [ ] Create `AudioBuffer`, feed into `ConvolverNode.buffer`
+- [ ] Prepare buffer off main thread to avoid jank
+
+**Tier B (Upgrade): True complex response**
+
+- [ ] Add "complex Helmholtz" path by representing complex values as two real fields (Re/Im)
+- [ ] Do same transforms twice with complex division in spectral space
+- [ ] Yields true phase and cleaner impulse responses
+
+### 13.9 Testing & Validation
+
+**Numerical validation:**
+
+- [ ] Add validation suite runnable in Node (Go wasm under Node)
+- [ ] Test cases:
+  - [ ] Known analytic modes in a rectangle (compare eigenvalues / patterns)
+  - [ ] Symmetry tests (move source and check mirrored field)
+  - [ ] BC sanity (Dirichlet edges should go ~0 at boundaries)
+
+**Web integration tests:**
+
+- [ ] Worker start/stop, re-init correctness
+- [ ] Determinism (same params → same result)
+- [ ] Memory stability (repeat 100 solves, ensure no growth)
+
+**Audio tests:**
+
+- [ ] IR normalization and clipping safety
+- [ ] Convolver on/off A/B toggles
+- [ ] Export IR as WAV (simple PCM writer)
+
+### 13.10 Deployment
+
+- [ ] Build demo as static site (Vite)
+- [ ] Host on **GitHub Pages** (or any static host)
+- [ ] Ensure correct MIME types for `.wasm`
+
+### 13.11 Milestones
+
+**Milestone 1 — "Field viewer"**
+
+- [ ] WASM loads in worker
+- [ ] Rectangular room + BCs
+- [ ] Source/mic drag
+- [ ] Frequency slider updates heatmap
+
+**Milestone 2 — "Response + plots"**
+
+- [ ] Sweep response magnitude at mic
+- [ ] Plot magnitude vs frequency
+- [ ] Presets + quality modes + caching
+
+**Milestone 3 — "Audio MVP"**
+
+- [ ] Convert magnitude response → IR (minimum-phase)
+- [ ] WebAudio convolver pipeline with A/B dry/wet
+- [ ] Export IR
+
+**Milestone 4 — "Polish + performance"**
+
+- [ ] Progressive refinement while dragging
+- [ ] WebGL renderer (optional)
+- [ ] URL sharing + preset gallery
+- [ ] Perf telemetry overlay (FPS, solve ms, allocations)
+
+**Milestone 5 — "Physics upgrade (optional)"**
+
+- [ ] Complex response for true phase
+- [ ] Better damping model
+- [ ] Mode explorer
+
+### 13.12 Risk Mitigation
+
+**Risk: Users want obstacles (pillars, L-shaped rooms)**
+
+- Mitigation: Ship MVP as "Room Modes Lab (Rectangles)" with strong educational framing
+- Later: Add obstacles via iterative method (penalty / immersed boundary) using spectral solver as fast inner solve
+
+**Risk: Indefinite Helmholtz causes instability**
+
+- Mitigation: Use stable shifted form for MVP, add damping, clamp peaks, present as "steady-state field"
+
+**Risk: WASM ↔ JS overhead / UI jank**
+
+- Mitigation: Keep WASM inside Worker; return transferable buffers; limit recomputes during drag
 
 ---
 

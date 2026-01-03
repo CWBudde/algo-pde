@@ -20,6 +20,11 @@ Use `just` targets or Go tooling directly:
 - `just lint` / `just lint-fix`: run `golangci-lint` (with fixes).
 - `just fmt` / `just fmt-check`: run `treefmt` (gofumpt + gci + prettier).
 
+## Implementing New Features
+- Follow the PLAN.md and if not in there, add a new section describing the feature.
+- Write tests alongside new code in `*_test.go` files.
+- One completed, mark the feature as done in PLAN.md.
+
 ## Coding Style & Naming Conventions
 
 - Go formatting uses `gofumpt` and import ordering via `gci` (see `treefmt.toml`).

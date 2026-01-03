@@ -17,6 +17,11 @@ type PlanNDPeriodic struct {
 	stride []int
 	work   Workspace
 	opts   Options
+
+	eigIndices []int
+	axisDims   [][]int
+	axisIdx    [][]int
+	axisOther  [][]int
 }
 
 // NewPlanNDPeriodic creates a new N-dimensional periodic Poisson plan.
@@ -76,14 +81,36 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 		step *= dims[i]
 	}
 
+	axisDims := make([][]int, len(dims))
+	axisIdx := make([][]int, len(dims))
+	axisOther := make([][]int, len(dims))
+	for axis := range dims {
+		reduced := make([]int, 0, len(dims)-1)
+		other := make([]int, 0, len(dims)-1)
+		for d := range dims {
+			if d == axis {
+				continue
+			}
+			reduced = append(reduced, dims[d])
+			other = append(other, d)
+		}
+		axisDims[axis] = reduced
+		axisIdx[axis] = make([]int, len(reduced))
+		axisOther[axis] = other
+	}
+
 	return &PlanNDPeriodic{
-		shape:  dims,
-		h:      hCopy,
-		eig:    eig,
-		fft:    plans,
-		stride: stride,
-		work:   NewWorkspace(0, dims.Size()),
-		opts:   options,
+		shape:      dims,
+		h:          hCopy,
+		eig:        eig,
+		fft:        plans,
+		stride:     stride,
+		work:       NewWorkspace(0, dims.Size()),
+		opts:       options,
+		eigIndices: make([]int, len(dims)),
+		axisDims:   axisDims,
+		axisIdx:    axisIdx,
+		axisOther:  axisOther,
 	}, nil
 }
 
@@ -148,7 +175,10 @@ func (p *PlanNDPeriodic) SolveInPlace(buf []float64) error {
 }
 
 func (p *PlanNDPeriodic) applyEigenvalues(data []complex128) {
-	indices := make([]int, len(p.shape))
+	indices := p.eigIndices
+	for i := range indices {
+		indices[i] = 0
+	}
 
 	for idx := range data {
 		denom := 0.0
@@ -177,23 +207,16 @@ func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool) error {
 	lineStride := p.stride[axis]
 	totalLines := p.shape.Size() / lineLen
 
-	reducedDims := make([]int, 0, len(p.shape)-1)
-	for d := range p.shape {
-		if d != axis {
-			reducedDims = append(reducedDims, p.shape[d])
-		}
+	reducedDims := p.axisDims[axis]
+	indices := p.axisIdx[axis]
+	for i := range indices {
+		indices[i] = 0
 	}
-
-	indices := make([]int, len(reducedDims))
+	otherAxes := p.axisOther[axis]
 	for range totalLines {
 		start := 0
-		other := 0
-		for d := range p.shape {
-			if d == axis {
-				continue
-			}
-			start += indices[other] * p.stride[d]
-			other++
+		for i, d := range otherAxes {
+			start += indices[i] * p.stride[d]
 		}
 
 		if err := p.fft[axis].transformLine(p.work.Complex, start, lineStride, inverse); err != nil {
