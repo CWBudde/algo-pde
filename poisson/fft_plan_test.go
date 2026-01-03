@@ -129,6 +129,40 @@ func TestFFTPlan_TransformLines_RoundTrip_2D_Axis0And1(t *testing.T) {
 	}
 }
 
+func TestFFTPlan_TransformLines_ParallelMatchesSerial(t *testing.T) {
+	nx, ny := 6, 5
+	shape := grid.NewShape2D(nx, ny)
+
+	serialPlan, err := NewFFTPlan(nx)
+	if err != nil {
+		t.Fatalf("NewFFTPlan(nx) failed: %v", err)
+	}
+	parallelPlan, err := NewFFTPlanWithWorkers(nx, 3)
+	if err != nil {
+		t.Fatalf("NewFFTPlanWithWorkers(nx, 3) failed: %v", err)
+	}
+
+	data := make([]complex128, shape.Size())
+	for i := range data {
+		data[i] = complex(float64(i%7+1), float64(100+i))
+	}
+	got := append([]complex128(nil), data...)
+	want := append([]complex128(nil), data...)
+
+	if err := parallelPlan.TransformLines(got, shape, 0, false); err != nil {
+		t.Fatalf("parallel TransformLines failed: %v", err)
+	}
+	if err := serialPlan.TransformLines(want, shape, 0, false); err != nil {
+		t.Fatalf("serial TransformLines failed: %v", err)
+	}
+
+	for i := range got {
+		if cmplxAbs(got[i]-want[i]) > fftTol {
+			t.Fatalf("parallel mismatch at %d: got %v, want %v", i, got[i], want[i])
+		}
+	}
+}
+
 func cmplxAbs(z complex128) float64 {
 	return math.Hypot(real(z), imag(z))
 }

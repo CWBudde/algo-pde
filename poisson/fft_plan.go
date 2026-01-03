@@ -13,27 +13,53 @@ import (
 // N-dimensional grid stored in row-major order.
 type FFTPlan struct {
 	n        int
-	fftPlan  *algofft.Plan[complex128]
-	scratchA []complex128
-	scratchB []complex128
+	workers  int
+	plans    []*algofft.Plan[complex128]
+	scratchA [][]complex128
+	scratchB [][]complex128
 }
 
 // NewFFTPlan creates a new complex FFT plan for length n.
 func NewFFTPlan(n int) (*FFTPlan, error) {
+	return NewFFTPlanWithWorkers(n, 1)
+}
+
+// NewFFTPlanWithWorkers creates a new FFT plan with the requested worker count.
+// workers <= 0 defaults to runtime.GOMAXPROCS.
+func NewFFTPlanWithWorkers(n int, workers int) (*FFTPlan, error) {
 	if n < 1 {
 		return nil, ErrInvalidSize
 	}
 
+	workers = effectiveWorkers(workers)
 	fftPlan, err := algofft.NewPlan64(n)
 	if err != nil {
 		return nil, fmt.Errorf("creating FFT plan: %w", err)
 	}
 
+	plans := make([]*algofft.Plan[complex128], workers)
+	plans[0] = fftPlan
+	for i := 1; i < workers; i++ {
+		plan, err := algofft.NewPlan64(n)
+		if err != nil {
+			return nil, fmt.Errorf("creating FFT plan: %w", err)
+		}
+		plans[i] = plan
+	}
+
+	scratchA := make([][]complex128, workers)
+	scratchB := make([][]complex128, workers)
+	for i := 0; i < workers; i++ {
+		scratchA[i] = make([]complex128, n)
+		scratchB[i] = make([]complex128, n)
+	}
+
 	return &FFTPlan{
 		n:        n,
-		fftPlan:  fftPlan,
-		scratchA: make([]complex128, n),
-		scratchB: make([]complex128, n),
+		workers:  workers,
+		plans:    plans,
+		scratchA: scratchA,
+		scratchB: scratchB,
 	}, nil
 }
 
@@ -63,26 +89,28 @@ func (p *FFTPlan) TransformLines(data []complex128, shape grid.Shape, axis int, 
 	}
 
 	useOutOfPlace := !isPowerOfTwo(p.n)
-	it := grid.NewLineIterator(shape, axis)
-	lineStride := it.LineStride()
+	lineStride := grid.RowMajorStride(shape)[axis]
+	numLines := lineCount(shape, axis)
+	workers := clampWorkers(p.workers, numLines)
 
-	// Process first line (iterator starts at position 0)
-	start := it.StartIndex()
-	if err := p.transformLine(data, start, lineStride, inverse, useOutOfPlace); err != nil {
-		return err
-	}
-
-	for it.Next() {
-		start = it.StartIndex()
-		if err := p.transformLine(data, start, lineStride, inverse, useOutOfPlace); err != nil {
-			return err
+	return parallelFor(workers, numLines, func(worker, startLine, endLine int) error {
+		plan := p.plans[worker]
+		scratchA := p.scratchA[worker]
+		scratchB := p.scratchB[worker]
+		for line := startLine; line < endLine; line++ {
+			start := lineStartIndex(shape, axis, line)
+			if err := p.transformLine(plan, scratchA, scratchB, data, start, lineStride, inverse, useOutOfPlace); err != nil {
+				return err
+			}
 		}
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (p *FFTPlan) transformLine(
+	plan *algofft.Plan[complex128],
+	scratchA []complex128,
+	scratchB []complex128,
 	data []complex128,
 	start int,
 	stride int,
@@ -90,40 +118,40 @@ func (p *FFTPlan) transformLine(
 	useOutOfPlace bool,
 ) error {
 	if !useOutOfPlace {
-		return p.fftPlan.TransformStrided(data[start:], data[start:], stride, inverse)
+		return plan.TransformStrided(data[start:], data[start:], stride, inverse)
 	}
 
 	if stride == 1 {
 		line := data[start : start+p.n]
 		var err error
 		if inverse {
-			err = p.fftPlan.Inverse(p.scratchB, line)
+			err = plan.Inverse(scratchB, line)
 		} else {
-			err = p.fftPlan.Forward(p.scratchB, line)
+			err = plan.Forward(scratchB, line)
 		}
 		if err != nil {
 			return err
 		}
-		copy(line, p.scratchB)
+		copy(line, scratchB)
 		return nil
 	}
 
 	for i := 0; i < p.n; i++ {
-		p.scratchA[i] = data[start+i*stride]
+		scratchA[i] = data[start+i*stride]
 	}
 
 	var err error
 	if inverse {
-		err = p.fftPlan.Inverse(p.scratchB, p.scratchA)
+		err = plan.Inverse(scratchB, scratchA)
 	} else {
-		err = p.fftPlan.Forward(p.scratchB, p.scratchA)
+		err = plan.Forward(scratchB, scratchA)
 	}
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < p.n; i++ {
-		data[start+i*stride] = p.scratchB[i]
+		data[start+i*stride] = scratchB[i]
 	}
 
 	return nil

@@ -43,9 +43,10 @@ let nx = 0;
 let ny = 0;
 let fields: Float32Array[] = [];
 let frequencies: number[] = [];
-let dampingFactors: number[] = [];
-let lastPingTime = 0;
 let isAnimating = false;
+
+// Speed of sound (m/s)
+const SPEED_OF_SOUND = 343.0;
 
 // Colormap LUT (blue-white-red diverging)
 const colormapLUT = new Uint8Array(256 * 3);
@@ -74,18 +75,25 @@ function applyColormap(field: Float32Array): Uint8ClampedArray {
   const n = field.length;
   const rgba = new Uint8ClampedArray(n * 4);
 
-  // Compute percentile-based normalization (5th to 95th percentile)
-  const sorted = new Float32Array(field);
-  sorted.sort();
-  const p5 = sorted[Math.floor(n * 0.05)];
-  const p95 = sorted[Math.floor(n * 0.95)];
-  const range = Math.max(Math.abs(p5), Math.abs(p95), 1e-10);
+  // Find min/max for symmetric range
+  let minVal = Infinity;
+  let maxVal = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const v = field[i];
+    if (v < minVal) minVal = v;
+    if (v > maxVal) maxVal = v;
+  }
 
-  // Apply colormap
+  // Use symmetric range for diverging colormap
+  const range = Math.max(Math.abs(minVal), Math.abs(maxVal), 1e-10);
+
+  // Apply colormap with enhanced contrast
   for (let i = 0; i < n; i++) {
     const val = field[i];
+    // Enhanced contrast: apply power function to compress mid-tones
     const normalized = Math.max(-1, Math.min(1, val / range));
-    const idx = Math.floor(((normalized + 1) / 2) * 255);
+    const enhanced = Math.sign(normalized) * Math.pow(Math.abs(normalized), 0.7);
+    const idx = Math.floor(((enhanced + 1) / 2) * 255);
 
     rgba[i * 4 + 0] = colormapLUT[idx * 3 + 0];
     rgba[i * 4 + 1] = colormapLUT[idx * 3 + 1];
@@ -96,21 +104,36 @@ function applyColormap(field: Float32Array): Uint8ClampedArray {
   return rgba;
 }
 
+/**
+ * Synthesize wave field at given time by combining frequency modes
+ * @param t Time in seconds (real time, not scaled)
+ * @returns Combined wave field
+ */
 function synthesizeFrame(t: number): Float32Array {
   const result = new Float32Array(nx * ny);
   if (fields.length === 0) return result;
 
-  const dt = t - lastPingTime;
+  // Each frequency mode oscillates as: A_i * cos(2π * f_i * t) * exp(-γ_i * t)
+  // where γ_i is the damping coefficient
 
   for (let i = 0; i < nx * ny; i++) {
     let sum = 0;
+
     for (let fi = 0; fi < frequencies.length; fi++) {
       const f = frequencies[fi];
-      const gamma = dampingFactors[fi] * f;
-      const phase = 2 * Math.PI * f * dt;
-      const decay = Math.exp(-gamma * dt);
-      sum += fields[fi][i] * Math.cos(phase) * decay;
+      const omega = 2 * Math.PI * f; // Angular frequency (rad/s)
+
+      // Damping: higher frequencies decay faster
+      // Using quality factor Q ≈ 10 for room acoustics
+      const gamma = omega / 20.0; // Decay rate (1/s)
+
+      const amplitude = fields[fi][i];
+      const oscillation = Math.cos(omega * t);
+      const decay = Math.exp(-gamma * t);
+
+      sum += amplitude * oscillation * decay;
     }
+
     result[i] = sum;
   }
 
@@ -146,8 +169,18 @@ self.onmessage = async (e: MessageEvent) => {
 async function handleInit(data: { nx: number; ny: number; dx: number; dy: number; bcX: number; bcY: number }) {
   // Load WASM if not already loaded
   if (typeof Go === 'undefined') {
-    // Import wasm_exec.js
-    importScripts('/wasm_exec.js');
+    // Dynamically import wasm_exec.js as a module
+    await new Promise<void>((resolve, reject) => {
+      // Fetch and evaluate wasm_exec.js in global scope
+      fetch('/wasm_exec.js')
+        .then(response => response.text())
+        .then(script => {
+          // Execute in global scope using indirect eval
+          (0, eval)(script);
+          resolve();
+        })
+        .catch(reject);
+    });
 
     // Load and initialize WASM module
     const go = new Go();
@@ -162,7 +195,11 @@ async function handleInit(data: { nx: number; ny: number; dx: number; dy: number
     // Wait for Go exports to be ready
     await new Promise((resolve) => {
       const check = setInterval(() => {
-        if (typeof goInitPlan !== 'undefined') {
+        const ready = typeof goInitPlan !== 'undefined' &&
+                     typeof goSolve !== 'undefined' &&
+                     typeof goGetPlanInfo !== 'undefined';
+
+        if (ready) {
           clearInterval(check);
           resolve(undefined);
         }
@@ -172,6 +209,11 @@ async function handleInit(data: { nx: number; ny: number; dx: number; dy: number
 
   // Initialize plan
   const result = goInitPlan(data.nx, data.ny, data.dx, data.dy, data.bcX, data.bcY);
+
+  if (!result || typeof result !== 'object') {
+    throw new Error(`goInitPlan returned invalid result`);
+  }
+
   if (!result.success) {
     throw new Error(result.error || 'Failed to initialize plan');
   }
@@ -195,33 +237,45 @@ async function handlePing(data: { sx: number; sy: number; frequencies: number[] 
 
   const { sx, sy, frequencies: freqs } = data;
 
-  // Store frequencies and compute damping factors
+  // Store frequencies
   frequencies = freqs;
-  dampingFactors = freqs.map(f => 0.5); // Simple uniform damping
 
   // Solve for each frequency
   fields = [];
-  const c = 343; // Speed of sound (m/s)
   const srcRadius = 3.0; // Grid cells
 
-  for (const f of freqs) {
-    const k = (2 * Math.PI * f) / c;
-    const alpha = k * k;
+  for (let i = 0; i < freqs.length; i++) {
+    const f = freqs[i];
+    const k = (2 * Math.PI * f) / SPEED_OF_SOUND; // Wave number (1/m)
+    const alpha = k * k; // Helmholtz parameter
+
+    // Send progress update
+    self.postMessage({
+      type: 'progress',
+      current: i + 1,
+      total: freqs.length,
+      frequency: f,
+    });
 
     const result = goSolve(planID, alpha, sx, sy, srcRadius);
+
     if (!result.success) {
       throw new Error(result.error || `Failed to solve for frequency ${f} Hz`);
     }
 
-    fields.push(result.field!);
+    if (!result.field) {
+      throw new Error(`No field returned for frequency ${f} Hz`);
+    }
+
+    fields.push(result.field);
   }
 
-  lastPingTime = performance.now() / 1000;
   isAnimating = true;
 
   self.postMessage({
     type: 'computed',
     nFreqs: fields.length,
+    freqRange: [freqs[0], freqs[freqs.length - 1]],
   });
 }
 
@@ -230,6 +284,7 @@ function handleFrame(data: { t: number }) {
     return;
   }
 
+  // t is already in seconds - use it directly
   const field = synthesizeFrame(data.t);
   const rgba = applyColormap(field);
 
@@ -249,5 +304,4 @@ function handleStop() {
   isAnimating = false;
   fields = [];
   frequencies = [];
-  dampingFactors = [];
 }

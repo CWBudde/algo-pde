@@ -154,9 +154,14 @@ func Solve(this js.Value, args []js.Value) interface{} {
 		float32Dst[i] = float32(v)
 	}
 
-	// Create JS Float32Array and copy data
+	// Create JS Float32Array
 	jsArray := js.Global().Get("Float32Array").New(len(float32Dst))
-	js.CopyBytesToJS(jsArray, float32ToBytes(float32Dst))
+
+	// Copy data element by element
+	// Note: We can't use CopyBytesToJS with Float32Array, only with Uint8Array/Uint8ClampedArray
+	for i, v := range float32Dst {
+		jsArray.SetIndex(i, js.ValueOf(v))
+	}
 
 	return jsSuccess(map[string]interface{}{
 		"field": jsArray,
@@ -208,18 +213,6 @@ func buildGaussianSource(nx, ny int, sx, sy, radius float64) []float64 {
 	}
 
 	return rhs
-}
-
-func float32ToBytes(data []float32) []byte {
-	bytes := make([]byte, len(data)*4)
-	for i, v := range data {
-		bits := math.Float32bits(v)
-		bytes[i*4+0] = byte(bits)
-		bytes[i*4+1] = byte(bits >> 8)
-		bytes[i*4+2] = byte(bits >> 16)
-		bytes[i*4+3] = byte(bits >> 24)
-	}
-	return bytes
 }
 
 func jsSuccess(data map[string]interface{}) interface{} {

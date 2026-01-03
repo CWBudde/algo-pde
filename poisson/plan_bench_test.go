@@ -1,6 +1,7 @@
 package poisson_test
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/MeKo-Tech/algo-pde/poisson"
@@ -34,4 +35,44 @@ func BenchmarkPlanSolve2D_Dirichlet(b *testing.B) {
 			b.Fatalf("Solve failed: %v", err)
 		}
 	}
+}
+
+func BenchmarkPlanSolve2D_Dirichlet_Workers(b *testing.B) {
+	nx, ny := 256, 256
+	hx := 1.0 / float64(nx+1)
+	hy := 1.0 / float64(ny+1)
+
+	rhs := make([]float64, nx*ny)
+	for i := range rhs {
+		rhs[i] = float64(i % 7)
+	}
+	dst := make([]float64, nx*ny)
+
+	bench := func(workers int) {
+		plan, err := poisson.NewPlan(
+			2,
+			[]int{nx, ny},
+			[]float64{hx, hy},
+			[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet},
+			poisson.WithWorkers(workers),
+		)
+		if err != nil {
+			b.Fatalf("NewPlan failed: %v", err)
+		}
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			if err := plan.Solve(dst, rhs); err != nil {
+				b.Fatalf("Solve failed: %v", err)
+			}
+		}
+	}
+
+	b.Run("workers_1", func(b *testing.B) {
+		bench(1)
+	})
+	b.Run("workers_max", func(b *testing.B) {
+		bench(runtime.GOMAXPROCS(0))
+	})
 }

@@ -31,12 +31,13 @@ func NewPlan1DPeriodic(nx int, hx float64, opts ...Option) (*Plan1DPeriodic, err
 		return nil, ErrInvalidSpacing
 	}
 
-	fftPlan, err := NewFFTPlan(nx)
+	options := ApplyOptions(DefaultOptions(), opts)
+	options.Workers = effectiveWorkers(options.Workers)
+
+	fftPlan, err := NewFFTPlanWithWorkers(nx, options.Workers)
 	if err != nil {
 		return nil, err
 	}
-
-	options := ApplyOptions(DefaultOptions(), opts)
 
 	return &Plan1DPeriodic{
 		n:     nx,
@@ -81,13 +82,18 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 		return fmt.Errorf("FFT forward: %w", err)
 	}
 
-	for i := range p.n {
-		if p.eig[i] == 0 {
-			p.work.Complex[i] = 0
-			continue
+	workers := clampWorkers(p.opts.Workers, p.n)
+	if err := parallelFor(workers, p.n, func(_ int, start, end int) error {
+		for i := start; i < end; i++ {
+			if p.eig[i] == 0 {
+				p.work.Complex[i] = 0
+				continue
+			}
+			p.work.Complex[i] /= complex(p.eig[i], 0)
 		}
-
-		p.work.Complex[i] /= complex(p.eig[i], 0)
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	if err := p.fft.TransformLines(p.work.Complex, p.shape, 0, true); err != nil {

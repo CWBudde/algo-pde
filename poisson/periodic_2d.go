@@ -38,6 +38,7 @@ func NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPerio
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
+	options.Workers = effectiveWorkers(options.Workers)
 
 	var (
 		fftX  *FFTPlan
@@ -68,12 +69,12 @@ func NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPerio
 
 	if !useR {
 		var err error
-		fftX, err = NewFFTPlan(nx)
+		fftX, err = NewFFTPlanWithWorkers(nx, options.Workers)
 		if err != nil {
 			return nil, err
 		}
 
-		fftY, err = NewFFTPlan(ny)
+		fftY, err = NewFFTPlanWithWorkers(ny, options.Workers)
 		if err != nil {
 			return nil, err
 		}
@@ -132,16 +133,22 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 			return fmt.Errorf("real FFT forward: %w", err)
 		}
 
-		for i := range p.nx {
-			base := i * p.rhalf
-			for j := range p.rhalf {
-				denom := p.eigX[i] + p.eigY[j]
-				if denom == 0 {
-					p.rspec[base+j] = 0
-					continue
+		workers := clampWorkers(p.opts.Workers, p.nx)
+		if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+			for i := start; i < end; i++ {
+				base := i * p.rhalf
+				for j := 0; j < p.rhalf; j++ {
+					denom := p.eigX[i] + p.eigY[j]
+					if denom == 0 {
+						p.rspec[base+j] = 0
+						continue
+					}
+					p.rspec[base+j] /= complex(float32(denom), 0)
 				}
-				p.rspec[base+j] /= complex(float32(denom), 0)
 			}
+			return nil
+		}); err != nil {
+			return err
 		}
 
 		if err := p.rfft.Inverse(p.rbuf, p.rspec); err != nil {
@@ -172,17 +179,22 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 		return fmt.Errorf("FFT forward axis 1: %w", err)
 	}
 
-	for i := range p.nx {
-		base := i * p.ny
-		for j := range p.ny {
-			denom := p.eigX[i] + p.eigY[j]
-			if denom == 0 {
-				p.work.Complex[base+j] = 0
-				continue
+	workers := clampWorkers(p.opts.Workers, p.nx)
+	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+		for i := start; i < end; i++ {
+			base := i * p.ny
+			for j := 0; j < p.ny; j++ {
+				denom := p.eigX[i] + p.eigY[j]
+				if denom == 0 {
+					p.work.Complex[base+j] = 0
+					continue
+				}
+				p.work.Complex[base+j] /= complex(denom, 0)
 			}
-
-			p.work.Complex[base+j] /= complex(denom, 0)
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	if err := p.fftY.TransformLines(p.work.Complex, p.shape, 1, true); err != nil {

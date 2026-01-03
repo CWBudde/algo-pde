@@ -116,6 +116,35 @@ The demo is optimized for 60 FPS at 256² resolution:
 - **Canvas render**: ~1-2ms (UI thread)
 - **Total frame budget**: ~80ms (well under 16.67ms animation budget)
 
+## GitHub Pages Deployment
+
+The demo is automatically deployed to GitHub Pages on every push to the `main` branch (when demo-related files change).
+
+### Setup (One-time)
+
+1. Go to your repository **Settings** → **Pages**
+2. Under **Source**, select **GitHub Actions**
+3. The workflow will automatically deploy on the next push
+
+### Manual Deployment
+
+Trigger a manual deployment from the Actions tab:
+1. Go to **Actions** → **Deploy Demo to GitHub Pages**
+2. Click **Run workflow** → **Run workflow**
+
+The demo will be available at: `https://<username>.github.io/algo-pde/`
+
+### Local Production Build
+
+Test the production build locally:
+
+```bash
+just demo-build
+cd demo/dist
+python3 -m http.server 8000
+# Open http://localhost:8000
+```
+
 ## Troubleshooting
 
 ### WASM fails to load

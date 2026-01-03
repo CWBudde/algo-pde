@@ -219,10 +219,11 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 ### 8.2 Parallelism support
 
 - [ ] Pass through `Options{Workers: n}` to algo-fft plans
-- [ ] Parallelize eigenvalue division loop (if beneficial)
-- [ ] Parallelize line-wise DST/DCT transforms
-- [ ] Benchmark single-threaded vs multi-threaded
-- [ ] Document scaling characteristics
+- [x] Pass through `Options{Workers: n}` to algo-fft plans
+- [x] Parallelize eigenvalue division loop (if beneficial)
+- [x] Parallelize line-wise DST/DCT transforms
+- [x] Benchmark single-threaded vs multi-threaded
+- [x] Document scaling characteristics
 
 ### 8.3 SIMD considerations
 

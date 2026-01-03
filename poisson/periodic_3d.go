@@ -40,6 +40,7 @@ func NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option) (*Pla
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
+	options.Workers = effectiveWorkers(options.Workers)
 
 	var (
 		fftX  *FFTPlan
@@ -71,17 +72,17 @@ func NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option) (*Pla
 
 	if !useR {
 		var err error
-		fftX, err = NewFFTPlan(nx)
+		fftX, err = NewFFTPlanWithWorkers(nx, options.Workers)
 		if err != nil {
 			return nil, err
 		}
 
-		fftY, err = NewFFTPlan(ny)
+		fftY, err = NewFFTPlanWithWorkers(ny, options.Workers)
 		if err != nil {
 			return nil, err
 		}
 
-		fftZ, err = NewFFTPlan(nz)
+		fftZ, err = NewFFTPlanWithWorkers(nz, options.Workers)
 		if err != nil {
 			return nil, err
 		}
@@ -144,20 +145,26 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 			return fmt.Errorf("real FFT forward: %w", err)
 		}
 
-		for i := range p.nx {
-			baseXY := i * p.ny * p.rhalf
-			for j := range p.ny {
-				base := baseXY + j*p.rhalf
-				xy := p.eigX[i] + p.eigY[j]
-				for k := range p.rhalf {
-					denom := xy + p.eigZ[k]
-					if denom == 0 {
-						p.rspec[base+k] = 0
-						continue
+		workers := clampWorkers(p.opts.Workers, p.nx)
+		if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+			for i := start; i < end; i++ {
+				baseXY := i * p.ny * p.rhalf
+				for j := 0; j < p.ny; j++ {
+					base := baseXY + j*p.rhalf
+					xy := p.eigX[i] + p.eigY[j]
+					for k := 0; k < p.rhalf; k++ {
+						denom := xy + p.eigZ[k]
+						if denom == 0 {
+							p.rspec[base+k] = 0
+							continue
+						}
+						p.rspec[base+k] /= complex(float32(denom), 0)
 					}
-					p.rspec[base+k] /= complex(float32(denom), 0)
 				}
 			}
+			return nil
+		}); err != nil {
+			return err
 		}
 
 		if err := p.rfft.Inverse(p.rbuf, p.rspec); err != nil {
@@ -192,20 +199,26 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 		return fmt.Errorf("FFT forward axis 2: %w", err)
 	}
 
-	for i := range p.nx {
-		baseXY := i * p.ny * p.nz
-		for j := range p.ny {
-			base := baseXY + j*p.nz
-			xy := p.eigX[i] + p.eigY[j]
-			for k := range p.nz {
-				denom := xy + p.eigZ[k]
-				if denom == 0 {
-					p.work.Complex[base+k] = 0
-					continue
+	workers := clampWorkers(p.opts.Workers, p.nx)
+	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+		for i := start; i < end; i++ {
+			baseXY := i * p.ny * p.nz
+			for j := 0; j < p.ny; j++ {
+				base := baseXY + j*p.nz
+				xy := p.eigX[i] + p.eigY[j]
+				for k := 0; k < p.nz; k++ {
+					denom := xy + p.eigZ[k]
+					if denom == 0 {
+						p.work.Complex[base+k] = 0
+						continue
+					}
+					p.work.Complex[base+k] /= complex(denom, 0)
 				}
-				p.work.Complex[base+k] /= complex(denom, 0)
 			}
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	if err := p.fftZ.TransformLines(p.work.Complex, p.shape, 2, true); err != nil {

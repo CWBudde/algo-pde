@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  // Use relative base for GitHub Pages deployment
+  base: './',
   publicDir: 'public',
   worker: {
     format: 'es',
@@ -10,6 +12,8 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    // Ensure assets are correctly referenced
+    assetsDir: 'assets',
   },
   server: {
     headers: {

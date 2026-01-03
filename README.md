@@ -2,6 +2,8 @@
 
 Fast spectral Poisson and Helmholtz solvers for Go, built on top of `algo-fft`. The library uses plan-based APIs (like FFTW) to precompute eigenvalues and reuse transform plans for many solves on the same grid.
 
+🌊 **[Try the live demo!](https://yourusername.github.io/algo-pde/)** - Interactive wave propagation simulation running in your browser via WebAssembly. Click anywhere to create waves!
+
 ## Motivation
 
 - Fast repeated solves on fixed, regular grids without per-solve allocations.
@@ -94,6 +96,22 @@ For an implicit Euler diffusion step `u^{n+1} - nu*dt*Delta u^{n+1} = u^n`, set
 - Periodic/Neumann problems have a nullspace; configure handling via options such as `WithNullspace` or `WithSubtractMean`.
 - Data layout is row-major for 2D/3D, stored in flat `[]float64` slices.
 
+## Demo
+
+A WebAssembly-powered wave propagation demo is included. See it live or run locally:
+
+```bash
+just demo-dev    # Build WASM and start dev server at http://localhost:5173
+```
+
+The demo showcases:
+- Multi-frequency wave synthesis (16 modes, 80-600 Hz)
+- Neumann boundary conditions (rigid walls with reflections)
+- Real-time 60 FPS animation at 256×256 resolution
+- Click-to-ping interaction
+
+See [demo/README.md](demo/README.md) for details and [.github/DEPLOYMENT.md](.github/DEPLOYMENT.md) for GitHub Pages setup.
+
 ## Development
 
 Common tasks use `just` (or run the Go commands directly):
@@ -104,6 +122,7 @@ just test-race  # go test -race ./...
 just bench      # go test -bench=. -benchmem ./...
 just lint       # golangci-lint run
 just fmt        # treefmt (gofumpt + gci + prettier)
+just wasm       # Build WebAssembly demo module
 ```
 
 ## Performance
@@ -111,6 +130,8 @@ just fmt        # treefmt (gofumpt + gci + prettier)
 - Expected complexity: O(N log N).
 - Plans precompute eigenvalues and buffers to avoid per-solve allocations.
 - Benchmarks live alongside packages and can be run with `just bench`.
+- Use `poisson.WithWorkers(n)` to control solver parallelism (line-wise transforms and eigenvalue division); `n=0` uses `GOMAXPROCS`.
+- Scaling improves with larger grids but is typically limited by memory bandwidth and transform setup overhead for small problems.
 
 ## Comparison with alternatives
 

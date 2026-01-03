@@ -1,0 +1,69 @@
+name: Deploy Demo to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cmd/acoustics-wasm/**'
+      - 'demo/**'
+      - 'poisson/**'
+      - '.github/workflows/deploy-demo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: demo/package-lock.json
+
+      - name: Build WASM module
+        run: |
+          GOOS=js GOARCH=wasm go build -buildvcs=false -ldflags="-s -w" -trimpath -o demo/public/acoustics.wasm ./cmd/acoustics-wasm
+          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" demo/public/
+
+      - name: Install dependencies
+        working-directory: ./demo
+        run: npm ci
+
+      - name: Build demo
+        working-directory: ./demo
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./demo/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

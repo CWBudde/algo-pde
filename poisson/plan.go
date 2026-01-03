@@ -61,6 +61,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
+	options.Workers = effectiveWorkers(options.Workers)
 	plan := &Plan{
 		dim:   dim,
 		n:     [3]int{1, 1, 1},
@@ -99,13 +100,13 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		switch plan.bc[axis] {
 		case Periodic:
 			plan.eig[axis] = eigenvaluesPeriodic(plan.n[axis], plan.h[axis])
-			plan.tr[axis], err = newFFTAxisTransform(plan.n[axis])
+			plan.tr[axis], err = newFFTAxisTransform(plan.n[axis], options.Workers)
 		case Dirichlet:
 			plan.eig[axis] = eigenvaluesDirichlet(plan.n[axis], plan.h[axis])
-			plan.tr[axis], err = newDSTAxisTransform(plan.n[axis])
+			plan.tr[axis], err = newDSTAxisTransform(plan.n[axis], options.Workers)
 		case Neumann:
 			plan.eig[axis] = eigenvaluesNeumann(plan.n[axis], plan.h[axis])
-			plan.tr[axis], err = newDCTAxisTransform(plan.n[axis])
+			plan.tr[axis], err = newDCTAxisTransform(plan.n[axis], options.Workers)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("axis %d: %w", axis, err)
@@ -218,39 +219,40 @@ func (p *Plan) hasNullspace() bool {
 }
 
 func (p *Plan) applyEigenvalues() error {
-	var dims [3]int
-	for axis := 0; axis < p.dim; axis++ {
-		dims[axis] = p.n[axis]
-	}
-
-	var indices [3]int
+	_, ny, nz := p.n[0], p.n[1], p.n[2]
+	strideYZ := ny * nz
+	strideZ := nz
 	allowZeroMode := p.hasNullspace()
-	for idx := range p.work.Complex {
-		denom := p.alpha
-		for axis := 0; axis < p.dim; axis++ {
-			denom += p.eig[axis][indices[axis]]
-		}
+	size := p.size()
+	workers := clampWorkers(p.opts.Workers, size)
 
-		if denom == 0 {
-			if allowZeroMode && isZeroMode(&indices, p.dim) {
-				p.work.Complex[idx] = 0
-			} else {
+	return parallelFor(workers, size, func(_ int, start, end int) error {
+		for idx := start; idx < end; idx++ {
+			i := idx / strideYZ
+			rem := idx % strideYZ
+			j := rem / strideZ
+			k := rem % strideZ
+
+			denom := p.alpha + p.eig[0][i]
+			if p.dim > 1 {
+				denom += p.eig[1][j]
+			}
+			if p.dim > 2 {
+				denom += p.eig[2][k]
+			}
+
+			if denom == 0 {
+				if allowZeroMode && i == 0 && (p.dim < 2 || j == 0) && (p.dim < 3 || k == 0) {
+					p.work.Complex[idx] = 0
+					continue
+				}
 				return ErrResonant
 			}
-		} else {
+
 			p.work.Complex[idx] /= complex(denom, 0)
 		}
-
-		for axis := p.dim - 1; axis >= 0; axis-- {
-			indices[axis]++
-			if indices[axis] < dims[axis] {
-				break
-			}
-			indices[axis] = 0
-		}
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func isZeroMode(indices *[3]int, dim int) bool {
