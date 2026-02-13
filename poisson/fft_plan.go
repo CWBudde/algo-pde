@@ -3,20 +3,26 @@ package poisson
 import (
 	"fmt"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
-	"github.com/MeKo-Tech/algo-pde/grid"
+	algofft "github.com/cwbudde/algo-fft"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 // FFTPlan wraps an algo-fft complex FFT plan for periodic (Fourier) transforms.
 //
 // It provides a convenience method to apply the 1D FFT along all lines of an
 // N-dimensional grid stored in row-major order.
+//
+// When available, FFTPlan uses FastPlan for zero-overhead transforms on
+// power-of-two sizes. For non-power-of-two sizes or strided transforms,
+// it falls back to the regular Plan.
 type FFTPlan struct {
-	n        int
-	workers  int
-	plans    []*algofft.Plan[complex128]
-	scratchA [][]complex128
-	scratchB [][]complex128
+	n         int
+	workers   int
+	plans     []*algofft.Plan[complex128]
+	fastPlans []*algofft.FastPlan[complex128]
+	hasFast   bool
+	scratchA  [][]complex128
+	scratchB  [][]complex128
 }
 
 // NewFFTPlan creates a new complex FFT plan for length n.
@@ -32,6 +38,25 @@ func NewFFTPlanWithWorkers(n int, workers int) (*FFTPlan, error) {
 	}
 
 	workers = effectiveWorkers(workers)
+
+	// Try to create FastPlans first (zero-overhead for power-of-two sizes)
+	fastPlans := make([]*algofft.FastPlan[complex128], workers)
+	hasFast := false
+	if fastPlan, err := algofft.NewFastPlan[complex128](n); err == nil {
+		fastPlans[0] = fastPlan
+		hasFast = true
+		for i := 1; i < workers; i++ {
+			fp, err := algofft.NewFastPlan[complex128](n)
+			if err != nil {
+				// This shouldn't happen if the first one succeeded
+				hasFast = false
+				break
+			}
+			fastPlans[i] = fp
+		}
+	}
+
+	// Always create regular plans as fallback for strided transforms
 	fftPlan, err := algofft.NewPlan64(n)
 	if err != nil {
 		return nil, fmt.Errorf("creating FFT plan: %w", err)
@@ -49,17 +74,19 @@ func NewFFTPlanWithWorkers(n int, workers int) (*FFTPlan, error) {
 
 	scratchA := make([][]complex128, workers)
 	scratchB := make([][]complex128, workers)
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		scratchA[i] = make([]complex128, n)
 		scratchB[i] = make([]complex128, n)
 	}
 
 	return &FFTPlan{
-		n:        n,
-		workers:  workers,
-		plans:    plans,
-		scratchA: scratchA,
-		scratchB: scratchB,
+		n:         n,
+		workers:   workers,
+		plans:     plans,
+		fastPlans: fastPlans,
+		hasFast:   hasFast,
+		scratchA:  scratchA,
+		scratchB:  scratchB,
 	}, nil
 }
 
@@ -93,13 +120,20 @@ func (p *FFTPlan) TransformLines(data []complex128, shape grid.Shape, axis int, 
 	numLines := lineCount(shape, axis)
 	workers := clampWorkers(p.workers, numLines)
 
+	// Use FastPlan for contiguous transforms when available
+	useFast := p.hasFast && lineStride == 1
+
 	return parallelFor(workers, numLines, func(worker, startLine, endLine int) error {
 		plan := p.plans[worker]
+		var fastPlan *algofft.FastPlan[complex128]
+		if useFast {
+			fastPlan = p.fastPlans[worker]
+		}
 		scratchA := p.scratchA[worker]
 		scratchB := p.scratchB[worker]
 		for line := startLine; line < endLine; line++ {
 			start := lineStartIndex(shape, axis, line)
-			if err := p.transformLine(plan, scratchA, scratchB, data, start, lineStride, inverse, useOutOfPlace); err != nil {
+			if err := p.transformLine(plan, fastPlan, scratchA, scratchB, data, start, lineStride, inverse, useOutOfPlace, useFast); err != nil {
 				return err
 			}
 		}
@@ -109,6 +143,7 @@ func (p *FFTPlan) TransformLines(data []complex128, shape grid.Shape, axis int, 
 
 func (p *FFTPlan) transformLine(
 	plan *algofft.Plan[complex128],
+	fastPlan *algofft.FastPlan[complex128],
 	scratchA []complex128,
 	scratchB []complex128,
 	data []complex128,
@@ -116,13 +151,26 @@ func (p *FFTPlan) transformLine(
 	stride int,
 	inverse bool,
 	useOutOfPlace bool,
+	useFast bool,
 ) error {
+	// Power-of-two sizes can use in-place strided transforms
 	if !useOutOfPlace {
 		return plan.TransformStrided(data[start:], data[start:], stride, inverse)
 	}
 
+	// Contiguous case: use FastPlan when available for zero-overhead transforms
 	if stride == 1 {
 		line := data[start : start+p.n]
+		if useFast && fastPlan != nil {
+			if inverse {
+				fastPlan.Inverse(scratchB, line)
+			} else {
+				fastPlan.Forward(scratchB, line)
+			}
+			copy(line, scratchB)
+			return nil
+		}
+		// Fallback to regular plan
 		var err error
 		if inverse {
 			err = plan.Inverse(scratchB, line)
@@ -136,7 +184,8 @@ func (p *FFTPlan) transformLine(
 		return nil
 	}
 
-	for i := 0; i < p.n; i++ {
+	// Strided case: gather, transform, scatter
+	for i := range p.n {
 		scratchA[i] = data[start+i*stride]
 	}
 
@@ -150,7 +199,7 @@ func (p *FFTPlan) transformLine(
 		return err
 	}
 
-	for i := 0; i < p.n; i++ {
+	for i := range p.n {
 		data[start+i*stride] = scratchB[i]
 	}
 

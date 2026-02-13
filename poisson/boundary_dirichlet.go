@@ -1,6 +1,6 @@
 package poisson
 
-import "github.com/MeKo-Tech/algo-pde/grid"
+import "github.com/cwbudde/algo-pde/grid"
 
 // ApplyDirichletRHS adds inhomogeneous Dirichlet boundary contributions to rhs.
 // The rhs slice is modified in-place and uses row-major ordering.

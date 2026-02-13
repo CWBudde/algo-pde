@@ -227,9 +227,14 @@ A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-f
 
 ### 8.3 SIMD considerations
 
-- [ ] Profile hot paths (eigenvalue division likely)
-- [ ] Consider SIMD for eigenvalue division if beneficial
-- [ ] Document any architecture-specific optimizations
+- [x] Profile hot paths (eigenvalue division likely)
+  - Profiling shows FFT transforms dominate at 95%+ of runtime
+  - Eigenvalue division accounts for <0.5% of runtime
+- [x] Consider SIMD for eigenvalue division if beneficial
+  - Not beneficial: maximum potential gain <0.5%
+  - SIMD optimization delegated to algo-fft for FFT operations
+- [x] Document any architecture-specific optimizations
+  - See `poisson/PERFORMANCE.md` for full analysis
 
 ### 8.4 Plan caching / reuse
 
@@ -356,7 +361,7 @@ A minimal, shippable browser demo showcasing wave propagation using the Helmholt
   ```
   u(x,y,t) = Σ_i w_i * p_i(x,y) * cos(2π f_i t) * exp(-γ_i t)
   ```
-- [x] Add damping via exp(-γ_i t) with γ_i = 0.5 * f_i
+- [x] Add damping via exp(-γ_i t) with γ_i = 0.5 \* f_i
 - [x] Result: expanding/rippling patterns that reflect and decay
 
 ### 12.3 Core Pipeline
@@ -718,7 +723,7 @@ A comprehensive browser-based interactive demo showcasing the Helmholtz solver f
 
 ## Dependencies
 
-- `github.com/MeKo-Christian/algo-fft` - FFT plans and execution
+- `github.com/cwbudde/algo-fft` - FFT plans and execution
 - Standard library only otherwise (no external deps)
 
 ## Testing Strategy

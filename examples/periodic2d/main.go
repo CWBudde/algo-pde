@@ -8,7 +8,7 @@ import (
 	"math"
 	"os"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {
@@ -60,7 +60,7 @@ func main() {
 
 func savePNG(filename string, data []float64, nx, ny int) error {
 	img := image.NewGray(image.Rect(0, 0, nx, ny))
-	
+
 	min, max := data[0], data[0]
 	for _, v := range data {
 		if v < min {
@@ -70,7 +70,7 @@ func savePNG(filename string, data []float64, nx, ny int) error {
 			max = v
 		}
 	}
-	
+
 	scale := 255.0 / (max - min)
 
 	for i := 0; i < nx; i++ {

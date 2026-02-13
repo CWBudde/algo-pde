@@ -330,4 +330,4 @@ If you want, next I can propose a **concrete public API** (function names, optio
 
 [1]: https://pkg.go.dev/github.com/mjibson/go-dsp/fft?utm_source=chatgpt.com "fft package - github.com/mjibson/go-dsp/fft - Go Packages"
 [2]: https://github.com/cpmech/gosl?utm_source=chatgpt.com "GitHub - cpmech/gosl: Linear algebra, eigenvalues, FFT, Bessel ..."
-[3]: https://github.com/MeKo-Christian/algo-fft/ "GitHub - MeKo-Christian/algo-fft: WORK IN PROGRESS"
+[3]: https://github.com/cwbudde/algo-fft/ "GitHub - cwbudde/algo-fft: WORK IN PROGRESS"

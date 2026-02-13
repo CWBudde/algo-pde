@@ -5,8 +5,8 @@ import (
 	"math"
 	"testing"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
-	"github.com/MeKo-Tech/algo-pde/grid"
+	algofft "github.com/cwbudde/algo-fft"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 const fftTol = 1e-10

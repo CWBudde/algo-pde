@@ -21,7 +21,7 @@ Fast spectral Poisson and Helmholtz solvers for Go, built on top of `algo-fft`. 
 ## Install
 
 ```bash
-go get github.com/MeKo-Tech/algo-pde
+go get github.com/cwbudde/algo-pde
 ```
 
 ## Quick Start
@@ -32,7 +32,7 @@ package main
 import (
 	"log"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {
@@ -105,6 +105,7 @@ just demo-dev    # Build WASM and start dev server at http://localhost:5173
 ```
 
 The demo showcases:
+
 - Multi-frequency wave synthesis (16 modes, 80-600 Hz)
 - Neumann boundary conditions (rigid walls with reflections)
 - Real-time 60 FPS animation at 256×256 resolution

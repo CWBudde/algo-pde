@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 func effectiveWorkers(workers int) int {

@@ -1,7 +1,7 @@
-module github.com/MeKo-Tech/algo-pde
+module github.com/cwbudde/algo-pde
 
 go 1.25.0
 
-require github.com/MeKo-Christian/algo-fft v0.4.2
+require github.com/cwbudde/algo-fft v0.6.1
 
 require golang.org/x/sys v0.39.0 // indirect

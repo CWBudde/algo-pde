@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
-	"github.com/MeKo-Tech/algo-pde/grid"
+	algofft "github.com/cwbudde/algo-fft"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 // Plan3DPeriodic is a reusable plan for solving 3D periodic Poisson problems.

@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {
 	// Mixed BC: Periodic in X, Dirichlet in Y.
 	// X: [0, 1), hx = 1/Nx
 	// Y: [0, 1], hy = 1/(Ny+1), points at (j+1)*hy
-	
+
 	nx, ny := 64, 64
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny+1)
@@ -30,7 +30,7 @@ func main() {
 
 	// u_exact = sin(2*pi*x) * sin(pi*y)
 	// -Lap u = (4*pi^2 + pi^2) * u = 5*pi^2 * u
-	
+
 	rhs := make([]float64, nx*ny)
 	uExact := make([]float64, nx*ny)
 

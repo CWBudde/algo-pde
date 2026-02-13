@@ -3,7 +3,7 @@ package poisson
 import (
 	"fmt"
 
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 // Plan is a reusable Poisson/Helmholtz solver plan with per-axis boundary conditions.
@@ -218,6 +218,10 @@ func (p *Plan) hasNullspace() bool {
 	return true
 }
 
+// applyEigenvalues performs spectral division by the sum of eigenvalues.
+// Profiling shows this accounts for <0.5% of total solve time; FFT transforms
+// dominate at 95%+. SIMD optimization is not beneficial here.
+// See poisson/PERFORMANCE.md for analysis.
 func (p *Plan) applyEigenvalues() error {
 	_, ny, nz := p.n[0], p.n[1], p.n[2]
 	strideYZ := ny * nz

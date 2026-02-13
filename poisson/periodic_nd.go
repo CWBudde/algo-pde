@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // PlanNDPeriodic is a reusable plan for solving N-dimensional periodic Poisson problems.

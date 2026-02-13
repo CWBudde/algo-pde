@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/fd"
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/fd"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 const dirichlet1dTol = 1e-10

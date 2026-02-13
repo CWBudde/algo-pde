@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {
@@ -12,7 +12,7 @@ func main() {
 	// (cell-centered points).
 	// Grid points x_i = (i + 0.5) * h.
 	// Domain [0, L] with L = N*h.
-	
+
 	nx, ny := 64, 64
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -49,7 +49,7 @@ func main() {
 	// Neumann has a nullspace (constant function).
 	// We handle it by enabling automatic mean subtraction (NullspaceSubtractMean).
 	// This ensures the solution has zero mean and the RHS is projected onto the range.
-	
+
 	plan, err = poisson.NewPlan(
 		2,
 		[]int{nx, ny},
@@ -67,8 +67,8 @@ func main() {
 
 	// Since u is determined up to a constant, we should compare (u - mean(u)) with (uExact - mean(uExact)).
 	// Or just align them at one point.
-	// Or subtract mean from both. 
-	
+	// Or subtract mean from both.
+
 	meanU := 0.0
 	meanExact := 0.0
 	for k := range u {

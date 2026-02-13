@@ -3,7 +3,7 @@ package fd
 import (
 	"math"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // Eigenvalues computes the 1D eigenvalues of the discrete Laplacian

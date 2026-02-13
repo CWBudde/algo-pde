@@ -1,8 +1,8 @@
 package fd
 
 import (
-	"github.com/MeKo-Tech/algo-pde/grid"
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // Apply1D applies the 1D negative Laplacian stencil to src and writes into dst.

@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {
 	// For Dirichlet, N is the number of internal grid points.
 	// The domain length L = (N+1)*h.
-	
+
 	nx, ny := 64, 64
 	// If nx=64 points, L = (64+1)*h = 1 => h = 1/65.
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny+1)
 
 	fmt.Printf("2D Dirichlet Poisson Solver\n")
-	
+
 	plan, err := poisson.NewPlan(
 		2,
 		[]int{nx, ny},

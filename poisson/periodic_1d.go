@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 const meanTol = 1e-12

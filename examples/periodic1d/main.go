@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {
@@ -24,11 +24,11 @@ func main() {
 	// -u_xx = 4*pi^2 * sin(2*pi*x)
 	rhs := make([]float64, nx)
 	uExact := make([]float64, nx)
-	
+
 	for i := 0; i < nx; i++ {
 		x := float64(i) * hx
 		uExact[i] = math.Sin(2.0 * math.Pi * x)
-		rhs[i] = 4.0 * math.Pi * math.Pi * math.Sin(2.0 * math.Pi * x)
+		rhs[i] = 4.0 * math.Pi * math.Pi * math.Sin(2.0*math.Pi*x)
 	}
 
 	// 4. Solve

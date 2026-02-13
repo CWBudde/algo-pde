@@ -2,7 +2,7 @@
 
 ## Big picture
 
-- This repo is a Go library for fast spectral PDE tooling (target: Poisson/Helmholtz), built on `github.com/MeKo-Christian/algo-fft`.
+- This repo is a Go library for fast spectral PDE tooling (target: Poisson/Helmholtz), built on `github.com/cwbudde/algo-fft`.
 - Current implemented “core building blocks”:
   - `r2r/`: DST-I + DCT-I plans implemented via FFT embedding
   - `fd/`: discrete Laplacian eigenvalues for `poisson.BCType`
