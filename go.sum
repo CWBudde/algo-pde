@@ -1,4 +1,4 @@
-github.com/cwbudde/algo-fft v0.6.8 h1:RhuSaw7JzIYNsRsy9ApwpapHW1uA2fFCZ1LiOkwBSdM=
-github.com/cwbudde/algo-fft v0.6.8/go.mod h1:H5rJ7JNXvhe3kT4yc41TJB9DEnO7KlhHN7toLO+ZZXU=
+github.com/cwbudde/algo-fft v0.6.9 h1:YvM8YiYifpEQo0fEksXP7PTCZhxOwbCD1oqC7Fa3F2w=
+github.com/cwbudde/algo-fft v0.6.9/go.mod h1:H5rJ7JNXvhe3kT4yc41TJB9DEnO7KlhHN7toLO+ZZXU=
 golang.org/x/sys v0.39.0 h1:CvCKL8MeisomCi6qNZ+wbb0DN9E5AATixKsvNtMoMFk=
 golang.org/x/sys v0.39.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
