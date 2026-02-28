@@ -276,6 +276,51 @@ func TestPlan2DPeriodic_SetSolutionMean(t *testing.T) {
 	}
 }
 
+func TestPlan2DPeriodic_SolveInPlace_MatchesSolve(t *testing.T) {
+	t.Parallel()
+
+	nx, ny := 32, 24
+	hx := 1.0 / float64(nx)
+	hy := 1.0 / float64(ny)
+	Lx := float64(nx) * hx
+	Ly := float64(ny) * hy
+
+	plan, err := poisson.NewPlan2DPeriodic(nx, ny, hx, hy)
+	if err != nil {
+		t.Fatalf("NewPlan2DPeriodic failed: %v", err)
+	}
+
+	u := make([]float64, nx*ny)
+	for i := range nx {
+		x := float64(i) * hx
+
+		row := i * ny
+		for j := range ny {
+			y := float64(j) * hy
+			u[row+j] = math.Sin(2.0*math.Pi*x/Lx) * math.Cos(4.0*math.Pi*y/Ly)
+		}
+	}
+
+	rhs := make([]float64, nx*ny)
+	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
+
+	want := make([]float64, nx*ny)
+	err = plan.Solve(want, rhs)
+	if err != nil {
+		t.Fatalf("Solve failed: %v", err)
+	}
+
+	got := append([]float64(nil), rhs...)
+	err = plan.SolveInPlace(got)
+	if err != nil {
+		t.Fatalf("SolveInPlace failed: %v", err)
+	}
+
+	if max := maxAbsDiff(got, want); max > periodic2dTol {
+		t.Fatalf("max diff %g exceeds tol %g", max, periodic2dTol)
+	}
+}
+
 func BenchmarkPlan2DPeriodic_Solve_64(b *testing.B)  { benchmarkPlan2DPeriodicSolve(b, 64) }
 func BenchmarkPlan2DPeriodic_Solve_128(b *testing.B) { benchmarkPlan2DPeriodicSolve(b, 128) }
 func BenchmarkPlan2DPeriodic_Solve_256(b *testing.B) { benchmarkPlan2DPeriodicSolve(b, 256) }
