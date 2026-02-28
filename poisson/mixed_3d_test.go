@@ -12,6 +12,8 @@ import (
 const mixed3dTol = 1e-10
 
 func TestPlan3D_AllBCCombinations(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 8, 7, 6
 
 	bcs := []poisson.BCType{poisson.Periodic, poisson.Dirichlet, poisson.Neumann}
@@ -60,6 +62,8 @@ func TestPlan3D_AllBCCombinations(t *testing.T) {
 }
 
 func TestPlan3D_DirichletDirichletDirichlet(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 24, 18, 16
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny+1)
@@ -105,6 +109,8 @@ func TestPlan3D_DirichletDirichletDirichlet(t *testing.T) {
 }
 
 func TestPlan3D_NeumannNeumannNeumann(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 22, 16, 14
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -150,6 +156,8 @@ func TestPlan3D_NeumannNeumannNeumann(t *testing.T) {
 }
 
 func TestPlan3D_PeriodicDirichletNeumann(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 20, 14, 18
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny+1)
@@ -195,6 +203,8 @@ func TestPlan3D_PeriodicDirichletNeumann(t *testing.T) {
 }
 
 func TestPlan3D_DirichletPeriodicNeumann(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 18, 22, 16
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny)

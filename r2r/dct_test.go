@@ -7,10 +7,14 @@ import (
 )
 
 func TestDCTPlan_RoundTrip(t *testing.T) {
+	t.Parallel()
+
 	sizes := []int{2, 3, 4, 7, 8, 15, 16, 31, 32, 63, 64}
 
 	for _, n := range sizes {
 		t.Run(sizeStr(n), func(t *testing.T) {
+			t.Parallel()
+
 			plan, err := NewDCTPlan(n)
 			if err != nil {
 				t.Fatalf("NewDCTPlan(%d) failed: %v", n, err)
@@ -24,13 +28,17 @@ func TestDCTPlan_RoundTrip(t *testing.T) {
 
 			// Forward transform
 			dst := make([]float64, n)
-			if err := plan.Forward(dst, src); err != nil {
+
+			err = plan.Forward(dst, src)
+			if err != nil {
 				t.Fatalf("Forward failed: %v", err)
 			}
 
 			// Inverse transform
 			recovered := make([]float64, n)
-			if err := plan.Inverse(recovered, dst); err != nil {
+
+			err = plan.Inverse(recovered, dst)
+			if err != nil {
 				t.Fatalf("Inverse failed: %v", err)
 			}
 
@@ -46,6 +54,8 @@ func TestDCTPlan_RoundTrip(t *testing.T) {
 }
 
 func TestDCTPlan_RoundTripOrtho(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	plan, err := NewDCTPlan(n, WithNormalization(NormOrtho))
@@ -59,12 +69,16 @@ func TestDCTPlan_RoundTripOrtho(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Forward(dst, src); err != nil {
+
+	err = plan.Forward(dst, src)
+	if err != nil {
 		t.Fatalf("Forward failed: %v", err)
 	}
 
 	recovered := make([]float64, n)
-	if err := plan.Inverse(recovered, dst); err != nil {
+
+	err = plan.Inverse(recovered, dst)
+	if err != nil {
 		t.Fatalf("Inverse failed: %v", err)
 	}
 
@@ -77,6 +91,8 @@ func TestDCTPlan_RoundTripOrtho(t *testing.T) {
 }
 
 func TestDCTPlan_Orthogonality(t *testing.T) {
+	t.Parallel()
+
 	// DCT-I basis functions should be orthogonal (with endpoint weights)
 	n := 8
 
@@ -117,6 +133,8 @@ func TestDCTPlan_Orthogonality(t *testing.T) {
 }
 
 func TestDCTPlan_KnownValues(t *testing.T) {
+	t.Parallel()
+
 	// Test with a single cosine mode
 	n := 8
 
@@ -134,7 +152,9 @@ func TestDCTPlan_KnownValues(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Forward(dst, src); err != nil {
+
+	err = plan.Forward(dst, src)
+	if err != nil {
 		t.Fatalf("Forward failed: %v", err)
 	}
 
@@ -154,6 +174,8 @@ func TestDCTPlan_KnownValues(t *testing.T) {
 }
 
 func TestDCTPlan_ConstantMode(t *testing.T) {
+	t.Parallel()
+
 	// The k=0 mode is the constant mode
 	n := 8
 
@@ -173,7 +195,6 @@ func TestDCTPlan_ConstantMode(t *testing.T) {
 		t.Fatalf("Forward failed: %v", err)
 	}
 
-	// Only the k=0 coefficient should be non-zero
 	for k := 1; k < n; k++ {
 		if math.Abs(dst[k]) > tolerance {
 			t.Errorf("dst[%d] = %v, want 0 for constant input", k, dst[k])
@@ -182,6 +203,8 @@ func TestDCTPlan_ConstantMode(t *testing.T) {
 }
 
 func TestDCTPlan_InPlace(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	plan, err := NewDCTPlan(n)
@@ -198,13 +221,13 @@ func TestDCTPlan_InPlace(t *testing.T) {
 		expected[i] = src[i]
 	}
 
-	// Forward in-place
-	if err := plan.Forward(src, src); err != nil {
+	err = plan.Forward(src, src)
+	if err != nil {
 		t.Fatalf("Forward in-place failed: %v", err)
 	}
 
-	// Inverse in-place
-	if err := plan.Inverse(src, src); err != nil {
+	err = plan.Inverse(src, src)
+	if err != nil {
 		t.Fatalf("Inverse in-place failed: %v", err)
 	}
 
@@ -218,6 +241,8 @@ func TestDCTPlan_InPlace(t *testing.T) {
 }
 
 func TestDCT1_OneShot(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	src := make([]float64, n)
@@ -248,10 +273,14 @@ func TestDCT1_OneShot(t *testing.T) {
 }
 
 func TestDCT2Plan_RoundTrip(t *testing.T) {
+	t.Parallel()
+
 	sizes := []int{1, 2, 3, 4, 7, 8, 15, 16, 31, 32, 63, 64}
 
 	for _, n := range sizes {
 		t.Run("dct2-"+sizeStr(n), func(t *testing.T) {
+			t.Parallel()
+
 			plan, err := NewDCT2Plan(n)
 			if err != nil {
 				t.Fatalf("NewDCT2Plan(%d) failed: %v", n, err)
@@ -283,6 +312,8 @@ func TestDCT2Plan_RoundTrip(t *testing.T) {
 }
 
 func TestDCT2Plan_RoundTripOrtho(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	plan, err := NewDCT2Plan(n, WithNormalization(NormOrtho))
@@ -314,6 +345,8 @@ func TestDCT2Plan_RoundTripOrtho(t *testing.T) {
 }
 
 func TestDCT2Plan_Orthogonality(t *testing.T) {
+	t.Parallel()
+
 	n := 7
 
 	for k1 := range n {
@@ -340,6 +373,8 @@ func TestDCT2Plan_Orthogonality(t *testing.T) {
 }
 
 func TestDCT2Plan_KnownValues(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	plan, err := NewDCT2Plan(n)
@@ -372,6 +407,8 @@ func TestDCT2Plan_KnownValues(t *testing.T) {
 }
 
 func TestDCT2Plan_InPlace(t *testing.T) {
+	t.Parallel()
+
 	n := 9
 
 	plan, err := NewDCT2Plan(n)
@@ -404,6 +441,8 @@ func TestDCT2Plan_InPlace(t *testing.T) {
 }
 
 func TestDCT2_OneShot(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	src := make([]float64, n)
@@ -434,6 +473,8 @@ func TestDCT2_OneShot(t *testing.T) {
 }
 
 func TestDCTPlan_InvalidSize(t *testing.T) {
+	t.Parallel()
+
 	_, err := NewDCTPlan(1)
 	if !errors.Is(err, ErrInvalidSize) {
 		t.Errorf("NewDCTPlan(1) = %v, want ErrInvalidSize", err)
@@ -446,6 +487,8 @@ func TestDCTPlan_InvalidSize(t *testing.T) {
 }
 
 func TestDCT2Plan_InvalidSize(t *testing.T) {
+	t.Parallel()
+
 	_, err := NewDCT2Plan(0)
 	if !errors.Is(err, ErrInvalidSize) {
 		t.Errorf("NewDCT2Plan(0) = %v, want ErrInvalidSize", err)
@@ -453,6 +496,8 @@ func TestDCT2Plan_InvalidSize(t *testing.T) {
 }
 
 func TestDCTPlan_Bytes(t *testing.T) {
+	t.Parallel()
+
 	plan, err := NewDCTPlan(8)
 	if err != nil {
 		t.Fatalf("NewDCTPlan failed: %v", err)
@@ -465,6 +510,8 @@ func TestDCTPlan_Bytes(t *testing.T) {
 }
 
 func TestDCT2Plan_Bytes(t *testing.T) {
+	t.Parallel()
+
 	plan, err := NewDCT2Plan(8)
 	if err != nil {
 		t.Fatalf("NewDCT2Plan failed: %v", err)
@@ -477,6 +524,8 @@ func TestDCT2Plan_Bytes(t *testing.T) {
 }
 
 func TestDCT2Plan_Reference(t *testing.T) {
+	t.Parallel()
+
 	n := 6
 
 	plan, err := NewDCT2Plan(n)

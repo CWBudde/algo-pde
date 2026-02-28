@@ -9,6 +9,8 @@ import (
 )
 
 func TestDSTPlan_ForwardLines_2D_Axis0(t *testing.T) {
+	t.Parallel()
+
 	// 2D array: 7 rows x 4 columns
 	// Transform along axis 0 (columns): each column has 7 elements
 	nx, ny := 7, 4
@@ -50,6 +52,8 @@ func TestDSTPlan_ForwardLines_2D_Axis0(t *testing.T) {
 }
 
 func TestDSTPlan_ForwardLines_2D_Axis1(t *testing.T) {
+	t.Parallel()
+
 	// 2D array: 4 rows x 7 columns
 	// Transform along axis 1 (rows): each row has 7 elements
 	nx, ny := 4, 7
@@ -91,6 +95,8 @@ func TestDSTPlan_ForwardLines_2D_Axis1(t *testing.T) {
 }
 
 func TestDSTPlan_RoundTripLines_2D(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 8, 6
 	shape := grid.NewShape2D(nx, ny)
 
@@ -140,6 +146,8 @@ func TestDSTPlan_RoundTripLines_2D(t *testing.T) {
 }
 
 func TestDCTPlan_ForwardLines_2D_Axis0(t *testing.T) {
+	t.Parallel()
+
 	// 2D array: 8 rows x 4 columns
 	// Transform along axis 0 (columns): each column has 8 elements
 	nx, ny := 8, 4
@@ -173,6 +181,8 @@ func TestDCTPlan_ForwardLines_2D_Axis0(t *testing.T) {
 }
 
 func TestDCTPlan_ForwardLines_2D_Axis1(t *testing.T) {
+	t.Parallel()
+
 	// 2D array: 4 rows x 8 columns
 	// Transform along axis 1 (rows): each row has 8 elements
 	nx, ny := 4, 8
@@ -206,6 +216,8 @@ func TestDCTPlan_ForwardLines_2D_Axis1(t *testing.T) {
 }
 
 func TestDCTPlan_RoundTripLines_2D(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 8, 6
 	shape := grid.NewShape2D(nx, ny)
 
@@ -255,6 +267,8 @@ func TestDCTPlan_RoundTripLines_2D(t *testing.T) {
 }
 
 func TestDSTPlan_ForwardLines_3D(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 7, 5, 4
 	shape := grid.NewShape3D(nx, ny, nz)
 
@@ -289,6 +303,8 @@ func TestDSTPlan_ForwardLines_3D(t *testing.T) {
 }
 
 func TestDCTPlan_ForwardLines_3D(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 8, 6, 4
 	shape := grid.NewShape3D(nx, ny, nz)
 
@@ -323,6 +339,8 @@ func TestDCTPlan_ForwardLines_3D(t *testing.T) {
 }
 
 func TestForwardLines_SizeMismatch(t *testing.T) {
+	t.Parallel()
+
 	shape := grid.NewShape2D(8, 6)
 
 	// DST plan size doesn't match any axis

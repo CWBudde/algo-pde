@@ -12,6 +12,8 @@ import (
 const mixed2dTol = 1e-10
 
 func TestPlan2D_DirichletDirichlet(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 48, 40
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny+1)
@@ -52,6 +54,8 @@ func TestPlan2D_DirichletDirichlet(t *testing.T) {
 }
 
 func TestPlan2D_NeumannNeumann(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 56, 44
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -92,6 +96,8 @@ func TestPlan2D_NeumannNeumann(t *testing.T) {
 }
 
 func TestPlan2D_PeriodicDirichlet(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 64, 36
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny+1)
@@ -132,6 +138,8 @@ func TestPlan2D_PeriodicDirichlet(t *testing.T) {
 }
 
 func TestPlan2D_DirichletNeumann(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 52, 40
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny)

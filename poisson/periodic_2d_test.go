@@ -16,6 +16,8 @@ const (
 )
 
 func TestNewPlan2DPeriodic_InvalidInputs(t *testing.T) {
+	t.Parallel()
+
 	if _, err := poisson.NewPlan2DPeriodic(0, 4, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
@@ -30,6 +32,8 @@ func TestNewPlan2DPeriodic_InvalidInputs(t *testing.T) {
 }
 
 func TestPlan2DPeriodic_Solve_Manufactured_SineSine(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 64, 48
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -66,6 +70,8 @@ func TestPlan2DPeriodic_Solve_Manufactured_SineSine(t *testing.T) {
 }
 
 func TestPlan2DPeriodic_Solve_Manufactured_CosCos(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 48, 64
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -102,6 +108,8 @@ func TestPlan2DPeriodic_Solve_Manufactured_CosCos(t *testing.T) {
 }
 
 func TestPlan2DPeriodic_Solve_RealFFT(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 32, 32
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -140,6 +148,8 @@ func TestPlan2DPeriodic_Solve_RealFFT(t *testing.T) {
 }
 
 func TestPlan2DPeriodic_Convergence(t *testing.T) {
+	t.Parallel()
+
 	sizes := []int{16, 32, 64}
 	errors := make([]float64, len(sizes))
 
@@ -171,6 +181,8 @@ func TestPlan2DPeriodic_Convergence(t *testing.T) {
 }
 
 func TestPlan2DPeriodic_NonZeroMean_Default(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 8, 8
 	hx := 1.0
 	hy := 1.0
@@ -192,6 +204,8 @@ func TestPlan2DPeriodic_NonZeroMean_Default(t *testing.T) {
 }
 
 func TestPlan2DPeriodic_SubtractMean(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 8, 8
 	hx := 1.0
 	hy := 1.0
@@ -219,6 +233,8 @@ func TestPlan2DPeriodic_SubtractMean(t *testing.T) {
 }
 
 func TestPlan2DPeriodic_SetSolutionMean(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 32, 32
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)

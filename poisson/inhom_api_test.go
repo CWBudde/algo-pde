@@ -100,15 +100,23 @@ func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	u := make([]float64, nx*ny*nz)
 
 	shape := grid.NewShape3D(nx, ny, nz)
+	piOverLx := math.Pi / Lx
+	piOverLy := math.Pi / Ly
+	piOverLz := math.Pi / Lz
+
 	for i := range nx {
 		x := float64(i+1) * hx
+		sinX := math.Sin(piOverLx * x)
+		linX := 0.2*x + 0.1
 
 		for j := range ny {
 			y := float64(j+1) * hy
+			sinXY := sinX * math.Sin(piOverLy*y)
 
 			for k := range nz {
 				z := (float64(k) + 0.5) * hz
-				u[grid.Index3D(i, j, k, shape)] = math.Sin(math.Pi*x/Lx)*math.Sin(math.Pi*y/Ly)*math.Cos(math.Pi*z/Lz) + 0.2*x + 0.1 + 0.3*z
+				value := sinXY*math.Cos(piOverLz*z) + linX + 0.3*z
+				u[grid.Index3D(i, j, k, shape)] = value
 			}
 		}
 	}

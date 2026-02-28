@@ -11,6 +11,8 @@ import (
 const neumannInhomTol = 1e-9
 
 func TestApplyNeumannRHS1D_NonZero(t *testing.T) {
+	t.Parallel()
+
 	n := 96
 	h := 1.0 / float64(n)
 
@@ -62,6 +64,8 @@ func TestApplyNeumannRHS1D_NonZero(t *testing.T) {
 }
 
 func TestApplyNeumannRHS2D_NonZero(t *testing.T) {
+	t.Parallel()
+
 	nx := 40
 	ny := 36
 	hx := 1.0 / float64(nx)

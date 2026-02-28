@@ -12,6 +12,8 @@ import (
 const periodic1dTol = 1e-10
 
 func TestNewPlan1DPeriodic_InvalidInputs(t *testing.T) {
+	t.Parallel()
+
 	if _, err := poisson.NewPlan1DPeriodic(0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
@@ -22,6 +24,8 @@ func TestNewPlan1DPeriodic_InvalidInputs(t *testing.T) {
 }
 
 func TestPlan1DPeriodic_Solve_Manufactured(t *testing.T) {
+	t.Parallel()
+
 	n := 64
 	h := 1.0 / float64(n)
 	L := float64(n) * h
@@ -51,6 +55,8 @@ func TestPlan1DPeriodic_Solve_Manufactured(t *testing.T) {
 }
 
 func TestPlan1DPeriodic_SolveInPlace(t *testing.T) {
+	t.Parallel()
+
 	n := 32
 	h := 1.0 / float64(n)
 	L := float64(n) * h
@@ -79,6 +85,8 @@ func TestPlan1DPeriodic_SolveInPlace(t *testing.T) {
 }
 
 func TestPlan1DPeriodic_NonZeroMean_Default(t *testing.T) {
+	t.Parallel()
+
 	n := 16
 	h := 1.0
 
@@ -99,6 +107,8 @@ func TestPlan1DPeriodic_NonZeroMean_Default(t *testing.T) {
 }
 
 func TestPlan1DPeriodic_SubtractMean(t *testing.T) {
+	t.Parallel()
+
 	n := 16
 	h := 1.0
 
@@ -125,6 +135,8 @@ func TestPlan1DPeriodic_SubtractMean(t *testing.T) {
 }
 
 func TestPlan1DPeriodic_SetSolutionMean(t *testing.T) {
+	t.Parallel()
+
 	n := 64
 	h := 1.0 / float64(n)
 	L := float64(n) * h

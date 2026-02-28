@@ -130,6 +130,8 @@ func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
 }
 
 func TestHelmholtzPlan3D_PositiveAlpha(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 24, 20, 16
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny+1)

@@ -16,7 +16,11 @@ const (
 )
 
 func TestManufactured1D(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Periodic", func(t *testing.T) {
+		t.Parallel()
+
 		n := 64
 		h := 1.0 / float64(n)
 		L := float64(n) * h
@@ -41,6 +45,8 @@ func TestManufactured1D(t *testing.T) {
 	})
 
 	t.Run("Dirichlet", func(t *testing.T) {
+		t.Parallel()
+
 		n := 64
 		h := 1.0 / float64(n+1)
 		L := float64(n+1) * h
@@ -55,6 +61,8 @@ func TestManufactured1D(t *testing.T) {
 	})
 
 	t.Run("Neumann", func(t *testing.T) {
+		t.Parallel()
+
 		n := 64
 		h := 1.0 / float64(n)
 		L := float64(n) * h
@@ -80,7 +88,11 @@ func TestManufactured1D(t *testing.T) {
 }
 
 func TestManufactured2D(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Periodic", func(t *testing.T) {
+		t.Parallel()
+
 		nx, ny := 48, 40
 		hx := 1.0 / float64(nx)
 		hy := 1.0 / float64(ny)
@@ -113,6 +125,8 @@ func TestManufactured2D(t *testing.T) {
 	})
 
 	t.Run("Dirichlet", func(t *testing.T) {
+		t.Parallel()
+
 		nx, ny := 32, 36
 		hx := 1.0 / float64(nx+1)
 		hy := 1.0 / float64(ny+1)
@@ -142,6 +156,8 @@ func TestManufactured2D(t *testing.T) {
 	})
 
 	t.Run("Neumann", func(t *testing.T) {
+		t.Parallel()
+
 		nx, ny := 32, 36
 		hx := 1.0 / float64(nx)
 		hy := 1.0 / float64(ny)
@@ -174,6 +190,8 @@ func TestManufactured2D(t *testing.T) {
 	})
 
 	t.Run("MixedPeriodicNeumann", func(t *testing.T) {
+		t.Parallel()
+
 		nx, ny := 36, 30
 		hx := 1.0 / float64(nx)
 		hy := 1.0 / float64(ny)
@@ -207,7 +225,11 @@ func TestManufactured2D(t *testing.T) {
 }
 
 func TestManufactured3D(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Periodic", func(t *testing.T) {
+		t.Parallel()
+
 		n := 24
 		h := 1.0 / float64(n)
 		L := float64(n) * h
@@ -244,6 +266,8 @@ func TestManufactured3D(t *testing.T) {
 	})
 
 	t.Run("Dirichlet", func(t *testing.T) {
+		t.Parallel()
+
 		n := 20
 		h := 1.0 / float64(n+1)
 		L := float64(n+1) * h
@@ -277,6 +301,8 @@ func TestManufactured3D(t *testing.T) {
 	})
 
 	t.Run("Neumann", func(t *testing.T) {
+		t.Parallel()
+
 		n := 20
 		h := 1.0 / float64(n)
 		L := float64(n) * h
@@ -313,6 +339,8 @@ func TestManufactured3D(t *testing.T) {
 	})
 
 	t.Run("MixedPeriodicDirichletNeumann", func(t *testing.T) {
+		t.Parallel()
+
 		nx, ny, nz := 24, 20, 18
 		hx := 1.0 / float64(nx)
 		hy := 1.0 / float64(ny+1)

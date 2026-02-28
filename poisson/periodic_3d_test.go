@@ -16,6 +16,8 @@ const (
 )
 
 func TestNewPlan3DPeriodic_InvalidInputs(t *testing.T) {
+	t.Parallel()
+
 	if _, err := poisson.NewPlan3DPeriodic(0, 4, 4, 1.0, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
@@ -34,6 +36,8 @@ func TestNewPlan3DPeriodic_InvalidInputs(t *testing.T) {
 }
 
 func TestPlan3DPeriodic_Solve_Manufactured(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 24, 20, 18
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -79,6 +83,8 @@ func TestPlan3DPeriodic_Solve_Manufactured(t *testing.T) {
 }
 
 func TestPlan3DPeriodic_Solve_RealFFT(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 8, 8, 8
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -124,6 +130,8 @@ func TestPlan3DPeriodic_Solve_RealFFT(t *testing.T) {
 }
 
 func TestPlan3DPeriodic_NonZeroMean_Default(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 6, 6, 6
 	hx, hy, hz := 1.0, 1.0, 1.0
 
@@ -144,6 +152,8 @@ func TestPlan3DPeriodic_NonZeroMean_Default(t *testing.T) {
 }
 
 func TestPlan3DPeriodic_SubtractMean(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 6, 6, 6
 	hx, hy, hz := 1.0, 1.0, 1.0
 
@@ -170,6 +180,8 @@ func TestPlan3DPeriodic_SubtractMean(t *testing.T) {
 }
 
 func TestPlan3DPeriodic_SetSolutionMean(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 10, 8, 6
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)

@@ -20,6 +20,7 @@ disable = [
   'nestif',
   'nlreturn',
   'noctx',
+  'noinlineerr',
   'nonamedreturns',  # Named returns are fine for multi-value returns
   'predeclared',
   'recvcheck',

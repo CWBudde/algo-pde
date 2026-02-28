@@ -8,10 +8,14 @@ import (
 const tolerance = 1e-10
 
 func TestDSTPlan_RoundTrip(t *testing.T) {
+	t.Parallel()
+
 	sizes := []int{3, 4, 7, 8, 15, 16, 31, 32, 63, 64}
 
 	for _, n := range sizes {
 		t.Run(sizeStr(n), func(t *testing.T) {
+			t.Parallel()
+
 			plan, err := NewDSTPlan(n)
 			if err != nil {
 				t.Fatalf("NewDSTPlan(%d) failed: %v", n, err)
@@ -47,6 +51,8 @@ func TestDSTPlan_RoundTrip(t *testing.T) {
 }
 
 func TestDSTPlan_RoundTripOrtho(t *testing.T) {
+	t.Parallel()
+
 	n := 9
 
 	plan, err := NewDSTPlan(n, WithNormalization(NormOrtho))
@@ -78,10 +84,14 @@ func TestDSTPlan_RoundTripOrtho(t *testing.T) {
 }
 
 func TestDST2Plan_RoundTrip(t *testing.T) {
+	t.Parallel()
+
 	sizes := []int{3, 4, 7, 8, 15, 16, 31, 32, 63, 64}
 
 	for _, n := range sizes {
 		t.Run("dst2-"+sizeStr(n), func(t *testing.T) {
+			t.Parallel()
+
 			plan, err := NewDST2Plan(n)
 			if err != nil {
 				t.Fatalf("NewDST2Plan(%d) failed: %v", n, err)
@@ -113,6 +123,8 @@ func TestDST2Plan_RoundTrip(t *testing.T) {
 }
 
 func TestDST2Plan_RoundTripOrtho(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	plan, err := NewDST2Plan(n, WithNormalization(NormOrtho))
@@ -144,6 +156,8 @@ func TestDST2Plan_RoundTripOrtho(t *testing.T) {
 }
 
 func TestDSTPlan_Orthogonality(t *testing.T) {
+	t.Parallel()
+
 	// DST-I basis functions should be orthogonal
 	n := 7
 
@@ -169,6 +183,8 @@ func TestDSTPlan_Orthogonality(t *testing.T) {
 }
 
 func TestDST2Plan_Orthogonality(t *testing.T) {
+	t.Parallel()
+
 	n := 7
 
 	for k1 := range n {
@@ -195,6 +211,8 @@ func TestDST2Plan_Orthogonality(t *testing.T) {
 }
 
 func TestDSTPlan_KnownValues(t *testing.T) {
+	t.Parallel()
+
 	// Test with a single sine mode
 	n := 7
 
@@ -232,6 +250,8 @@ func TestDSTPlan_KnownValues(t *testing.T) {
 }
 
 func TestDST2Plan_KnownValues(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	plan, err := NewDST2Plan(n)
@@ -264,6 +284,8 @@ func TestDST2Plan_KnownValues(t *testing.T) {
 }
 
 func TestDSTPlan_InPlace(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	plan, err := NewDSTPlan(n)
@@ -300,6 +322,8 @@ func TestDSTPlan_InPlace(t *testing.T) {
 }
 
 func TestDST2Plan_InPlace(t *testing.T) {
+	t.Parallel()
+
 	n := 9
 
 	plan, err := NewDST2Plan(n)
@@ -332,6 +356,8 @@ func TestDST2Plan_InPlace(t *testing.T) {
 }
 
 func TestDST1_OneShot(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	src := make([]float64, n)
@@ -362,6 +388,8 @@ func TestDST1_OneShot(t *testing.T) {
 }
 
 func TestDST2_OneShot(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 
 	src := make([]float64, n)
@@ -392,6 +420,8 @@ func TestDST2_OneShot(t *testing.T) {
 }
 
 func TestDSTPlan_Bytes(t *testing.T) {
+	t.Parallel()
+
 	plan, err := NewDSTPlan(8)
 	if err != nil {
 		t.Fatalf("NewDSTPlan failed: %v", err)
@@ -404,6 +434,8 @@ func TestDSTPlan_Bytes(t *testing.T) {
 }
 
 func TestDST2Plan_Reference(t *testing.T) {
+	t.Parallel()
+
 	n := 6
 
 	plan, err := NewDST2Plan(n)
@@ -429,6 +461,8 @@ func TestDST2Plan_Reference(t *testing.T) {
 }
 
 func TestDSTPlan_ConcurrentSeparatePlans(t *testing.T) {
+	t.Parallel()
+
 	// Verify that separate plan instances can be used concurrently.
 	// Note: A single plan instance is NOT safe for concurrent use.
 	const (

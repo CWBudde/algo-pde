@@ -12,6 +12,8 @@ import (
 const neumann1dTol = 1e-10
 
 func TestPlan1DNeumann_Solve_Mode1(t *testing.T) {
+	t.Parallel()
+
 	n := 64
 	h := 1.0 / float64(n)
 
@@ -42,6 +44,8 @@ func TestPlan1DNeumann_Solve_Mode1(t *testing.T) {
 }
 
 func TestPlan1DNeumann_Solve_Mode2(t *testing.T) {
+	t.Parallel()
+
 	n := 96
 	h := 1.0 / float64(n)
 
@@ -72,6 +76,8 @@ func TestPlan1DNeumann_Solve_Mode2(t *testing.T) {
 }
 
 func TestPlan1DNeumann_NonZeroMean_Default(t *testing.T) {
+	t.Parallel()
+
 	n := 32
 	h := 1.0 / float64(n)
 
@@ -92,6 +98,8 @@ func TestPlan1DNeumann_NonZeroMean_Default(t *testing.T) {
 }
 
 func TestPlan1DNeumann_SubtractMean(t *testing.T) {
+	t.Parallel()
+
 	n := 32
 	h := 1.0 / float64(n)
 

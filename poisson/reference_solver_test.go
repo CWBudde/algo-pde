@@ -12,6 +12,8 @@ import (
 const referenceSolverTol = 1e-10
 
 func TestReferenceSolve2D_Dirichlet(t *testing.T) {
+	t.Parallel()
+
 	for _, n := range []int{8, 16} {
 		h := 1.0 / float64(n+1)
 		L := float64(n+1) * h

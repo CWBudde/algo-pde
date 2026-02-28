@@ -43,7 +43,8 @@ func NewFFTPlanWithWorkers(n int, workers int) (*FFTPlan, error) {
 	fastPlans := make([]*algofft.FastPlan[complex128], workers)
 	hasFast := false
 
-	if fastPlan, err := algofft.NewFastPlan[complex128](n); err == nil {
+	fastPlan, fastErr := algofft.NewFastPlan[complex128](n)
+	if fastErr == nil {
 		fastPlans[0] = fastPlan
 		hasFast = true
 

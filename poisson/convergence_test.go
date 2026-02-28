@@ -41,7 +41,9 @@ func TestConvergence1D_Dirichlet(t *testing.T) {
 		}
 
 		got := make([]float64, n)
-		if err := plan.Solve(got, rhs); err != nil {
+
+		err = plan.Solve(got, rhs)
+		if err != nil {
 			t.Fatalf("Solve failed: %v", err)
 		}
 
@@ -91,7 +93,9 @@ func TestConvergence2D_Dirichlet(t *testing.T) {
 		}
 
 		got := make([]float64, n*n)
-		if err := plan.Solve(got, rhs); err != nil {
+
+		err = plan.Solve(got, rhs)
+		if err != nil {
 			t.Fatalf("Solve failed: %v", err)
 		}
 
