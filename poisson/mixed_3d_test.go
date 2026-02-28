@@ -49,7 +49,9 @@ func TestPlan3D_AllBCCombinations(t *testing.T) {
 				})
 
 				got := make([]float64, len(u))
-				if err := plan.Solve(got, rhs); err != nil {
+
+				err = plan.Solve(got, rhs)
+				if err != nil {
 					t.Fatalf("Solve failed for %v/%v/%v: %v", bcx, bcy, bcz, err)
 				}
 
@@ -99,7 +101,9 @@ func TestPlan3D_DirichletDirichletDirichlet(t *testing.T) {
 	})
 
 	got := make([]float64, len(u))
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -146,7 +150,9 @@ func TestPlan3D_NeumannNeumannNeumann(t *testing.T) {
 	})
 
 	got := make([]float64, len(u))
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -193,7 +199,9 @@ func TestPlan3D_PeriodicDirichletNeumann(t *testing.T) {
 	})
 
 	got := make([]float64, len(u))
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -240,7 +248,9 @@ func TestPlan3D_DirichletPeriodicNeumann(t *testing.T) {
 	})
 
 	got := make([]float64, len(u))
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

@@ -39,7 +39,8 @@ func TestDSTPlan_ForwardLines_2D_Axis0(t *testing.T) {
 		}
 	}
 
-	if err := plan.ForwardLines(data, shape, 0); err != nil {
+	err = plan.ForwardLines(data, shape, 0)
+	if err != nil {
 		t.Fatalf("ForwardLines failed: %v", err)
 	}
 
@@ -82,7 +83,8 @@ func TestDSTPlan_ForwardLines_2D_Axis1(t *testing.T) {
 		}
 	}
 
-	if err := plan.ForwardLines(data, shape, 1); err != nil {
+	err = plan.ForwardLines(data, shape, 1)
+	if err != nil {
 		t.Fatalf("ForwardLines failed: %v", err)
 	}
 
@@ -120,20 +122,24 @@ func TestDSTPlan_RoundTripLines_2D(t *testing.T) {
 	}
 
 	// Forward along axis 0, then axis 1
-	if err := planX.ForwardLines(data, shape, 0); err != nil {
+	err = planX.ForwardLines(data, shape, 0)
+	if err != nil {
 		t.Fatalf("ForwardLines axis 0 failed: %v", err)
 	}
 
-	if err := planY.ForwardLines(data, shape, 1); err != nil {
+	err = planY.ForwardLines(data, shape, 1)
+	if err != nil {
 		t.Fatalf("ForwardLines axis 1 failed: %v", err)
 	}
 
 	// Inverse along axis 1, then axis 0
-	if err := planY.InverseLines(data, shape, 1); err != nil {
+	err = planY.InverseLines(data, shape, 1)
+	if err != nil {
 		t.Fatalf("InverseLines axis 1 failed: %v", err)
 	}
 
-	if err := planX.InverseLines(data, shape, 0); err != nil {
+	err = planX.InverseLines(data, shape, 0)
+	if err != nil {
 		t.Fatalf("InverseLines axis 0 failed: %v", err)
 	}
 
@@ -166,7 +172,8 @@ func TestDCTPlan_ForwardLines_2D_Axis0(t *testing.T) {
 		}
 	}
 
-	if err := plan.ForwardLines(data, shape, 0); err != nil {
+	err = plan.ForwardLines(data, shape, 0)
+	if err != nil {
 		t.Fatalf("ForwardLines failed: %v", err)
 	}
 
@@ -201,7 +208,8 @@ func TestDCTPlan_ForwardLines_2D_Axis1(t *testing.T) {
 		}
 	}
 
-	if err := plan.ForwardLines(data, shape, 1); err != nil {
+	err = plan.ForwardLines(data, shape, 1)
+	if err != nil {
 		t.Fatalf("ForwardLines failed: %v", err)
 	}
 
@@ -241,20 +249,24 @@ func TestDCTPlan_RoundTripLines_2D(t *testing.T) {
 	}
 
 	// Forward along axis 0, then axis 1
-	if err := planX.ForwardLines(data, shape, 0); err != nil {
+	err = planX.ForwardLines(data, shape, 0)
+	if err != nil {
 		t.Fatalf("ForwardLines axis 0 failed: %v", err)
 	}
 
-	if err := planY.ForwardLines(data, shape, 1); err != nil {
+	err = planY.ForwardLines(data, shape, 1)
+	if err != nil {
 		t.Fatalf("ForwardLines axis 1 failed: %v", err)
 	}
 
 	// Inverse along axis 1, then axis 0
-	if err := planY.InverseLines(data, shape, 1); err != nil {
+	err = planY.InverseLines(data, shape, 1)
+	if err != nil {
 		t.Fatalf("InverseLines axis 1 failed: %v", err)
 	}
 
-	if err := planX.InverseLines(data, shape, 0); err != nil {
+	err = planX.InverseLines(data, shape, 0)
+	if err != nil {
 		t.Fatalf("InverseLines axis 0 failed: %v", err)
 	}
 
@@ -287,11 +299,13 @@ func TestDSTPlan_ForwardLines_3D(t *testing.T) {
 	}
 
 	// Forward then inverse along axis 1 should recover original
-	if err := plan.ForwardLines(data, shape, 1); err != nil {
+	err = plan.ForwardLines(data, shape, 1)
+	if err != nil {
 		t.Fatalf("ForwardLines failed: %v", err)
 	}
 
-	if err := plan.InverseLines(data, shape, 1); err != nil {
+	err = plan.InverseLines(data, shape, 1)
+	if err != nil {
 		t.Fatalf("InverseLines failed: %v", err)
 	}
 
@@ -323,11 +337,13 @@ func TestDCTPlan_ForwardLines_3D(t *testing.T) {
 	}
 
 	// Forward then inverse along axis 2 should recover original
-	if err := plan.ForwardLines(data, shape, 2); err != nil {
+	err = plan.ForwardLines(data, shape, 2)
+	if err != nil {
 		t.Fatalf("ForwardLines failed: %v", err)
 	}
 
-	if err := plan.InverseLines(data, shape, 2); err != nil {
+	err = plan.InverseLines(data, shape, 2)
+	if err != nil {
 		t.Fatalf("InverseLines failed: %v", err)
 	}
 

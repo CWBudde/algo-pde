@@ -14,11 +14,13 @@ const periodic1dTol = 1e-10
 func TestNewPlan1DPeriodic_InvalidInputs(t *testing.T) {
 	t.Parallel()
 
-	if _, err := poisson.NewPlan1DPeriodic(0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
+	_, err := poisson.NewPlan1DPeriodic(0, 1.0)
+	if !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlan1DPeriodic(4, 0); !errors.Is(err, poisson.ErrInvalidSpacing) {
+	_, err = poisson.NewPlan1DPeriodic(4, 0)
+	if !errors.Is(err, poisson.ErrInvalidSpacing) {
 		t.Fatalf("expected ErrInvalidSpacing, got %v", err)
 	}
 }
@@ -45,7 +47,9 @@ func TestPlan1DPeriodic_Solve_Manufactured(t *testing.T) {
 	fd.Apply1D(rhs, u, h, poisson.Periodic)
 
 	got := make([]float64, n)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -75,7 +79,8 @@ func TestPlan1DPeriodic_SolveInPlace(t *testing.T) {
 	buf := make([]float64, n)
 	fd.Apply1D(buf, u, h, poisson.Periodic)
 
-	if err := plan.SolveInPlace(buf); err != nil {
+	err = plan.SolveInPlace(buf)
+	if err != nil {
 		t.Fatalf("SolveInPlace failed: %v", err)
 	}
 
@@ -101,7 +106,9 @@ func TestPlan1DPeriodic_NonZeroMean_Default(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Solve(dst, rhs); !errors.Is(err, poisson.ErrNonZeroMean) {
+
+	err = plan.Solve(dst, rhs)
+	if !errors.Is(err, poisson.ErrNonZeroMean) {
 		t.Fatalf("expected ErrNonZeroMean, got %v", err)
 	}
 }
@@ -123,7 +130,9 @@ func TestPlan1DPeriodic_SubtractMean(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Solve(dst, rhs); err != nil {
+
+	err = plan.Solve(dst, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -157,7 +166,9 @@ func TestPlan1DPeriodic_SetSolutionMean(t *testing.T) {
 	fd.Apply1D(rhs, u, h, poisson.Periodic)
 
 	dst := make([]float64, n)
-	if err := plan.Solve(dst, rhs); err != nil {
+
+	err = plan.Solve(dst, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

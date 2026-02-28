@@ -18,19 +18,23 @@ const (
 func TestNewPlan3DPeriodic_InvalidInputs(t *testing.T) {
 	t.Parallel()
 
-	if _, err := poisson.NewPlan3DPeriodic(0, 4, 4, 1.0, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
+	_, err := poisson.NewPlan3DPeriodic(0, 4, 4, 1.0, 1.0, 1.0)
+	if !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlan3DPeriodic(4, 0, 4, 1.0, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
+	_, err = poisson.NewPlan3DPeriodic(4, 0, 4, 1.0, 1.0, 1.0)
+	if !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlan3DPeriodic(4, 4, 0, 1.0, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
+	_, err = poisson.NewPlan3DPeriodic(4, 4, 0, 1.0, 1.0, 1.0)
+	if !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlan3DPeriodic(4, 4, 4, 0, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSpacing) {
+	_, err = poisson.NewPlan3DPeriodic(4, 4, 4, 0, 1.0, 1.0)
+	if !errors.Is(err, poisson.ErrInvalidSpacing) {
 		t.Fatalf("expected ErrInvalidSpacing, got %v", err)
 	}
 }
@@ -73,7 +77,9 @@ func TestPlan3DPeriodic_Solve_Manufactured(t *testing.T) {
 	})
 
 	got := make([]float64, nx*ny*nz)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -120,7 +126,9 @@ func TestPlan3DPeriodic_Solve_RealFFT(t *testing.T) {
 	})
 
 	got := make([]float64, nx*ny*nz)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -146,7 +154,9 @@ func TestPlan3DPeriodic_NonZeroMean_Default(t *testing.T) {
 	}
 
 	dst := make([]float64, nx*ny*nz)
-	if err := plan.Solve(dst, rhs); !errors.Is(err, poisson.ErrNonZeroMean) {
+
+	err = plan.Solve(dst, rhs)
+	if !errors.Is(err, poisson.ErrNonZeroMean) {
 		t.Fatalf("expected ErrNonZeroMean, got %v", err)
 	}
 }
@@ -168,7 +178,9 @@ func TestPlan3DPeriodic_SubtractMean(t *testing.T) {
 	}
 
 	dst := make([]float64, nx*ny*nz)
-	if err := plan.Solve(dst, rhs); err != nil {
+
+	err = plan.Solve(dst, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -215,7 +227,9 @@ func TestPlan3DPeriodic_SetSolutionMean(t *testing.T) {
 	})
 
 	dst := make([]float64, nx*ny*nz)
-	if err := plan.Solve(dst, rhs); err != nil {
+
+	err = plan.Solve(dst, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

@@ -76,7 +76,9 @@ func TestPlan1DDirichlet_Solve_Combination(t *testing.T) {
 	fd.Apply1D(rhs, u, h, poisson.Dirichlet)
 
 	got := make([]float64, n)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

@@ -9,7 +9,6 @@ disable = [
   'err113',          # Using errors.Is for sentinel errors is not always appropriate
   'exhaustive',
   'exhaustruct',     # Don't require all struct fields
-  'forbidigo',
   'funlen',
   'gocognit',
   'godoclint',
@@ -17,18 +16,20 @@ disable = [
   'gosec',
   'ireturn',
   'musttag',
-  'nestif',
   'nlreturn',
   'noctx',
-  'noinlineerr',
   'nonamedreturns',  # Named returns are fine for multi-value returns
+  'nestif',
   'predeclared',
   'recvcheck',
-  'unparam',
   'varnamelen',      # Short names are idiomatic in PDE/math code
-  'wrapcheck',       # Wrapping errors from same package is not always needed
+  'wrapcheck',       # Wrapping external errors here adds noise without clear value
   'wsl',
 ]
+
+[issues]
+max-issues-per-linter = 0
+max-same-issues = 0
 
 [linters.settings.revive]
 [[linters.settings.revive.rules]]

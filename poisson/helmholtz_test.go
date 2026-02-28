@@ -44,7 +44,9 @@ func TestHelmholtzPlan1D_PositiveAlpha(t *testing.T) {
 	}
 
 	got := make([]float64, n)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -68,7 +70,9 @@ func TestHelmholtzPlan1D_NegativeAlphaResonant(t *testing.T) {
 	rhs := make([]float64, n)
 
 	dst := make([]float64, n)
-	if err := plan.Solve(dst, rhs); !errors.Is(err, poisson.ErrResonant) {
+
+	err = plan.Solve(dst, rhs)
+	if !errors.Is(err, poisson.ErrResonant) {
 		t.Fatalf("expected ErrResonant, got %v", err)
 	}
 }
@@ -120,7 +124,9 @@ func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
 	}
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -184,7 +190,9 @@ func TestHelmholtzPlan3D_PositiveAlpha(t *testing.T) {
 	}
 
 	got := make([]float64, nx*ny*nz)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

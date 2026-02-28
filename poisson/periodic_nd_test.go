@@ -13,25 +13,29 @@ const periodicNDTol = 1e-9
 func TestNewPlanNDPeriodic_InvalidInputs(t *testing.T) {
 	t.Parallel()
 
-	if _, err := poisson.NewPlanNDPeriodic(nil, nil); !errors.Is(err, poisson.ErrInvalidSize) {
+	_, err := poisson.NewPlanNDPeriodic(nil, nil)
+	if !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlanNDPeriodic(
+	_, err = poisson.NewPlanNDPeriodic(
 		poisson.Shape{4, 0},
 		[]float64{1.0, 1.0},
-	); !errors.Is(err, poisson.ErrInvalidSize) {
+	)
+	if !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlanNDPeriodic(poisson.Shape{4, 4}, []float64{1.0}); err == nil {
+	_, err = poisson.NewPlanNDPeriodic(poisson.Shape{4, 4}, []float64{1.0})
+	if err == nil {
 		t.Fatalf("expected error for mismatched h length")
 	}
 
-	if _, err := poisson.NewPlanNDPeriodic(
+	_, err = poisson.NewPlanNDPeriodic(
 		poisson.Shape{4, 4},
 		[]float64{1.0, 0.0},
-	); !errors.Is(err, poisson.ErrInvalidSpacing) {
+	)
+	if !errors.Is(err, poisson.ErrInvalidSpacing) {
 		t.Fatalf("expected ErrInvalidSpacing, got %v", err)
 	}
 }
@@ -54,7 +58,9 @@ func TestPlanNDPeriodic_Solve_Manufactured(t *testing.T) {
 	u, rhs := manufacturedND(dims, h)
 
 	got := make([]float64, dims.Size())
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -81,7 +87,8 @@ func TestPlanNDPeriodic_SolveInPlace(t *testing.T) {
 	u, rhs := manufacturedND(dims, h)
 	buf := append([]float64(nil), rhs...)
 
-	if err := plan.SolveInPlace(buf); err != nil {
+	err = plan.SolveInPlace(buf)
+	if err != nil {
 		t.Fatalf("SolveInPlace failed: %v", err)
 	}
 

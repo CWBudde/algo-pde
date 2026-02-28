@@ -34,7 +34,9 @@ func TestPlan1DNeumann_Solve_Mode1(t *testing.T) {
 	fd.Apply1D(rhs, u, h, poisson.Neumann)
 
 	got := make([]float64, n)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -66,7 +68,9 @@ func TestPlan1DNeumann_Solve_Mode2(t *testing.T) {
 	fd.Apply1D(rhs, u, h, poisson.Neumann)
 
 	got := make([]float64, n)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -92,7 +96,9 @@ func TestPlan1DNeumann_NonZeroMean_Default(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Solve(dst, rhs); !errors.Is(err, poisson.ErrNonZeroMean) {
+
+	err = plan.Solve(dst, rhs)
+	if !errors.Is(err, poisson.ErrNonZeroMean) {
 		t.Fatalf("expected ErrNonZeroMean, got %v", err)
 	}
 }
@@ -120,7 +126,9 @@ func TestPlan1DNeumann_SubtractMean(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Solve(dst, rhs); err != nil {
+
+	err = plan.Solve(dst, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

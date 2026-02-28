@@ -67,7 +67,9 @@ func TestPlan2D_SolveWithBC_DirichletNeumann(t *testing.T) {
 	}
 
 	got := make([]float64, nx*ny)
-	if err := plan.SolveWithBC(got, rhs, bc); err != nil {
+
+	err = plan.SolveWithBC(got, rhs, bc)
+	if err != nil {
 		t.Fatalf("SolveWithBC failed: %v", err)
 	}
 
@@ -171,7 +173,9 @@ func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	}
 
 	got := make([]float64, nx*ny*nz)
-	if err := plan.SolveWithBC(got, rhs, bc); err != nil {
+
+	err = plan.SolveWithBC(got, rhs, bc)
+	if err != nil {
 		t.Fatalf("SolveWithBC failed: %v", err)
 	}
 

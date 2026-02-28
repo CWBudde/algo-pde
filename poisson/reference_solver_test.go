@@ -41,7 +41,9 @@ func TestReferenceSolve2D_Dirichlet(t *testing.T) {
 		}
 
 		spectral := make([]float64, n*n)
-		if err := plan.Solve(spectral, rhs); err != nil {
+
+		err = plan.Solve(spectral, rhs)
+		if err != nil {
 			t.Fatalf("Solve failed: %v", err)
 		}
 

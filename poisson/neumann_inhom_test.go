@@ -47,7 +47,9 @@ func TestApplyNeumannRHS1D_NonZero(t *testing.T) {
 	}
 
 	got := make([]float64, n)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -123,7 +125,9 @@ func TestApplyNeumannRHS2D_NonZero(t *testing.T) {
 	}
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

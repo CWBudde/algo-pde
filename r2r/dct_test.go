@@ -191,7 +191,9 @@ func TestDCTPlan_ConstantMode(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Forward(dst, src); err != nil {
+
+	err = plan.Forward(dst, src)
+	if err != nil {
 		t.Fatalf("Forward failed: %v", err)
 	}
 
@@ -292,12 +294,16 @@ func TestDCT2Plan_RoundTrip(t *testing.T) {
 			}
 
 			dst := make([]float64, n)
-			if err := plan.Forward(dst, src); err != nil {
+
+			err = plan.Forward(dst, src)
+			if err != nil {
 				t.Fatalf("Forward failed: %v", err)
 			}
 
 			recovered := make([]float64, n)
-			if err := plan.Inverse(recovered, dst); err != nil {
+
+			err = plan.Inverse(recovered, dst)
+			if err != nil {
 				t.Fatalf("Inverse failed: %v", err)
 			}
 
@@ -327,12 +333,16 @@ func TestDCT2Plan_RoundTripOrtho(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Forward(dst, src); err != nil {
+
+	err = plan.Forward(dst, src)
+	if err != nil {
 		t.Fatalf("Forward failed: %v", err)
 	}
 
 	recovered := make([]float64, n)
-	if err := plan.Inverse(recovered, dst); err != nil {
+
+	err = plan.Inverse(recovered, dst)
+	if err != nil {
 		t.Fatalf("Inverse failed: %v", err)
 	}
 
@@ -390,7 +400,9 @@ func TestDCT2Plan_KnownValues(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := plan.Forward(dst, src); err != nil {
+
+	err = plan.Forward(dst, src)
+	if err != nil {
 		t.Fatalf("Forward failed: %v", err)
 	}
 
@@ -424,11 +436,13 @@ func TestDCT2Plan_InPlace(t *testing.T) {
 		expected[i] = src[i]
 	}
 
-	if err := plan.Forward(src, src); err != nil {
+	err = plan.Forward(src, src)
+	if err != nil {
 		t.Fatalf("Forward in-place failed: %v", err)
 	}
 
-	if err := plan.Inverse(src, src); err != nil {
+	err = plan.Inverse(src, src)
+	if err != nil {
 		t.Fatalf("Inverse in-place failed: %v", err)
 	}
 
@@ -537,7 +551,8 @@ func TestDCT2Plan_Reference(t *testing.T) {
 	dst := make([]float64, n)
 	ref := make([]float64, n)
 
-	if err := plan.Forward(dst, src); err != nil {
+	err = plan.Forward(dst, src)
+	if err != nil {
 		t.Fatalf("Forward failed: %v", err)
 	}
 

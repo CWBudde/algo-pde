@@ -18,15 +18,18 @@ const (
 func TestNewPlan2DPeriodic_InvalidInputs(t *testing.T) {
 	t.Parallel()
 
-	if _, err := poisson.NewPlan2DPeriodic(0, 4, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
+	_, err := poisson.NewPlan2DPeriodic(0, 4, 1.0, 1.0)
+	if !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlan2DPeriodic(4, 0, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
+	_, err = poisson.NewPlan2DPeriodic(4, 0, 1.0, 1.0)
+	if !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlan2DPeriodic(4, 4, 0, 1.0); !errors.Is(err, poisson.ErrInvalidSpacing) {
+	_, err = poisson.NewPlan2DPeriodic(4, 4, 0, 1.0)
+	if !errors.Is(err, poisson.ErrInvalidSpacing) {
 		t.Fatalf("expected ErrInvalidSpacing, got %v", err)
 	}
 }
@@ -60,7 +63,9 @@ func TestPlan2DPeriodic_Solve_Manufactured_SineSine(t *testing.T) {
 	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -98,7 +103,9 @@ func TestPlan2DPeriodic_Solve_Manufactured_CosCos(t *testing.T) {
 	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -138,7 +145,9 @@ func TestPlan2DPeriodic_Solve_RealFFT(t *testing.T) {
 	})
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -166,7 +175,9 @@ func TestPlan2DPeriodic_Convergence(t *testing.T) {
 		continuousRHSPeriodic2D(u, rhs, n, n, h, h)
 
 		got := make([]float64, n*n)
-		if err := plan.Solve(got, rhs); err != nil {
+
+		err = plan.Solve(got, rhs)
+		if err != nil {
 			t.Fatalf("Solve failed: %v", err)
 		}
 
@@ -198,7 +209,9 @@ func TestPlan2DPeriodic_NonZeroMean_Default(t *testing.T) {
 	}
 
 	dst := make([]float64, nx*ny)
-	if err := plan.Solve(dst, rhs); !errors.Is(err, poisson.ErrNonZeroMean) {
+
+	err = plan.Solve(dst, rhs)
+	if !errors.Is(err, poisson.ErrNonZeroMean) {
 		t.Fatalf("expected ErrNonZeroMean, got %v", err)
 	}
 }
@@ -221,7 +234,9 @@ func TestPlan2DPeriodic_SubtractMean(t *testing.T) {
 	}
 
 	dst := make([]float64, nx*ny)
-	if err := plan.Solve(dst, rhs); err != nil {
+
+	err = plan.Solve(dst, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -250,7 +265,9 @@ func TestPlan2DPeriodic_SetSolutionMean(t *testing.T) {
 	continuousRHSPeriodic2D(u, rhs, nx, ny, hx, hy)
 
 	dst := make([]float64, nx*ny)
-	if err := plan.Solve(dst, rhs); err != nil {
+
+	err = plan.Solve(dst, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

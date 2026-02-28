@@ -44,7 +44,9 @@ func TestPlan2D_DirichletDirichlet(t *testing.T) {
 	})
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -86,7 +88,9 @@ func TestPlan2D_NeumannNeumann(t *testing.T) {
 	})
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -128,7 +132,9 @@ func TestPlan2D_PeriodicDirichlet(t *testing.T) {
 	})
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -170,7 +176,9 @@ func TestPlan2D_DirichletNeumann(t *testing.T) {
 	})
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 

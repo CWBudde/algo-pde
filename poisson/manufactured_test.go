@@ -118,7 +118,6 @@ func TestManufactured2D(t *testing.T) {
 			hy,
 			[2]poisson.BCType{poisson.Periodic, poisson.Periodic},
 			u,
-			manufactured2DTol,
 			poisson.WithSubtractMean(),
 			poisson.WithSolutionMean(meanU),
 		)
@@ -151,7 +150,6 @@ func TestManufactured2D(t *testing.T) {
 			hy,
 			[2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet},
 			u,
-			manufactured2DTol,
 		)
 	})
 
@@ -183,7 +181,6 @@ func TestManufactured2D(t *testing.T) {
 			hy,
 			[2]poisson.BCType{poisson.Neumann, poisson.Neumann},
 			u,
-			manufactured2DTol,
 			poisson.WithSubtractMean(),
 			poisson.WithSolutionMean(meanU),
 		)
@@ -217,7 +214,6 @@ func TestManufactured2D(t *testing.T) {
 			hy,
 			[2]poisson.BCType{poisson.Periodic, poisson.Neumann},
 			u,
-			manufactured2DTol,
 			poisson.WithSubtractMean(),
 			poisson.WithSolutionMean(meanU),
 		)
@@ -259,7 +255,6 @@ func TestManufactured3D(t *testing.T) {
 			h,
 			[3]poisson.BCType{poisson.Periodic, poisson.Periodic, poisson.Periodic},
 			u,
-			manufactured3DTol,
 			poisson.WithSubtractMean(),
 			poisson.WithSolutionMean(meanU),
 		)
@@ -296,7 +291,6 @@ func TestManufactured3D(t *testing.T) {
 			h,
 			[3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet},
 			u,
-			manufactured3DTol,
 		)
 	})
 
@@ -332,7 +326,6 @@ func TestManufactured3D(t *testing.T) {
 			h,
 			[3]poisson.BCType{poisson.Neumann, poisson.Neumann, poisson.Neumann},
 			u,
-			manufactured3DTol,
 			poisson.WithSubtractMean(),
 			poisson.WithSolutionMean(meanU),
 		)
@@ -375,7 +368,6 @@ func TestManufactured3D(t *testing.T) {
 			hz,
 			[3]poisson.BCType{poisson.Periodic, poisson.Dirichlet, poisson.Neumann},
 			u,
-			manufactured3DTol,
 		)
 	})
 }
@@ -400,7 +392,9 @@ func solveAndCompare1D(
 	fd.Apply1D(rhs, u, h, bc)
 
 	got := make([]float64, n)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
@@ -417,7 +411,6 @@ func solveAndCompare2D(
 	hy float64,
 	bc [2]poisson.BCType,
 	u []float64,
-	tol float64,
 	opts ...poisson.Option,
 ) {
 	t.Helper()
@@ -437,12 +430,14 @@ func solveAndCompare2D(
 	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, bc)
 
 	got := make([]float64, nx*ny)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > tol {
-		t.Fatalf("max error %g exceeds tol %g", max, tol)
+	if max := maxAbsDiff(got, u); max > manufactured2DTol {
+		t.Fatalf("max error %g exceeds tol %g", max, manufactured2DTol)
 	}
 }
 
@@ -456,7 +451,6 @@ func solveAndCompare3D(
 	hz float64,
 	bc [3]poisson.BCType,
 	u []float64,
-	tol float64,
 	opts ...poisson.Option,
 ) {
 	t.Helper()
@@ -476,11 +470,13 @@ func solveAndCompare3D(
 	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, bc)
 
 	got := make([]float64, nx*ny*nz)
-	if err := plan.Solve(got, rhs); err != nil {
+
+	err = plan.Solve(got, rhs)
+	if err != nil {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > tol {
-		t.Fatalf("max error %g exceeds tol %g", max, tol)
+	if max := maxAbsDiff(got, u); max > manufactured3DTol {
+		t.Fatalf("max error %g exceeds tol %g", max, manufactured3DTol)
 	}
 }
