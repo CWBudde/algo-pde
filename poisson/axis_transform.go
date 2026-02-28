@@ -70,15 +70,18 @@ func newDSTAxisTransform(n int, workers int) (AxisTransform, error) {
 	plans[0] = plan
 	realBufs[0] = transform.realBuf
 	imagBufs[0] = transform.imagBuf
+
 	for i := 1; i < workers; i++ {
 		clone, err := r2r.NewDSTPlan(n)
 		if err != nil {
 			return nil, err
 		}
+
 		plans[i] = clone
 		realBufs[i] = make([]float64, n)
 		imagBufs[i] = make([]float64, n)
 	}
+
 	transform.plans = plans
 	transform.realBufs = realBufs
 	transform.imagBufs = imagBufs
@@ -128,6 +131,7 @@ func (t *dstAxisTransform) transformLines(
 	return parallelFor(workers, numLines, func(worker, startLine, endLine int) error {
 		plan := t.plan
 		realBuf := t.realBuf
+
 		imagBuf := t.imagBuf
 		if workers > 1 {
 			plan = t.plans[worker]
@@ -141,6 +145,7 @@ func (t *dstAxisTransform) transformLines(
 				return err
 			}
 		}
+
 		return nil
 	})
 }
@@ -155,7 +160,7 @@ func (t *dstAxisTransform) transformLine(
 	stride int,
 	inverse bool,
 ) error {
-	for i := 0; i < length; i++ {
+	for i := range length {
 		v := data[start+i*stride]
 		realBuf[i] = real(v)
 		imagBuf[i] = imag(v)
@@ -167,6 +172,7 @@ func (t *dstAxisTransform) transformLine(
 	} else {
 		err = plan.Forward(realBuf, realBuf)
 	}
+
 	if err != nil {
 		return fmt.Errorf("DST real line: %w", err)
 	}
@@ -176,11 +182,12 @@ func (t *dstAxisTransform) transformLine(
 	} else {
 		err = plan.Forward(imagBuf, imagBuf)
 	}
+
 	if err != nil {
 		return fmt.Errorf("DST imag line: %w", err)
 	}
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		data[start+i*stride] = complex(realBuf[i], imagBuf[i])
 	}
 
@@ -221,15 +228,18 @@ func newDCTAxisTransform(n int, workers int) (AxisTransform, error) {
 	plans[0] = plan
 	realBufs[0] = transform.realBuf
 	imagBufs[0] = transform.imagBuf
+
 	for i := 1; i < workers; i++ {
 		clone, err := r2r.NewDCT2Plan(n)
 		if err != nil {
 			return nil, err
 		}
+
 		plans[i] = clone
 		realBufs[i] = make([]float64, n)
 		imagBufs[i] = make([]float64, n)
 	}
+
 	transform.plans = plans
 	transform.realBufs = realBufs
 	transform.imagBufs = imagBufs
@@ -279,6 +289,7 @@ func (t *dctAxisTransform) transformLines(
 	return parallelFor(workers, numLines, func(worker, startLine, endLine int) error {
 		plan := t.plan
 		realBuf := t.realBuf
+
 		imagBuf := t.imagBuf
 		if workers > 1 {
 			plan = t.plans[worker]
@@ -292,6 +303,7 @@ func (t *dctAxisTransform) transformLines(
 				return err
 			}
 		}
+
 		return nil
 	})
 }
@@ -306,7 +318,7 @@ func (t *dctAxisTransform) transformLine(
 	stride int,
 	inverse bool,
 ) error {
-	for i := 0; i < length; i++ {
+	for i := range length {
 		v := data[start+i*stride]
 		realBuf[i] = real(v)
 		imagBuf[i] = imag(v)
@@ -318,6 +330,7 @@ func (t *dctAxisTransform) transformLine(
 	} else {
 		err = plan.Forward(realBuf, realBuf)
 	}
+
 	if err != nil {
 		return fmt.Errorf("DCT-II real line: %w", err)
 	}
@@ -327,11 +340,12 @@ func (t *dctAxisTransform) transformLine(
 	} else {
 		err = plan.Forward(imagBuf, imagBuf)
 	}
+
 	if err != nil {
 		return fmt.Errorf("DCT-II imag line: %w", err)
 	}
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		data[start+i*stride] = complex(realBuf[i], imagBuf[i])
 	}
 

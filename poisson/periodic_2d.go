@@ -69,6 +69,7 @@ func NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPerio
 
 	if !useR {
 		var err error
+
 		fftX, err = NewFFTPlanWithWorkers(nx, options.Workers)
 		if err != nil {
 			return nil, err
@@ -137,15 +138,17 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 		if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
 			for i := start; i < end; i++ {
 				base := i * p.rhalf
-				for j := 0; j < p.rhalf; j++ {
+				for j := range p.rhalf {
 					denom := p.eigX[i] + p.eigY[j]
 					if denom == 0 {
 						p.rspec[base+j] = 0
 						continue
 					}
+
 					p.rspec[base+j] /= complex(float32(denom), 0)
 				}
 			}
+
 			return nil
 		}); err != nil {
 			return err
@@ -183,15 +186,17 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			base := i * p.ny
-			for j := 0; j < p.ny; j++ {
+			for j := range p.ny {
 				denom := p.eigX[i] + p.eigY[j]
 				if denom == 0 {
 					p.work.Complex[base+j] = 0
 					continue
 				}
+
 				p.work.Complex[base+j] /= complex(denom, 0)
 			}
 		}
+
 		return nil
 	}); err != nil {
 		return err

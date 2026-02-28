@@ -60,6 +60,7 @@ func TestPlan1DDirichlet_Solve_Combination(t *testing.T) {
 	}
 
 	u0 := math.Sin(0) + 0.3*math.Sin(0)
+
 	uL := math.Sin(math.Pi) + 0.3*math.Sin(2.0*math.Pi)
 	if math.Abs(u0) > dirichlet1dTol || math.Abs(uL) > dirichlet1dTol {
 		t.Fatalf("expected Dirichlet boundary values to be zero")

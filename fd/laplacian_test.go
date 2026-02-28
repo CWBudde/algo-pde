@@ -32,7 +32,9 @@ func TestApply1DPeriodicModes(t *testing.T) {
 	for i := range n {
 		src[i] = 1.0
 	}
+
 	Apply1D(dst, src, h, poisson.Periodic)
+
 	for i := range n {
 		if math.Abs(dst[i]) > 1e-12 {
 			t.Fatalf("periodic constant mode i=%d: got %v want 0", i, dst[i])
@@ -47,6 +49,7 @@ func TestApply1DDirichletModes(t *testing.T) {
 	src := make([]float64, n)
 
 	m := 2
+
 	for i := range n {
 		x := float64(i+1) / float64(n+1)
 		src[i] = math.Sin(math.Pi * float64(m) * x)
@@ -70,6 +73,7 @@ func TestApply1DNeumannModes(t *testing.T) {
 	src := make([]float64, n)
 
 	m := 1
+
 	for i := range n {
 		x := (float64(i) + 0.5) / float64(n)
 		src[i] = math.Cos(math.Pi * float64(m) * x)
@@ -115,8 +119,10 @@ func TestApply2DPeriodicModes(t *testing.T) {
 	dst := make([]float64, nx*ny)
 
 	kx, ky := 2, 3
+
 	for i := range nx {
 		x := float64(i) / float64(nx)
+
 		for j := range ny {
 			y := float64(j) / float64(ny)
 			src[i*ny+j] = math.Cos(2.0*math.Pi*float64(kx)*x) * math.Cos(2.0*math.Pi*float64(ky)*y)
@@ -131,6 +137,7 @@ func TestApply2DPeriodicModes(t *testing.T) {
 	for i := range nx {
 		for j := range ny {
 			idx := i*ny + j
+
 			want := lambda * src[idx]
 			if math.Abs(dst[idx]-want) > 1e-12 {
 				t.Fatalf("periodic 2D i=%d j=%d: got %v want %v", i, j, dst[idx], want)
@@ -148,8 +155,10 @@ func TestApply2DDirichletModes(t *testing.T) {
 	dst := make([]float64, nx*ny)
 
 	mx, my := 1, 2
+
 	for i := range nx {
 		x := float64(i+1) / float64(nx+1)
+
 		for j := range ny {
 			y := float64(j+1) / float64(ny+1)
 			src[i*ny+j] = math.Sin(math.Pi*float64(mx)*x) * math.Sin(math.Pi*float64(my)*y)
@@ -164,6 +173,7 @@ func TestApply2DDirichletModes(t *testing.T) {
 	for i := range nx {
 		for j := range ny {
 			idx := i*ny + j
+
 			want := lambda * src[idx]
 			if math.Abs(dst[idx]-want) > 1e-12 {
 				t.Fatalf("dirichlet 2D i=%d j=%d: got %v want %v", i, j, dst[idx], want)
@@ -181,8 +191,10 @@ func TestApply2DNeumannModes(t *testing.T) {
 	dst := make([]float64, nx*ny)
 
 	mx, my := 1, 2
+
 	for i := range nx {
 		x := (float64(i) + 0.5) / float64(nx)
+
 		for j := range ny {
 			y := (float64(j) + 0.5) / float64(ny)
 			src[i*ny+j] = math.Cos(math.Pi*float64(mx)*x) * math.Cos(math.Pi*float64(my)*y)
@@ -197,6 +209,7 @@ func TestApply2DNeumannModes(t *testing.T) {
 	for i := range nx {
 		for j := range ny {
 			idx := i*ny + j
+
 			want := lambda * src[idx]
 			if math.Abs(dst[idx]-want) > 1e-12 {
 				t.Fatalf("neumann 2D i=%d j=%d: got %v want %v", i, j, dst[idx], want)
@@ -215,10 +228,13 @@ func TestApply3DPeriodicModes(t *testing.T) {
 	dst := make([]float64, nx*ny*nz)
 
 	kx, ky, kz := 1, 2, 3
+
 	for i := range nx {
 		x := float64(i) / float64(nx)
+
 		for j := range ny {
 			y := float64(j) / float64(ny)
+
 			for k := range nz {
 				z := float64(k) / float64(nz)
 				idx := (i*ny+j)*nz + k
@@ -239,6 +255,7 @@ func TestApply3DPeriodicModes(t *testing.T) {
 		for j := range ny {
 			for k := range nz {
 				idx := (i*ny+j)*nz + k
+
 				want := lambda * src[idx]
 				if math.Abs(dst[idx]-want) > 1e-12 {
 					t.Fatalf("periodic 3D i=%d j=%d k=%d: got %v want %v", i, j, k, dst[idx], want)
@@ -258,10 +275,13 @@ func TestApply3DDirichletModes(t *testing.T) {
 	dst := make([]float64, nx*ny*nz)
 
 	mx, my, mz := 1, 2, 1
+
 	for i := range nx {
 		x := float64(i+1) / float64(nx+1)
+
 		for j := range ny {
 			y := float64(j+1) / float64(ny+1)
+
 			for k := range nz {
 				z := float64(k+1) / float64(nz+1)
 				idx := (i*ny+j)*nz + k
@@ -282,6 +302,7 @@ func TestApply3DDirichletModes(t *testing.T) {
 		for j := range ny {
 			for k := range nz {
 				idx := (i*ny+j)*nz + k
+
 				want := lambda * src[idx]
 				if math.Abs(dst[idx]-want) > 1e-12 {
 					t.Fatalf("dirichlet 3D i=%d j=%d k=%d: got %v want %v", i, j, k, dst[idx], want)
@@ -301,10 +322,13 @@ func TestApply3DNeumannModes(t *testing.T) {
 	dst := make([]float64, nx*ny*nz)
 
 	mx, my, mz := 1, 1, 2
+
 	for i := range nx {
 		x := (float64(i) + 0.5) / float64(nx)
+
 		for j := range ny {
 			y := (float64(j) + 0.5) / float64(ny)
+
 			for k := range nz {
 				z := (float64(k) + 0.5) / float64(nz)
 				idx := (i*ny+j)*nz + k
@@ -325,6 +349,7 @@ func TestApply3DNeumannModes(t *testing.T) {
 		for j := range ny {
 			for k := range nz {
 				idx := (i*ny+j)*nz + k
+
 				want := lambda * src[idx]
 				if math.Abs(dst[idx]-want) > 1e-12 {
 					t.Fatalf("neumann 3D i=%d j=%d k=%d: got %v want %v", i, j, k, dst[idx], want)

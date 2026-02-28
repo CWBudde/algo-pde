@@ -255,9 +255,11 @@ func NewPlaneIterator(shape Shape, axis int) *PlaneIterator {
 	}
 
 	idx := 0
+
 	for d := range 3 {
 		if d != axis {
 			it.other[idx] = d
+
 			idx++
 			if idx >= 2 {
 				break

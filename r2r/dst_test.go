@@ -205,6 +205,7 @@ func TestDSTPlan_KnownValues(t *testing.T) {
 
 	// Create a pure sine mode (mode k=2)
 	k := 2
+
 	src := make([]float64, n)
 	for i := range n {
 		src[i] = DST1Coefficient(i, k, n)
@@ -239,6 +240,7 @@ func TestDST2Plan_KnownValues(t *testing.T) {
 	}
 
 	k := 3
+
 	src := make([]float64, n)
 	for i := range n {
 		src[i] = DST2Coefficient(i, k, n)
@@ -271,6 +273,7 @@ func TestDSTPlan_InPlace(t *testing.T) {
 
 	// Create test input
 	src := make([]float64, n)
+
 	expected := make([]float64, n)
 	for i := range n {
 		src[i] = math.Sin(float64(i) * 0.5)
@@ -305,6 +308,7 @@ func TestDST2Plan_InPlace(t *testing.T) {
 	}
 
 	src := make([]float64, n)
+
 	expected := make([]float64, n)
 	for i := range n {
 		src[i] = math.Sin(float64(i) * 0.25)
@@ -393,6 +397,7 @@ func TestDSTPlan_Bytes(t *testing.T) {
 
 func TestDST2Plan_Reference(t *testing.T) {
 	n := 6
+
 	plan, err := NewDST2Plan(n)
 	if err != nil {
 		t.Fatalf("NewDST2Plan failed: %v", err)
@@ -407,6 +412,7 @@ func TestDST2Plan_Reference(t *testing.T) {
 	}
 
 	dst2Reference(ref, src)
+
 	for i := range n {
 		if math.Abs(dst[i]-ref[i]) > 1e-9 {
 			t.Errorf("reference mismatch at [%d]: got %v, want %v", i, dst[i], ref[i])
@@ -417,9 +423,11 @@ func TestDST2Plan_Reference(t *testing.T) {
 func TestDSTPlan_ConcurrentSeparatePlans(t *testing.T) {
 	// Verify that separate plan instances can be used concurrently.
 	// Note: A single plan instance is NOT safe for concurrent use.
-	const size = 16
-	const numGoroutines = 4
-	const iterations = 100
+	const (
+		size          = 16
+		numGoroutines = 4
+		iterations    = 100
+	)
 
 	done := make(chan error, numGoroutines)
 
@@ -454,6 +462,7 @@ func runConcurrentWorker(size, worker, iterations int) error {
 		if err := plan.Forward(dst, src); err != nil {
 			return err
 		}
+
 		if err := plan.Inverse(dst, dst); err != nil {
 			return err
 		}
@@ -480,12 +489,14 @@ func BenchmarkDSTPlan_Forward(b *testing.B) {
 			}
 
 			src := make([]float64, n)
+
 			dst := make([]float64, n)
 			for i := range n {
 				src[i] = float64(i)
 			}
 
 			b.ResetTimer()
+
 			for range b.N {
 				_ = plan.Forward(dst, src)
 			}
@@ -500,6 +511,7 @@ func dst2Reference(dst, src []float64) {
 		for i := range n {
 			sum += src[i] * DST2Coefficient(i, k, n)
 		}
+
 		dst[k] = sum
 	}
 }

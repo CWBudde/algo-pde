@@ -10,8 +10,10 @@ import (
 	"github.com/cwbudde/algo-pde/poisson"
 )
 
-const periodic3dTol = 1e-10
-const periodic3dRealTol = 1e-6
+const (
+	periodic3dTol     = 1e-10
+	periodic3dRealTol = 1e-6
+)
 
 func TestNewPlan3DPeriodic_InvalidInputs(t *testing.T) {
 	if _, err := poisson.NewPlan3DPeriodic(0, 4, 4, 1.0, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
@@ -48,9 +50,11 @@ func TestPlan3DPeriodic_Solve_Manufactured(t *testing.T) {
 	u := make([]float64, nx*ny*nz)
 	for i := range nx {
 		x := float64(i) * hx
+
 		baseXY := i * ny * nz
 		for j := range ny {
 			y := float64(j) * hy
+
 			base := baseXY + j*nz
 			for k := range nz {
 				z := float64(k) * hz
@@ -91,9 +95,11 @@ func TestPlan3DPeriodic_Solve_RealFFT(t *testing.T) {
 	u := make([]float64, nx*ny*nz)
 	for i := range nx {
 		x := float64(i) * hx
+
 		baseXY := i * ny * nz
 		for j := range ny {
 			y := float64(j) * hy
+
 			base := baseXY + j*nz
 			for k := range nz {
 				z := float64(k) * hz
@@ -178,9 +184,11 @@ func TestPlan3DPeriodic_SetSolutionMean(t *testing.T) {
 	u := make([]float64, nx*ny*nz)
 	for i := range nx {
 		x := float64(i) * hx
+
 		baseXY := i * ny * nz
 		for j := range ny {
 			y := float64(j) * hy
+
 			base := baseXY + j*nz
 			for k := range nz {
 				z := float64(k) * hz
@@ -210,6 +218,7 @@ func BenchmarkPlan3DPeriodic_Solve_128(b *testing.B) { benchmarkPlan3DPeriodicSo
 
 func benchmarkPlan3DPeriodicSolve(b *testing.B, n int) {
 	h := 1.0 / float64(n)
+
 	plan, err := poisson.NewPlan3DPeriodic(n, n, n, h, h, h)
 	if err != nil {
 		b.Fatalf("NewPlan3DPeriodic failed: %v", err)
@@ -222,9 +231,11 @@ func benchmarkPlan3DPeriodicSolve(b *testing.B, n int) {
 	})
 
 	dst := make([]float64, n*n*n)
+
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		if err := plan.Solve(dst, rhs); err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}

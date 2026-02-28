@@ -42,9 +42,11 @@ func NewFFTPlanWithWorkers(n int, workers int) (*FFTPlan, error) {
 	// Try to create FastPlans first (zero-overhead for power-of-two sizes)
 	fastPlans := make([]*algofft.FastPlan[complex128], workers)
 	hasFast := false
+
 	if fastPlan, err := algofft.NewFastPlan[complex128](n); err == nil {
 		fastPlans[0] = fastPlan
 		hasFast = true
+
 		for i := 1; i < workers; i++ {
 			fp, err := algofft.NewFastPlan[complex128](n)
 			if err != nil {
@@ -52,6 +54,7 @@ func NewFFTPlanWithWorkers(n int, workers int) (*FFTPlan, error) {
 				hasFast = false
 				break
 			}
+
 			fastPlans[i] = fp
 		}
 	}
@@ -64,15 +67,18 @@ func NewFFTPlanWithWorkers(n int, workers int) (*FFTPlan, error) {
 
 	plans := make([]*algofft.Plan[complex128], workers)
 	plans[0] = fftPlan
+
 	for i := 1; i < workers; i++ {
 		plan, err := algofft.NewPlan64(n)
 		if err != nil {
 			return nil, fmt.Errorf("creating FFT plan: %w", err)
 		}
+
 		plans[i] = plan
 	}
 
 	scratchA := make([][]complex128, workers)
+
 	scratchB := make([][]complex128, workers)
 	for i := range workers {
 		scratchA[i] = make([]complex128, n)
@@ -125,18 +131,22 @@ func (p *FFTPlan) TransformLines(data []complex128, shape grid.Shape, axis int, 
 
 	return parallelFor(workers, numLines, func(worker, startLine, endLine int) error {
 		plan := p.plans[worker]
+
 		var fastPlan *algofft.FastPlan[complex128]
 		if useFast {
 			fastPlan = p.fastPlans[worker]
 		}
+
 		scratchA := p.scratchA[worker]
 		scratchB := p.scratchB[worker]
+
 		for line := startLine; line < endLine; line++ {
 			start := lineStartIndex(shape, axis, line)
 			if err := p.transformLine(plan, fastPlan, scratchA, scratchB, data, start, lineStride, inverse, useOutOfPlace, useFast); err != nil {
 				return err
 			}
 		}
+
 		return nil
 	})
 }
@@ -161,13 +171,16 @@ func (p *FFTPlan) transformLine(
 	// Contiguous case: use FastPlan when available for zero-overhead transforms
 	if stride == 1 {
 		line := data[start : start+p.n]
+
 		if useFast && fastPlan != nil {
 			if inverse {
 				fastPlan.Inverse(scratchB, line)
 			} else {
 				fastPlan.Forward(scratchB, line)
 			}
+
 			copy(line, scratchB)
+
 			return nil
 		}
 		// Fallback to regular plan
@@ -177,10 +190,13 @@ func (p *FFTPlan) transformLine(
 		} else {
 			err = plan.Forward(scratchB, line)
 		}
+
 		if err != nil {
 			return err
 		}
+
 		copy(line, scratchB)
+
 		return nil
 	}
 
@@ -195,6 +211,7 @@ func (p *FFTPlan) transformLine(
 	} else {
 		err = plan.Forward(scratchB, scratchA)
 	}
+
 	if err != nil {
 		return err
 	}

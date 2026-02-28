@@ -26,11 +26,13 @@ func BenchmarkPlanSolve2D_Dirichlet(b *testing.B) {
 	for i := range rhs {
 		rhs[i] = float64(i % 7)
 	}
+
 	dst := make([]float64, nx*ny)
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		if err := plan.Solve(dst, rhs); err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}
@@ -46,6 +48,7 @@ func BenchmarkPlanSolve2D_Dirichlet_Workers(b *testing.B) {
 	for i := range rhs {
 		rhs[i] = float64(i % 7)
 	}
+
 	dst := make([]float64, nx*ny)
 
 	bench := func(workers int) {
@@ -62,7 +65,8 @@ func BenchmarkPlanSolve2D_Dirichlet_Workers(b *testing.B) {
 
 		b.ReportAllocs()
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+
+		for range b.N {
 			if err := plan.Solve(dst, rhs); err != nil {
 				b.Fatalf("Solve failed: %v", err)
 			}

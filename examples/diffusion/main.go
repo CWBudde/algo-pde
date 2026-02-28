@@ -29,9 +29,10 @@ func main() {
 	}
 
 	u0 := make([]float64, nx*ny)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := float64(j) * hy
 			u0[i*ny+j] = math.Sin(2.0*math.Pi*x) * math.Cos(2.0*math.Pi*y)
 		}
@@ -52,13 +53,16 @@ func main() {
 
 func maxAbs(values []float64) float64 {
 	max := 0.0
+
 	for _, v := range values {
 		if v < 0 {
 			v = -v
 		}
+
 		if v > max {
 			max = v
 		}
 	}
+
 	return max
 }

@@ -25,15 +25,18 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 	}
 
 	buf := rhs
+
 	if !p.opts.InPlace {
 		if len(p.work.Real) < size {
 			p.work.Real = make([]float64, size)
 		}
+
 		buf = p.work.Real[:size]
 		copy(buf, rhs)
 	}
 
 	var dirichlet, neumann BoundaryConditions
+
 	for _, data := range bc {
 		switch data.Type {
 		case Dirichlet:
@@ -49,12 +52,14 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 	}
 
 	shape := p.shape()
+
 	h := p.h
 	if len(dirichlet) > 0 {
 		if err := ApplyDirichletRHS(buf, shape, h, dirichlet); err != nil {
 			return err
 		}
 	}
+
 	if len(neumann) > 0 {
 		if err := ApplyNeumannRHS(buf, shape, h, neumann); err != nil {
 			return err

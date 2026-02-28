@@ -129,6 +129,7 @@ func checkNeumannDerivative(t *testing.T, u []float64, h float64) {
 	}
 
 	leftDeriv := (u[0] - u[0]) / h
+
 	rightDeriv := (u[len(u)-1] - u[len(u)-1]) / h
 	if math.Abs(leftDeriv) > neumann1dTol || math.Abs(rightDeriv) > neumann1dTol {
 		t.Fatalf("expected zero boundary derivative, got %g %g", leftDeriv, rightDeriv)

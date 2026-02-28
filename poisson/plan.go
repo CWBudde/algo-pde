@@ -72,10 +72,12 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	}
 
 	size := 1
-	for axis := 0; axis < dim; axis++ {
+
+	for axis := range dim {
 		if n[axis] < 1 {
 			return nil, ErrInvalidSize
 		}
+
 		if h[axis] <= 0 {
 			return nil, ErrInvalidSpacing
 		}
@@ -95,8 +97,9 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		size *= n[axis]
 	}
 
-	for axis := 0; axis < dim; axis++ {
+	for axis := range dim {
 		var err error
+
 		switch plan.bc[axis] {
 		case Periodic:
 			plan.eig[axis] = eigenvaluesPeriodic(plan.n[axis], plan.h[axis])
@@ -108,6 +111,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 			plan.eig[axis] = eigenvaluesNeumann(plan.n[axis], plan.h[axis])
 			plan.tr[axis], err = newDCTAxisTransform(plan.n[axis], options.Workers)
 		}
+
 		if err != nil {
 			return nil, fmt.Errorf("axis %d: %w", axis, err)
 		}
@@ -117,6 +121,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	if !options.InPlace {
 		realSize = size
 	}
+
 	plan.work = NewWorkspace(realSize, size)
 
 	return plan, nil
@@ -139,6 +144,7 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 	}
 
 	offset := 0.0
+
 	if hasNullspace {
 		mean, maxAbs := meanAndMaxAbs(rhs)
 		if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs) {
@@ -155,7 +161,7 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 	}
 
 	shape := p.shape()
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		if err := p.tr[axis].Forward(p.work.Complex, shape, axis); err != nil {
 			return fmt.Errorf("forward axis %d: %w", axis, err)
 		}
@@ -199,9 +205,10 @@ func (p *Plan) shape() grid.Shape {
 
 func (p *Plan) size() int {
 	size := 1
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		size *= p.n[axis]
 	}
+
 	return size
 }
 
@@ -210,11 +217,12 @@ func (p *Plan) hasNullspace() bool {
 		return false
 	}
 
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		if !p.bc[axis].HasNullspace() {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -241,6 +249,7 @@ func (p *Plan) applyEigenvalues() error {
 			if p.dim > 1 {
 				denom += p.eig[1][j]
 			}
+
 			if p.dim > 2 {
 				denom += p.eig[2][k]
 			}
@@ -250,21 +259,24 @@ func (p *Plan) applyEigenvalues() error {
 					p.work.Complex[idx] = 0
 					continue
 				}
+
 				return ErrResonant
 			}
 
 			p.work.Complex[idx] /= complex(denom, 0)
 		}
+
 		return nil
 	})
 }
 
 func isZeroMode(indices *[3]int, dim int) bool {
-	for axis := 0; axis < dim; axis++ {
+	for axis := range dim {
 		idx := indices[axis]
 		if idx != 0 {
 			return false
 		}
 	}
+
 	return true
 }

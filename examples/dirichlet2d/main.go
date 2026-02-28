@@ -10,7 +10,6 @@ import (
 func main() {
 	// For Dirichlet, N is the number of internal grid points.
 	// The domain length L = (N+1)*h.
-
 	nx, ny := 64, 64
 	// If nx=64 points, L = (64+1)*h = 1 => h = 1/65.
 	hx := 1.0 / float64(nx+1)
@@ -34,9 +33,10 @@ func main() {
 	rhs := make([]float64, nx*ny)
 	uExact := make([]float64, nx*ny)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := float64(j+1) * hy
 			val := math.Sin(math.Pi*x) * math.Sin(math.Pi*y)
 			uExact[i*ny+j] = val
@@ -50,11 +50,13 @@ func main() {
 	}
 
 	maxErr := 0.0
+
 	for i := range u {
 		diff := math.Abs(u[i] - uExact[i])
 		if diff > maxErr {
 			maxErr = diff
 		}
 	}
+
 	fmt.Printf("Max Error: %.3e\n", maxErr)
 }

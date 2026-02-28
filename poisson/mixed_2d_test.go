@@ -29,6 +29,7 @@ func TestPlan2D_DirichletDirichlet(t *testing.T) {
 	u := make([]float64, nx*ny)
 	for i := range nx {
 		x := float64(i+1) * hx
+
 		for j := range ny {
 			y := float64(j+1) * hy
 			u[i*ny+j] = math.Sin(math.Pi*x) * math.Sin(2.0*math.Pi*y)
@@ -68,6 +69,7 @@ func TestPlan2D_NeumannNeumann(t *testing.T) {
 	u := make([]float64, nx*ny)
 	for i := range nx {
 		x := (float64(i) + 0.5) * hx
+
 		for j := range ny {
 			y := (float64(j) + 0.5) * hy
 			u[i*ny+j] = math.Cos(math.Pi*x) * math.Cos(2.0*math.Pi*y)
@@ -107,6 +109,7 @@ func TestPlan2D_PeriodicDirichlet(t *testing.T) {
 	u := make([]float64, nx*ny)
 	for i := range nx {
 		x := float64(i) * hx
+
 		for j := range ny {
 			y := float64(j+1) * hy
 			u[i*ny+j] = math.Sin(2.0*math.Pi*x) * math.Sin(math.Pi*y)
@@ -146,6 +149,7 @@ func TestPlan2D_DirichletNeumann(t *testing.T) {
 	u := make([]float64, nx*ny)
 	for i := range nx {
 		x := float64(i+1) * hx
+
 		for j := range ny {
 			y := (float64(j) + 0.5) * hy
 			u[i*ny+j] = math.Sin(math.Pi*x) * math.Cos(math.Pi*y)

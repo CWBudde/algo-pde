@@ -16,7 +16,6 @@ func main() {
 	// Here alpha > 0 (screened Poisson).
 	// Let's simulate a source in the center, decaying.
 	// 2D Periodic.
-
 	nx, ny := 128, 128
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -42,23 +41,26 @@ func main() {
 	cx, cy := 0.5, 0.5
 	sigma := 0.05
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i) * hx
 		dx := x - cx
 		// Handle periodicity for distance
 		if dx > 0.5 {
 			dx -= 1.0
 		}
+
 		if dx < -0.5 {
 			dx += 1.0
 		}
 
-		for j := 0; j < ny; j++ {
+		for j := range ny {
 			y := float64(j) * hy
+
 			dy := y - cy
 			if dy > 0.5 {
 				dy -= 1.0
 			}
+
 			if dy < -0.5 {
 				dy += 1.0
 			}
@@ -77,6 +79,7 @@ func main() {
 	if err := savePNG("helmholtz.png", u, nx, ny); err != nil {
 		panic(err)
 	}
+
 	fmt.Println("Saved helmholtz.png")
 }
 
@@ -87,6 +90,7 @@ func maxVal(data []float64) float64 {
 			m = v
 		}
 	}
+
 	return m
 }
 
@@ -98,6 +102,7 @@ func savePNG(filename string, data []float64, nx, ny int) error {
 		if v < min {
 			min = v
 		}
+
 		if v > max {
 			max = v
 		}
@@ -105,8 +110,8 @@ func savePNG(filename string, data []float64, nx, ny int) error {
 
 	scale := 255.0 / (max - min)
 
-	for i := 0; i < nx; i++ {
-		for j := 0; j < ny; j++ {
+	for i := range nx {
+		for j := range ny {
 			val := data[i*ny+j]
 			gray := uint8((val - min) * scale)
 			img.Set(i, j, color.Gray{Y: gray})
@@ -118,5 +123,6 @@ func savePNG(filename string, data []float64, nx, ny int) error {
 		return err
 	}
 	defer f.Close()
+
 	return png.Encode(f, img)
 }

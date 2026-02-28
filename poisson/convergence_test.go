@@ -100,10 +100,11 @@ func TestConvergence2D_Dirichlet(t *testing.T) {
 func checkConvergenceRates(t *testing.T, hs, errors []float64) {
 	t.Helper()
 
-	for i := 0; i < len(errors)-1; i++ {
+	for i := range len(errors) - 1 {
 		if errors[i] == 0 || errors[i+1] == 0 {
 			t.Fatalf("zero error encountered: %g -> %g", errors[i], errors[i+1])
 		}
+
 		rate := math.Log(errors[i+1]/errors[i]) / math.Log(hs[i+1]/hs[i])
 		if rate < convergenceMinRate {
 			t.Fatalf("convergence rate %.3f below threshold %.1f", rate, convergenceMinRate)

@@ -11,7 +11,6 @@ func main() {
 	// Mixed BC: Periodic in X, Dirichlet in Y.
 	// X: [0, 1), hx = 1/Nx
 	// Y: [0, 1], hy = 1/(Ny+1), points at (j+1)*hy
-
 	nx, ny := 64, 64
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny+1)
@@ -34,9 +33,10 @@ func main() {
 	rhs := make([]float64, nx*ny)
 	uExact := make([]float64, nx*ny)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := float64(j+1) * hy
 			val := math.Sin(2.0*math.Pi*x) * math.Sin(math.Pi*y)
 			uExact[i*ny+j] = val
@@ -50,11 +50,13 @@ func main() {
 	}
 
 	maxErr := 0.0
+
 	for i := range u {
 		diff := math.Abs(u[i] - uExact[i])
 		if diff > maxErr {
 			maxErr = diff
 		}
 	}
+
 	fmt.Printf("Max Error: %.3e\n", maxErr)
 }

@@ -27,9 +27,10 @@ func main() {
 	}
 
 	u := make([]float64, nx*ny)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := float64(j+1) * hy
 			u[i*ny+j] = x + y
 		}
@@ -41,16 +42,18 @@ func main() {
 	})
 
 	xLow := make([]float64, ny)
+
 	xHigh := make([]float64, ny)
-	for j := 0; j < ny; j++ {
+	for j := range ny {
 		y := float64(j+1) * hy
 		xLow[j] = y
 		xHigh[j] = Lx + y
 	}
 
 	yLow := make([]float64, nx)
+
 	yHigh := make([]float64, nx)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
 		yLow[i] = x
 		yHigh[i] = x + Ly
@@ -77,6 +80,7 @@ func maxAbsDiff(a, b []float64) float64 {
 	}
 
 	max := 0.0
+
 	for i := range a {
 		diff := math.Abs(a[i] - b[i])
 		if diff > max {

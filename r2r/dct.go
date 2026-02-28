@@ -105,6 +105,7 @@ func NewDCT2Plan(n int, opts ...Option) (*DCT2Plan, error) {
 	}
 
 	phase := make([]complex128, n)
+
 	den := 2.0 * float64(n)
 	for k := range n {
 		angle := -math.Pi * float64(k) / den
@@ -193,7 +194,7 @@ func (p *DCT2Plan) Forward(dst, src []float64) error {
 	}
 
 	// Even extension:
-	// x[0..n-1] -> [x[0], ..., x[n-1], x[n-1], ..., x[0]]
+	// x[0..n-1] -> [x[0], ..., x[n-1], ..., x[0]]
 	for i := range p.n {
 		p.fftIn[i] = complex(src[i], 0)
 		p.fftIn[p.extendedN-1-i] = complex(src[i], 0)
@@ -268,6 +269,7 @@ func (p *DCT2Plan) Inverse(dst, src []float64) error {
 
 	for n := range p.n {
 		sum := 0.0
+
 		for k := range p.n {
 			weight := 2.0 / float64(p.n)
 			if k == 0 {

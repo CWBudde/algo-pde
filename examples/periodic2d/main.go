@@ -28,9 +28,10 @@ func main() {
 	rhs := make([]float64, nx*ny)
 	uExact := make([]float64, nx*ny)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := float64(j) * hy
 			val := math.Sin(2.0*math.Pi*x) * math.Sin(2.0*math.Pi*y)
 			uExact[i*ny+j] = val
@@ -44,17 +45,20 @@ func main() {
 	}
 
 	maxErr := 0.0
+
 	for i := range u {
 		diff := math.Abs(u[i] - uExact[i])
 		if diff > maxErr {
 			maxErr = diff
 		}
 	}
+
 	fmt.Printf("Max Error: %.3e\n", maxErr)
 
 	if err := savePNG("solution.png", u, nx, ny); err != nil {
 		panic(err)
 	}
+
 	fmt.Println("Saved solution.png")
 }
 
@@ -66,6 +70,7 @@ func savePNG(filename string, data []float64, nx, ny int) error {
 		if v < min {
 			min = v
 		}
+
 		if v > max {
 			max = v
 		}
@@ -73,8 +78,8 @@ func savePNG(filename string, data []float64, nx, ny int) error {
 
 	scale := 255.0 / (max - min)
 
-	for i := 0; i < nx; i++ {
-		for j := 0; j < ny; j++ {
+	for i := range nx {
+		for j := range ny {
 			val := data[i*ny+j]
 			gray := uint8((val - min) * scale)
 			img.Set(i, j, color.Gray{Y: gray})
@@ -86,5 +91,6 @@ func savePNG(filename string, data []float64, nx, ny int) error {
 		return err
 	}
 	defer f.Close()
+
 	return png.Encode(f, img)
 }

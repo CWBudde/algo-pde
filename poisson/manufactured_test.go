@@ -90,6 +90,7 @@ func TestManufactured2D(t *testing.T) {
 		u := make([]float64, nx*ny)
 		for i := range nx {
 			x := float64(i) * hx
+
 			for j := range ny {
 				y := float64(j) * hy
 				u[i*ny+j] = math.Sin(2.0*math.Pi*x/Lx) * math.Sin(2.0*math.Pi*y/Ly)
@@ -121,6 +122,7 @@ func TestManufactured2D(t *testing.T) {
 		u := make([]float64, nx*ny)
 		for i := range nx {
 			x := float64(i+1) * hx
+
 			for j := range ny {
 				y := float64(j+1) * hy
 				u[i*ny+j] = math.Sin(math.Pi*x/Lx) * math.Sin(math.Pi*y/Ly)
@@ -149,6 +151,7 @@ func TestManufactured2D(t *testing.T) {
 		u := make([]float64, nx*ny)
 		for i := range nx {
 			x := (float64(i) + 0.5) * hx
+
 			for j := range ny {
 				y := (float64(j) + 0.5) * hy
 				u[i*ny+j] = math.Cos(math.Pi*x/Lx) * math.Cos(math.Pi*y/Ly)
@@ -180,6 +183,7 @@ func TestManufactured2D(t *testing.T) {
 		u := make([]float64, nx*ny)
 		for i := range nx {
 			x := float64(i) * hx
+
 			for j := range ny {
 				y := (float64(j) + 0.5) * hy
 				u[i*ny+j] = math.Sin(2.0*math.Pi*x/Lx) * math.Cos(math.Pi*y/Ly)
@@ -320,8 +324,10 @@ func TestManufactured3D(t *testing.T) {
 		u := make([]float64, nx*ny*nz)
 		for i := range nx {
 			x := float64(i) * hx
+
 			for j := range ny {
 				y := float64(j+1) * hy
+
 				for k := range nz {
 					z := (float64(k) + 0.5) * hz
 					u[(i*ny+j)*nz+k] = math.Sin(2.0*math.Pi*x/Lx) *

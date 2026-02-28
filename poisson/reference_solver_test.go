@@ -64,20 +64,23 @@ func solveDensePoisson2DDirichlet(nx, ny int, hx, hy float64, rhs []float64) []f
 	invHx2 := 1.0 / (hx * hx)
 	invHy2 := 1.0 / (hy * hy)
 
-	for i := 0; i < nx; i++ {
-		for j := 0; j < ny; j++ {
+	for i := range nx {
+		for j := range ny {
 			idx := i*ny + j
 			a[idx*n+idx] = 2.0*invHx2 + 2.0*invHy2
 
 			if i > 0 {
 				a[idx*n+(idx-ny)] = -invHx2
 			}
+
 			if i+1 < nx {
 				a[idx*n+(idx+ny)] = -invHx2
 			}
+
 			if j > 0 {
 				a[idx*n+(idx-1)] = -invHy2
 			}
+
 			if j+1 < ny {
 				a[idx*n+(idx+1)] = -invHy2
 			}
@@ -93,8 +96,9 @@ func solveDenseLinearSystem(a []float64, b []float64) []float64 {
 		return nil
 	}
 
-	for k := 0; k < n; k++ {
+	for k := range n {
 		pivotRow := k
+
 		pivotVal := math.Abs(a[k*n+k])
 		for i := k + 1; i < n; i++ {
 			val := math.Abs(a[i*n+k])
@@ -112,6 +116,7 @@ func solveDenseLinearSystem(a []float64, b []float64) []float64 {
 			for j := k; j < n; j++ {
 				a[k*n+j], a[pivotRow*n+j] = a[pivotRow*n+j], a[k*n+j]
 			}
+
 			b[k], b[pivotRow] = b[pivotRow], b[k]
 		}
 
@@ -121,10 +126,12 @@ func solveDenseLinearSystem(a []float64, b []float64) []float64 {
 			if factor == 0 {
 				continue
 			}
+
 			a[i*n+k] = 0
 			for j := k + 1; j < n; j++ {
 				a[i*n+j] -= factor * a[k*n+j]
 			}
+
 			b[i] -= factor * b[k]
 		}
 	}
@@ -135,6 +142,7 @@ func solveDenseLinearSystem(a []float64, b []float64) []float64 {
 		for j := i + 1; j < n; j++ {
 			sum -= a[i*n+j] * x[j]
 		}
+
 		x[i] = sum / a[i*n+i]
 	}
 

@@ -54,6 +54,7 @@ func TestApplyNeumannRHS1D_NonZero(t *testing.T) {
 	}
 
 	leftDeriv := (-3.0*got[0] + 4.0*got[1] - got[2]) / (2.0 * h)
+
 	rightDeriv := (3.0*got[n-1] - 4.0*got[n-2] + got[n-3]) / (2.0 * h)
 	if math.Abs(leftDeriv-g0) > 5e-3 || math.Abs(rightDeriv-gL) > 5e-3 {
 		t.Fatalf("boundary derivatives %g/%g do not match %g/%g", leftDeriv, rightDeriv, g0, gL)
@@ -67,9 +68,10 @@ func TestApplyNeumannRHS2D_NonZero(t *testing.T) {
 	hy := 1.0 / float64(ny)
 
 	u := make([]float64, nx*ny)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := (float64(i) + 0.5) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := (float64(j) + 0.5) * hy
 			u[i*ny+j] = math.Sin(math.Pi*x)*math.Sin(math.Pi*y) + 0.2*x + 0.3*y
 		}
@@ -81,16 +83,18 @@ func TestApplyNeumannRHS2D_NonZero(t *testing.T) {
 	}
 
 	xLow := make([]float64, ny)
+
 	xHigh := make([]float64, ny)
-	for j := 0; j < ny; j++ {
+	for j := range ny {
 		y := (float64(j) + 0.5) * hy
 		xLow[j] = math.Pi*math.Sin(math.Pi*y) + 0.2
 		xHigh[j] = -math.Pi*math.Sin(math.Pi*y) + 0.2
 	}
 
 	yLow := make([]float64, nx)
+
 	yHigh := make([]float64, nx)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := (float64(i) + 0.5) * hx
 		yLow[i] = math.Pi*math.Sin(math.Pi*x) + 0.3
 		yHigh[i] = -math.Pi*math.Sin(math.Pi*x) + 0.3
@@ -126,16 +130,19 @@ func TestApplyNeumannRHS2D_NonZero(t *testing.T) {
 
 func applyInhomNeumann1D(dst, src []float64, h, g0, gL float64) {
 	n := len(src)
+
 	invH2 := 1.0 / (h * h)
 	for i := range n {
 		left := src[i] - g0*h
 		if i > 0 {
 			left = src[i-1]
 		}
+
 		right := src[i] + gL*h
 		if i+1 < n {
 			right = src[i+1]
 		}
+
 		dst[i] = (2.0*src[i] - left - right) * invH2
 	}
 }
@@ -146,9 +153,9 @@ func applyInhomNeumann2D(dst, src []float64, shape grid.Shape, hx, hy float64, x
 	invHx2 := 1.0 / (hx * hx)
 	invHy2 := 1.0 / (hy * hy)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		row := i * ny
-		for j := 0; j < ny; j++ {
+		for j := range ny {
 			idx := row + j
 			u := src[idx]
 

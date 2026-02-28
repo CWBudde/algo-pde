@@ -71,10 +71,12 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 		if err != nil {
 			return nil, fmt.Errorf("creating FFT plan for axis %d: %w", i, err)
 		}
+
 		plans[i] = plan
 	}
 
 	stride := make([]int, len(dims))
+
 	step := 1
 	for i := len(dims) - 1; i >= 0; i-- {
 		stride[i] = step
@@ -83,17 +85,21 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 
 	axisDims := make([][]int, len(dims))
 	axisIdx := make([][]int, len(dims))
+
 	axisOther := make([][]int, len(dims))
 	for axis := range dims {
 		reduced := make([]int, 0, len(dims)-1)
+
 		other := make([]int, 0, len(dims)-1)
 		for d := range dims {
 			if d == axis {
 				continue
 			}
+
 			reduced = append(reduced, dims[d])
 			other = append(other, d)
 		}
+
 		axisDims[axis] = reduced
 		axisIdx[axis] = make([]int, len(reduced))
 		axisOther[axis] = other
@@ -197,6 +203,7 @@ func (p *PlanNDPeriodic) applyEigenvalues(data []complex128) {
 			if indices[d] < p.shape[d] {
 				break
 			}
+
 			indices[d] = 0
 		}
 	}
@@ -208,11 +215,14 @@ func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool) error {
 	totalLines := p.shape.Size() / lineLen
 
 	reducedDims := p.axisDims[axis]
+
 	indices := p.axisIdx[axis]
 	for i := range indices {
 		indices[i] = 0
 	}
+
 	otherAxes := p.axisOther[axis]
+
 	for range totalLines {
 		start := 0
 		for i, d := range otherAxes {
@@ -228,6 +238,7 @@ func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool) error {
 			if indices[i] < reducedDims[i] {
 				break
 			}
+
 			indices[i] = 0
 		}
 	}
@@ -268,20 +279,24 @@ func (p *axisPlan) transformLine(data []complex128, start int, stride int, inver
 
 	if stride == 1 {
 		line := data[start : start+p.n]
+
 		var err error
 		if inverse {
 			err = p.fftPlan.Inverse(p.scratchB, line)
 		} else {
 			err = p.fftPlan.Forward(p.scratchB, line)
 		}
+
 		if err != nil {
 			return err
 		}
+
 		copy(line, p.scratchB)
+
 		return nil
 	}
 
-	for i := 0; i < p.n; i++ {
+	for i := range p.n {
 		p.scratchA[i] = data[start+i*stride]
 	}
 
@@ -291,11 +306,12 @@ func (p *axisPlan) transformLine(data []complex128, start int, stride int, inver
 	} else {
 		err = p.fftPlan.Forward(p.scratchB, p.scratchA)
 	}
+
 	if err != nil {
 		return err
 	}
 
-	for i := 0; i < p.n; i++ {
+	for i := range p.n {
 		data[start+i*stride] = p.scratchB[i]
 	}
 

@@ -78,8 +78,10 @@ func TestPlan3D_DirichletDirichletDirichlet(t *testing.T) {
 	u := make([]float64, nx*ny*nz)
 	for i := range nx {
 		x := float64(i+1) * hx
+
 		for j := range ny {
 			y := float64(j+1) * hy
+
 			for k := range nz {
 				z := float64(k+1) * hz
 				u[(i*ny+j)*nz+k] = math.Sin(math.Pi*x) * math.Sin(2.0*math.Pi*y) * math.Sin(3.0*math.Pi*z)
@@ -121,8 +123,10 @@ func TestPlan3D_NeumannNeumannNeumann(t *testing.T) {
 	u := make([]float64, nx*ny*nz)
 	for i := range nx {
 		x := (float64(i) + 0.5) * hx
+
 		for j := range ny {
 			y := (float64(j) + 0.5) * hy
+
 			for k := range nz {
 				z := (float64(k) + 0.5) * hz
 				u[(i*ny+j)*nz+k] = math.Cos(math.Pi*x) * math.Cos(2.0*math.Pi*y) * math.Cos(math.Pi*z)
@@ -164,8 +168,10 @@ func TestPlan3D_PeriodicDirichletNeumann(t *testing.T) {
 	u := make([]float64, nx*ny*nz)
 	for i := range nx {
 		x := float64(i) * hx
+
 		for j := range ny {
 			y := float64(j+1) * hy
+
 			for k := range nz {
 				z := (float64(k) + 0.5) * hz
 				u[(i*ny+j)*nz+k] = math.Sin(2.0*math.Pi*x) * math.Sin(math.Pi*y) * math.Cos(2.0*math.Pi*z)
@@ -207,8 +213,10 @@ func TestPlan3D_DirichletPeriodicNeumann(t *testing.T) {
 	u := make([]float64, nx*ny*nz)
 	for i := range nx {
 		x := float64(i+1) * hx
+
 		for j := range ny {
 			y := float64(j) * hy
+
 			for k := range nz {
 				z := (float64(k) + 0.5) * hz
 				u[(i*ny+j)*nz+k] = math.Sin(math.Pi*x) * math.Sin(2.0*math.Pi*y) * math.Cos(math.Pi*z)
@@ -233,6 +241,7 @@ func TestPlan3D_DirichletPeriodicNeumann(t *testing.T) {
 
 func axisBasis(bc poisson.BCType, n int) (float64, []float64) {
 	values := make([]float64, n)
+
 	switch bc {
 	case poisson.Dirichlet:
 		h := 1.0 / float64(n+1)
@@ -240,6 +249,7 @@ func axisBasis(bc poisson.BCType, n int) (float64, []float64) {
 			x := float64(i+1) * h
 			values[i] = math.Sin(math.Pi * x)
 		}
+
 		return h, values
 	case poisson.Neumann:
 		h := 1.0 / float64(n)
@@ -247,6 +257,7 @@ func axisBasis(bc poisson.BCType, n int) (float64, []float64) {
 			x := (float64(i) + 0.5) * h
 			values[i] = math.Cos(math.Pi * x)
 		}
+
 		return h, values
 	default:
 		h := 1.0 / float64(n)
@@ -254,6 +265,7 @@ func axisBasis(bc poisson.BCType, n int) (float64, []float64) {
 			x := float64(i) * h
 			values[i] = math.Sin(2.0 * math.Pi * x)
 		}
+
 		return h, values
 	}
 }
@@ -296,9 +308,11 @@ func benchmarkPlan3DSolve(b *testing.B, n int, bc [3]poisson.BCType) {
 	})
 
 	dst := make([]float64, len(u))
+
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		if err := plan.Solve(dst, rhs); err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}

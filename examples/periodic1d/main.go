@@ -25,7 +25,7 @@ func main() {
 	rhs := make([]float64, nx)
 	uExact := make([]float64, nx)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i) * hx
 		uExact[i] = math.Sin(2.0 * math.Pi * x)
 		rhs[i] = 4.0 * math.Pi * math.Pi * math.Sin(2.0*math.Pi*x)
@@ -48,7 +48,8 @@ func main() {
 
 	// 5. Check error
 	maxErr := 0.0
-	for i := 0; i < nx; i++ {
+
+	for i := range nx {
 		errVal := math.Abs(u[i] - uExact[i])
 		if errVal > maxErr {
 			maxErr = errVal

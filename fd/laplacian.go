@@ -15,6 +15,7 @@ func Apply1D(dst, src []float64, h float64, bc poisson.BCType) {
 	}
 
 	invH2 := 1.0 / (h * h)
+
 	if &dst[0] == &src[0] {
 		tmp := make([]float64, n)
 		copy(tmp, src)
@@ -47,15 +48,16 @@ func Apply1D(dst, src []float64, h float64, bc poisson.BCType) {
 	case poisson.Neumann:
 		for i := range n {
 			var left, right float64
-			switch {
-			case i == 0:
+
+			switch i {
+			case 0:
 				left = src[0]
 				if n == 1 {
 					right = src[0]
 				} else {
 					right = src[1]
 				}
-			case i == n-1:
+			case n - 1:
 				left = src[n-2]
 				right = src[n-1]
 			default:
@@ -73,6 +75,7 @@ func Apply1D(dst, src []float64, h float64, bc poisson.BCType) {
 // with per-axis boundary handling set by bc. It is safe to call with dst == src.
 func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bc [2]poisson.BCType) {
 	nx := shape[0]
+
 	ny := shape[1]
 	if nx == 0 || ny == 0 {
 		return
@@ -100,6 +103,7 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bc [2]poisson.B
 			u := src[idx]
 
 			var left, right float64
+
 			switch {
 			case i > 0:
 				left = src[(i-1)*ny+j]
@@ -123,6 +127,7 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bc [2]poisson.B
 			}
 
 			var down, up float64
+
 			switch {
 			case j > 0:
 				down = src[row+j-1]
@@ -156,6 +161,7 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bc [2]poisson.B
 func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bc [3]poisson.BCType) {
 	nx := shape[0]
 	ny := shape[1]
+
 	nz := shape[2]
 	if nx == 0 || ny == 0 || nz == 0 {
 		return
@@ -186,6 +192,7 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bc [3]poisson.B
 				u := src[idx]
 
 				var left, right float64
+
 				switch {
 				case i > 0:
 					left = src[idx-plane]
@@ -209,6 +216,7 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bc [3]poisson.B
 				}
 
 				var down, up float64
+
 				switch {
 				case j > 0:
 					down = src[idx-nz]
@@ -232,6 +240,7 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bc [3]poisson.B
 				}
 
 				var back, front float64
+
 				switch {
 				case k > 0:
 					back = src[idx-1]

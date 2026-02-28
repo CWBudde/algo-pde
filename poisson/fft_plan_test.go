@@ -35,6 +35,7 @@ func TestFFTPlan_TransformLines_Errors(t *testing.T) {
 	}
 
 	wrongAxisLenShape := grid.NewShape2D(5, 3)
+
 	data := make([]complex128, wrongAxisLenShape.Size())
 	if err := p.TransformLines(data, wrongAxisLenShape, 0, false); !errors.Is(err, ErrSizeMismatch) {
 		t.Fatalf("axis length mismatch err = %v, want ErrSizeMismatch", err)
@@ -60,6 +61,7 @@ func TestFFTPlan_TransformLines_MatchesReference_Axis0_NonContiguous(t *testing.
 	for i := range data {
 		data[i] = complex(float64(i+1), float64(1000+i))
 	}
+
 	got := append([]complex128(nil), data...)
 	want := append([]complex128(nil), data...)
 
@@ -69,10 +71,12 @@ func TestFFTPlan_TransformLines_MatchesReference_Axis0_NonContiguous(t *testing.
 
 	it := grid.NewLineIterator(shape, 0)
 	stride := it.LineStride()
+
 	start := it.StartIndex()
 	if err := refPlan.TransformStrided(want[start:], want[start:], stride, false); err != nil {
 		t.Fatalf("reference TransformStrided failed: %v", err)
 	}
+
 	for it.Next() {
 		start = it.StartIndex()
 		if err := refPlan.TransformStrided(want[start:], want[start:], stride, false); err != nil {
@@ -95,6 +99,7 @@ func TestFFTPlan_TransformLines_RoundTrip_2D_Axis0And1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFFTPlan(nx) failed: %v", err)
 	}
+
 	planY, err := NewFFTPlan(ny)
 	if err != nil {
 		t.Fatalf("NewFFTPlan(ny) failed: %v", err)
@@ -104,12 +109,14 @@ func TestFFTPlan_TransformLines_RoundTrip_2D_Axis0And1(t *testing.T) {
 	for i := range data {
 		data[i] = complex(math.Sin(float64(i+1)*0.1), math.Cos(float64(i+1)*0.07))
 	}
+
 	orig := append([]complex128(nil), data...)
 
 	// Forward along both axes.
 	if err := planX.TransformLines(data, shape, 0, false); err != nil {
 		t.Fatalf("forward axis 0 failed: %v", err)
 	}
+
 	if err := planY.TransformLines(data, shape, 1, false); err != nil {
 		t.Fatalf("forward axis 1 failed: %v", err)
 	}
@@ -118,6 +125,7 @@ func TestFFTPlan_TransformLines_RoundTrip_2D_Axis0And1(t *testing.T) {
 	if err := planY.TransformLines(data, shape, 1, true); err != nil {
 		t.Fatalf("inverse axis 1 failed: %v", err)
 	}
+
 	if err := planX.TransformLines(data, shape, 0, true); err != nil {
 		t.Fatalf("inverse axis 0 failed: %v", err)
 	}
@@ -137,6 +145,7 @@ func TestFFTPlan_TransformLines_ParallelMatchesSerial(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFFTPlan(nx) failed: %v", err)
 	}
+
 	parallelPlan, err := NewFFTPlanWithWorkers(nx, 3)
 	if err != nil {
 		t.Fatalf("NewFFTPlanWithWorkers(nx, 3) failed: %v", err)
@@ -146,12 +155,14 @@ func TestFFTPlan_TransformLines_ParallelMatchesSerial(t *testing.T) {
 	for i := range data {
 		data[i] = complex(float64(i%7+1), float64(100+i))
 	}
+
 	got := append([]complex128(nil), data...)
 	want := append([]complex128(nil), data...)
 
 	if err := parallelPlan.TransformLines(got, shape, 0, false); err != nil {
 		t.Fatalf("parallel TransformLines failed: %v", err)
 	}
+
 	if err := serialPlan.TransformLines(want, shape, 0, false); err != nil {
 		t.Fatalf("serial TransformLines failed: %v", err)
 	}

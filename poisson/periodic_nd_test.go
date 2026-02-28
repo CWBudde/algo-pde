@@ -30,6 +30,7 @@ func TestNewPlanNDPeriodic_InvalidInputs(t *testing.T) {
 
 func TestPlanNDPeriodic_Solve_Manufactured(t *testing.T) {
 	dims := poisson.Shape{4, 5, 6, 7}
+
 	h := make([]float64, len(dims))
 	for i, n := range dims {
 		h[i] = 1.0 / float64(n)
@@ -54,6 +55,7 @@ func TestPlanNDPeriodic_Solve_Manufactured(t *testing.T) {
 
 func TestPlanNDPeriodic_SolveInPlace(t *testing.T) {
 	dims := poisson.Shape{4, 4, 4, 4}
+
 	h := make([]float64, len(dims))
 	for i, n := range dims {
 		h[i] = 1.0 / float64(n)
@@ -89,6 +91,7 @@ func manufacturedND(dims poisson.Shape, h []float64) ([]float64, []float64) {
 
 	for idx := range u {
 		val := 1.0
+
 		for d := range dims {
 			x := float64(indices[d]) * h[d]
 			val *= math.Sin(2.0 * math.Pi * x / L[d])
@@ -101,6 +104,7 @@ func manufacturedND(dims poisson.Shape, h []float64) ([]float64, []float64) {
 			if indices[d] < dims[d] {
 				break
 			}
+
 			indices[d] = 0
 		}
 	}
@@ -122,6 +126,7 @@ func applyPeriodicND(dst, src []float64, dims poisson.Shape, h []float64) {
 	}
 
 	strides := make([]int, nDims)
+
 	stride := 1
 	for d := nDims - 1; d >= 0; d-- {
 		strides[d] = stride
@@ -129,11 +134,12 @@ func applyPeriodicND(dst, src []float64, dims poisson.Shape, h []float64) {
 	}
 
 	indices := make([]int, nDims)
+
 	for idx := range src {
 		u := src[idx]
 		sum := 0.0
 
-		for d := 0; d < nDims; d++ {
+		for d := range nDims {
 			left := indices[d] - 1
 			if left < 0 {
 				left = dims[d] - 1
@@ -157,6 +163,7 @@ func applyPeriodicND(dst, src []float64, dims poisson.Shape, h []float64) {
 			if indices[d] < dims[d] {
 				break
 			}
+
 			indices[d] = 0
 		}
 	}

@@ -86,6 +86,7 @@ func TestDCTPlan_Orthogonality(t *testing.T) {
 	for i := range n {
 		weights[i] = 1.0
 	}
+
 	weights[0] = 0.5
 	weights[n-1] = 0.5
 
@@ -98,6 +99,7 @@ func TestDCTPlan_Orthogonality(t *testing.T) {
 			}
 
 			var expected float64
+
 			if k1 == k2 {
 				if k1 == 0 || k1 == n-1 {
 					expected = float64(n - 1)
@@ -125,6 +127,7 @@ func TestDCTPlan_KnownValues(t *testing.T) {
 
 	// Create a pure cosine mode (mode k=2)
 	k := 2
+
 	src := make([]float64, n)
 	for i := range n {
 		src[i] = DCT1Coefficient(i, k, n)
@@ -188,6 +191,7 @@ func TestDCTPlan_InPlace(t *testing.T) {
 
 	// Create test input
 	src := make([]float64, n)
+
 	expected := make([]float64, n)
 	for i := range n {
 		src[i] = math.Cos(float64(i) * 0.5)
@@ -340,6 +344,7 @@ func TestDCT2Plan_KnownValues(t *testing.T) {
 	}
 
 	k := 3
+
 	src := make([]float64, n)
 	for i := range n {
 		src[i] = DCT2Coefficient(i, k, n)
@@ -371,6 +376,7 @@ func TestDCT2Plan_InPlace(t *testing.T) {
 	}
 
 	src := make([]float64, n)
+
 	expected := make([]float64, n)
 	for i := range n {
 		src[i] = math.Cos(float64(i) * 0.3)
@@ -464,6 +470,7 @@ func TestDCT2Plan_Bytes(t *testing.T) {
 
 func TestDCT2Plan_Reference(t *testing.T) {
 	n := 6
+
 	plan, err := NewDCT2Plan(n)
 	if err != nil {
 		t.Fatalf("NewDCT2Plan failed: %v", err)
@@ -478,6 +485,7 @@ func TestDCT2Plan_Reference(t *testing.T) {
 	}
 
 	dct2Reference(ref, src)
+
 	for i := range n {
 		if math.Abs(dst[i]-ref[i]) > 1e-9 {
 			t.Errorf("reference mismatch at [%d]: got %v, want %v", i, dst[i], ref[i])
@@ -496,12 +504,14 @@ func BenchmarkDCTPlan_Forward(b *testing.B) {
 			}
 
 			src := make([]float64, n)
+
 			dst := make([]float64, n)
 			for i := range n {
 				src[i] = float64(i)
 			}
 
 			b.ResetTimer()
+
 			for range b.N {
 				_ = plan.Forward(dst, src)
 			}
@@ -520,12 +530,14 @@ func BenchmarkDCT2Plan_Forward(b *testing.B) {
 			}
 
 			src := make([]float64, n)
+
 			dst := make([]float64, n)
 			for i := range n {
 				src[i] = float64(i)
 			}
 
 			b.ResetTimer()
+
 			for range b.N {
 				_ = plan.Forward(dst, src)
 			}
@@ -540,6 +552,7 @@ func dct2Reference(dst, src []float64) {
 		for i := range n {
 			sum += src[i] * DCT2Coefficient(i, k, n)
 		}
+
 		dst[k] = sum
 	}
 }

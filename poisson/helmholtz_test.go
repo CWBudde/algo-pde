@@ -62,6 +62,7 @@ func TestHelmholtzPlan1D_NegativeAlphaResonant(t *testing.T) {
 	}
 
 	rhs := make([]float64, n)
+
 	dst := make([]float64, n)
 	if err := plan.Solve(dst, rhs); !errors.Is(err, poisson.ErrResonant) {
 		t.Fatalf("expected ErrResonant, got %v", err)
@@ -84,6 +85,7 @@ func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
 	u := make([]float64, nx*ny)
 	for i := range nx {
 		x := float64(i+1) * hx
+
 		for j := range ny {
 			y := float64(j+1) * hy
 			u[i*ny+j] = math.Sin(math.Pi*x/Lx)*math.Sin(2.0*math.Pi*y/Ly) +
@@ -126,10 +128,13 @@ func TestHelmholtzPlan3D_PositiveAlpha(t *testing.T) {
 
 	u := make([]float64, nx*ny*nz)
 	plane := ny * nz
+
 	for i := range nx {
 		x := float64(i+1) * hx
+
 		for j := range ny {
 			y := float64(j+1) * hy
+
 			for k := range nz {
 				z := float64(k+1) * hz
 				u[i*plane+j*nz+k] = math.Sin(math.Pi*x/Lx)*math.Sin(math.Pi*y/Ly)*math.Sin(2.0*math.Pi*z/Lz) +

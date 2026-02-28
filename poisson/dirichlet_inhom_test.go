@@ -59,25 +59,28 @@ func TestApplyDirichletRHS2D_NonZero(t *testing.T) {
 	Ly := float64(ny+1) * hy
 
 	u := make([]float64, nx*ny)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := float64(j+1) * hy
 			u[i*ny+j] = math.Sin(math.Pi*x/Lx)*math.Sin(math.Pi*y/Ly) + 0.2*x + 0.3*y + 0.1
 		}
 	}
 
 	xLow := make([]float64, ny)
+
 	xHigh := make([]float64, ny)
-	for j := 0; j < ny; j++ {
+	for j := range ny {
 		y := float64(j+1) * hy
 		xLow[j] = 0.3*y + 0.1
 		xHigh[j] = 0.2*Lx + 0.3*y + 0.1
 	}
 
 	yLow := make([]float64, nx)
+
 	yHigh := make([]float64, nx)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
 		yLow[i] = 0.2*x + 0.1
 		yHigh[i] = 0.2*x + 0.3*Ly + 0.1
@@ -114,15 +117,18 @@ func TestApplyDirichletRHS2D_NonZero(t *testing.T) {
 func applyInhomDirichlet1D(dst, src []float64, h, g0, gL float64) {
 	n := len(src)
 	invH2 := 1.0 / (h * h)
+
 	for i := range n {
 		left := g0
 		if i > 0 {
 			left = src[i-1]
 		}
+
 		right := gL
 		if i+1 < n {
 			right = src[i+1]
 		}
+
 		dst[i] = (2.0*src[i] - left - right) * invH2
 	}
 }
@@ -133,9 +139,9 @@ func applyInhomDirichlet2D(dst, src []float64, shape grid.Shape, hx, hy float64,
 	invHx2 := 1.0 / (hx * hx)
 	invHy2 := 1.0 / (hy * hy)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		row := i * ny
-		for j := 0; j < ny; j++ {
+		for j := range ny {
 			idx := row + j
 			u := src[idx]
 

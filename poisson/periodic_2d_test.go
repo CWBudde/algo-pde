@@ -10,8 +10,10 @@ import (
 	"github.com/cwbudde/algo-pde/poisson"
 )
 
-const periodic2dTol = 1e-10
-const periodic2dRealTol = 1e-6
+const (
+	periodic2dTol     = 1e-10
+	periodic2dRealTol = 1e-6
+)
 
 func TestNewPlan2DPeriodic_InvalidInputs(t *testing.T) {
 	if _, err := poisson.NewPlan2DPeriodic(0, 4, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
@@ -42,6 +44,7 @@ func TestPlan2DPeriodic_Solve_Manufactured_SineSine(t *testing.T) {
 	u := make([]float64, nx*ny)
 	for i := range nx {
 		x := float64(i) * hx
+
 		row := i * ny
 		for j := range ny {
 			y := float64(j) * hy
@@ -77,6 +80,7 @@ func TestPlan2DPeriodic_Solve_Manufactured_CosCos(t *testing.T) {
 	u := make([]float64, nx*ny)
 	for i := range nx {
 		x := float64(i) * hx
+
 		row := i * ny
 		for j := range ny {
 			y := float64(j) * hy
@@ -112,6 +116,7 @@ func TestPlan2DPeriodic_Solve_RealFFT(t *testing.T) {
 	u := make([]float64, nx*ny)
 	for i := range nx {
 		x := float64(i) * hx
+
 		row := i * ny
 		for j := range ny {
 			y := float64(j) * hy
@@ -140,6 +145,7 @@ func TestPlan2DPeriodic_Convergence(t *testing.T) {
 
 	for idx, n := range sizes {
 		h := 1.0 / float64(n)
+
 		plan, err := poisson.NewPlan2DPeriodic(n, n, h, h)
 		if err != nil {
 			t.Fatalf("NewPlan2DPeriodic failed: %v", err)
@@ -247,6 +253,7 @@ func BenchmarkPlan2DPeriodic_Solve_1024(b *testing.B) {
 
 func benchmarkPlan2DPeriodicSolve(b *testing.B, n int) {
 	h := 1.0 / float64(n)
+
 	plan, err := poisson.NewPlan2DPeriodic(n, n, h, h)
 	if err != nil {
 		b.Fatalf("NewPlan2DPeriodic failed: %v", err)
@@ -257,9 +264,11 @@ func benchmarkPlan2DPeriodicSolve(b *testing.B, n int) {
 	fd.Apply2D(rhs, u, grid.NewShape2D(n, n), [2]float64{h, h}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
 
 	dst := make([]float64, n*n)
+
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		if err := plan.Solve(dst, rhs); err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}
@@ -275,6 +284,7 @@ func continuousRHSPeriodic2D(u, rhs []float64, nx, ny int, hx, hy float64) {
 
 	for i := range nx {
 		x := float64(i) * hx
+
 		row := i * ny
 		for j := range ny {
 			y := float64(j) * hy

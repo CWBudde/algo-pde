@@ -45,6 +45,7 @@ func FuzzPlanSolveBasic(f *testing.F) {
 		for _, v := range n {
 			size *= v
 		}
+
 		if size == 0 {
 			return
 		}

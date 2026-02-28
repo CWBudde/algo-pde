@@ -89,8 +89,10 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 				p.work.Complex[i] = 0
 				continue
 			}
+
 			p.work.Complex[i] /= complex(p.eig[i], 0)
 		}
+
 		return nil
 	}); err != nil {
 		return err
@@ -125,6 +127,7 @@ func meanAndMaxAbs(values []float64) (mean, maxAbs float64) {
 	sum := 0.0
 	for _, v := range values {
 		sum += v
+
 		abs := math.Abs(v)
 		if abs > maxAbs {
 			maxAbs = abs

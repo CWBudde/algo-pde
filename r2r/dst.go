@@ -104,6 +104,7 @@ func NewDST2Plan(n int, opts ...Option) (*DST2Plan, error) {
 	}
 
 	phase := make([]complex128, n)
+
 	den := 2.0 * float64(n)
 	for k := range n {
 		angle := -math.Pi * float64(k+1) / den
@@ -263,6 +264,7 @@ func (p *DST2Plan) Inverse(dst, src []float64) error {
 	// Weighted transpose of DST-II kernel (O(N^2)); TODO: replace with FFT-based DST-II inverse.
 	for n := range p.n {
 		sum := 0.0
+
 		for k := range p.n {
 			weight := 2.0 / float64(p.n)
 			if k == p.n-1 {

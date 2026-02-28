@@ -12,7 +12,6 @@ func main() {
 	// (cell-centered points).
 	// Grid points x_i = (i + 0.5) * h.
 	// Domain [0, L] with L = N*h.
-
 	nx, ny := 64, 64
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -35,9 +34,10 @@ func main() {
 	rhs := make([]float64, nx*ny)
 	uExact := make([]float64, nx*ny)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := (float64(i) + 0.5) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := (float64(j) + 0.5) * hy
 			val := math.Cos(math.Pi*x) * math.Cos(math.Pi*y)
 			uExact[i*ny+j] = val
@@ -71,19 +71,23 @@ func main() {
 
 	meanU := 0.0
 	meanExact := 0.0
+
 	for k := range u {
 		meanU += u[k]
 		meanExact += uExact[k]
 	}
+
 	meanU /= float64(len(u))
 	meanExact /= float64(len(uExact))
 
 	maxErr := 0.0
+
 	for i := range u {
 		diff := math.Abs((u[i] - meanU) - (uExact[i] - meanExact))
 		if diff > maxErr {
 			maxErr = diff
 		}
 	}
+
 	fmt.Printf("Max Error (modulo constant): %.3e\n", maxErr)
 }

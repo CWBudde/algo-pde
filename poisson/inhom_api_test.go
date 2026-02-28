@@ -28,25 +28,28 @@ func TestPlan2D_SolveWithBC_DirichletNeumann(t *testing.T) {
 	}
 
 	u := make([]float64, nx*ny)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := (float64(j) + 0.5) * hy
 			u[i*ny+j] = math.Sin(math.Pi*x/Lx)*math.Cos(math.Pi*y/Ly) + 0.2*x + 0.3*y + 0.1
 		}
 	}
 
 	xLow := make([]float64, ny)
+
 	xHigh := make([]float64, ny)
-	for j := 0; j < ny; j++ {
+	for j := range ny {
 		y := (float64(j) + 0.5) * hy
 		xLow[j] = 0.3*y + 0.1
 		xHigh[j] = 0.2*Lx + 0.3*y + 0.1
 	}
 
 	yLow := make([]float64, nx)
+
 	yHigh := make([]float64, nx)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		yLow[i] = 0.3
 		yHigh[i] = 0.3
 	}
@@ -91,12 +94,15 @@ func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	}
 
 	u := make([]float64, nx*ny*nz)
+
 	shape := grid.NewShape3D(nx, ny, nz)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
-		for j := 0; j < ny; j++ {
+
+		for j := range ny {
 			y := float64(j+1) * hy
-			for k := 0; k < nz; k++ {
+
+			for k := range nz {
 				z := (float64(k) + 0.5) * hz
 				u[grid.Index3D(i, j, k, shape)] = math.Sin(math.Pi*x/Lx)*math.Sin(math.Pi*y/Ly)*math.Cos(math.Pi*z/Lz) + 0.2*x + 0.1 + 0.3*z
 			}
@@ -104,9 +110,10 @@ func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	}
 
 	xLow := make([]float64, ny*nz)
+
 	xHigh := make([]float64, ny*nz)
-	for j := 0; j < ny; j++ {
-		for k := 0; k < nz; k++ {
+	for j := range ny {
+		for k := range nz {
 			z := (float64(k) + 0.5) * hz
 			idx := j*nz + k
 			xLow[idx] = 0.1 + 0.3*z
@@ -115,10 +122,12 @@ func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	}
 
 	yLow := make([]float64, nx*nz)
+
 	yHigh := make([]float64, nx*nz)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
-		for k := 0; k < nz; k++ {
+
+		for k := range nz {
 			z := (float64(k) + 0.5) * hz
 			idx := i*nz + k
 			yLow[idx] = 0.2*x + 0.1 + 0.3*z
@@ -127,9 +136,10 @@ func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	}
 
 	zLow := make([]float64, nx*ny)
+
 	zHigh := make([]float64, nx*ny)
-	for i := 0; i < nx; i++ {
-		for j := 0; j < ny; j++ {
+	for i := range nx {
+		for j := range ny {
 			idx := i*ny + j
 			zLow[idx] = 0.3
 			zHigh[idx] = 0.3
@@ -164,9 +174,9 @@ func applyInhomDirichletNeumann2D(dst, src []float64, shape grid.Shape, hx, hy f
 	invHx2 := 1.0 / (hx * hx)
 	invHy2 := 1.0 / (hy * hy)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		row := i * ny
-		for j := 0; j < ny; j++ {
+		for j := range ny {
 			idx := row + j
 			u := src[idx]
 
@@ -204,11 +214,11 @@ func applyInhomDirichletNeumann3D(dst, src []float64, shape grid.Shape, hx, hy, 
 	invHz2 := 1.0 / (hz * hz)
 	plane := ny * nz
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		iPlane := i * plane
-		for j := 0; j < ny; j++ {
+		for j := range ny {
 			row := iPlane + j*nz
-			for k := 0; k < nz; k++ {
+			for k := range nz {
 				idx := row + k
 				u := src[idx]
 

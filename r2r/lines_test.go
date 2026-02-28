@@ -107,6 +107,7 @@ func TestDSTPlan_RoundTripLines_2D(t *testing.T) {
 	// Create test data
 	data := make([]float64, nx*ny)
 	original := make([]float64, nx*ny)
+
 	for i := range data {
 		data[i] = float64(i + 1)
 		original[i] = data[i]
@@ -116,6 +117,7 @@ func TestDSTPlan_RoundTripLines_2D(t *testing.T) {
 	if err := planX.ForwardLines(data, shape, 0); err != nil {
 		t.Fatalf("ForwardLines axis 0 failed: %v", err)
 	}
+
 	if err := planY.ForwardLines(data, shape, 1); err != nil {
 		t.Fatalf("ForwardLines axis 1 failed: %v", err)
 	}
@@ -124,6 +126,7 @@ func TestDSTPlan_RoundTripLines_2D(t *testing.T) {
 	if err := planY.InverseLines(data, shape, 1); err != nil {
 		t.Fatalf("InverseLines axis 1 failed: %v", err)
 	}
+
 	if err := planX.InverseLines(data, shape, 0); err != nil {
 		t.Fatalf("InverseLines axis 0 failed: %v", err)
 	}
@@ -219,6 +222,7 @@ func TestDCTPlan_RoundTripLines_2D(t *testing.T) {
 	// Create test data
 	data := make([]float64, nx*ny)
 	original := make([]float64, nx*ny)
+
 	for i := range data {
 		data[i] = float64(i + 1)
 		original[i] = data[i]
@@ -228,6 +232,7 @@ func TestDCTPlan_RoundTripLines_2D(t *testing.T) {
 	if err := planX.ForwardLines(data, shape, 0); err != nil {
 		t.Fatalf("ForwardLines axis 0 failed: %v", err)
 	}
+
 	if err := planY.ForwardLines(data, shape, 1); err != nil {
 		t.Fatalf("ForwardLines axis 1 failed: %v", err)
 	}
@@ -236,6 +241,7 @@ func TestDCTPlan_RoundTripLines_2D(t *testing.T) {
 	if err := planY.InverseLines(data, shape, 1); err != nil {
 		t.Fatalf("InverseLines axis 1 failed: %v", err)
 	}
+
 	if err := planX.InverseLines(data, shape, 0); err != nil {
 		t.Fatalf("InverseLines axis 0 failed: %v", err)
 	}
@@ -260,6 +266,7 @@ func TestDSTPlan_ForwardLines_3D(t *testing.T) {
 	// Create test data
 	data := make([]float64, nx*ny*nz)
 	original := make([]float64, nx*ny*nz)
+
 	for i := range data {
 		data[i] = float64(i + 1)
 		original[i] = data[i]
@@ -269,6 +276,7 @@ func TestDSTPlan_ForwardLines_3D(t *testing.T) {
 	if err := plan.ForwardLines(data, shape, 1); err != nil {
 		t.Fatalf("ForwardLines failed: %v", err)
 	}
+
 	if err := plan.InverseLines(data, shape, 1); err != nil {
 		t.Fatalf("InverseLines failed: %v", err)
 	}
@@ -292,6 +300,7 @@ func TestDCTPlan_ForwardLines_3D(t *testing.T) {
 	// Create test data
 	data := make([]float64, nx*ny*nz)
 	original := make([]float64, nx*ny*nz)
+
 	for i := range data {
 		data[i] = float64(i + 1)
 		original[i] = data[i]
@@ -301,6 +310,7 @@ func TestDCTPlan_ForwardLines_3D(t *testing.T) {
 	if err := plan.ForwardLines(data, shape, 2); err != nil {
 		t.Fatalf("ForwardLines failed: %v", err)
 	}
+
 	if err := plan.InverseLines(data, shape, 2); err != nil {
 		t.Fatalf("InverseLines failed: %v", err)
 	}
@@ -342,6 +352,7 @@ func BenchmarkDSTPlan_ForwardLines_2D(b *testing.B) {
 			data := make([]float64, sz.nx*sz.ny)
 
 			b.ResetTimer()
+
 			for range b.N {
 				_ = plan.ForwardLines(data, shape, 0)
 			}
@@ -363,6 +374,7 @@ func BenchmarkDCTPlan_ForwardLines_2D(b *testing.B) {
 			data := make([]float64, sz.nx*sz.ny)
 
 			b.ResetTimer()
+
 			for range b.N {
 				_ = plan.ForwardLines(data, shape, 0)
 			}
