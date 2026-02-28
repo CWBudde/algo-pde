@@ -11,11 +11,16 @@ import (
 const periodicNDTol = 1e-9
 
 func TestNewPlanNDPeriodic_InvalidInputs(t *testing.T) {
+	t.Parallel()
+
 	if _, err := poisson.NewPlanNDPeriodic(nil, nil); !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlanNDPeriodic(poisson.Shape{4, 0}, []float64{1.0, 1.0}); !errors.Is(err, poisson.ErrInvalidSize) {
+	if _, err := poisson.NewPlanNDPeriodic(
+		poisson.Shape{4, 0},
+		[]float64{1.0, 1.0},
+	); !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
@@ -23,12 +28,17 @@ func TestNewPlanNDPeriodic_InvalidInputs(t *testing.T) {
 		t.Fatalf("expected error for mismatched h length")
 	}
 
-	if _, err := poisson.NewPlanNDPeriodic(poisson.Shape{4, 4}, []float64{1.0, 0.0}); !errors.Is(err, poisson.ErrInvalidSpacing) {
+	if _, err := poisson.NewPlanNDPeriodic(
+		poisson.Shape{4, 4},
+		[]float64{1.0, 0.0},
+	); !errors.Is(err, poisson.ErrInvalidSpacing) {
 		t.Fatalf("expected ErrInvalidSpacing, got %v", err)
 	}
 }
 
 func TestPlanNDPeriodic_Solve_Manufactured(t *testing.T) {
+	t.Parallel()
+
 	dims := poisson.Shape{4, 5, 6, 7}
 
 	h := make([]float64, len(dims))
@@ -54,6 +64,8 @@ func TestPlanNDPeriodic_Solve_Manufactured(t *testing.T) {
 }
 
 func TestPlanNDPeriodic_SolveInPlace(t *testing.T) {
+	t.Parallel()
+
 	dims := poisson.Shape{4, 4, 4, 4}
 
 	h := make([]float64, len(dims))

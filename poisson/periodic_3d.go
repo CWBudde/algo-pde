@@ -55,7 +55,12 @@ func NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option) (*Pla
 
 	if options.UseRealFFT {
 		if nz%2 != 0 || nz < 2 || !isPowerOfTwo(nx) || !isPowerOfTwo(ny) || !isPowerOfTwo(nz) {
-			log.Printf("poisson: real FFT disabled for 3D plan (nx=%d, ny=%d, nz=%d): requires even nz and power-of-two sizes", nx, ny, nz)
+			log.Printf(
+				"poisson: real FFT disabled for 3D plan (nx=%d, ny=%d, nz=%d): requires even nz and power-of-two sizes",
+				nx,
+				ny,
+				nz,
+			)
 		} else {
 			plan, err := algofft.NewPlanReal3D(nx, ny, nz)
 			if err != nil {
@@ -142,12 +147,14 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 			p.rbuf[i] = float32(v - offset)
 		}
 
-		if err := p.rfft.Forward(p.rspec, p.rbuf); err != nil {
+		err := p.rfft.Forward(p.rspec, p.rbuf)
+		if err != nil {
 			return fmt.Errorf("real FFT forward: %w", err)
 		}
 
 		workers := clampWorkers(p.opts.Workers, p.nx)
-		if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+
+		err = parallelFor(workers, p.nx, func(_ int, start, end int) error {
 			for i := start; i < end; i++ {
 				baseXY := i * p.ny * p.rhalf
 				for j := range p.ny {
@@ -167,11 +174,13 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 			}
 
 			return nil
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 
-		if err := p.rfft.Inverse(p.rbuf, p.rspec); err != nil {
+		err = p.rfft.Inverse(p.rbuf, p.rspec)
+		if err != nil {
 			return fmt.Errorf("real FFT inverse: %w", err)
 		}
 
@@ -191,20 +200,24 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 		p.work.Complex[i] = complex(v-offset, 0)
 	}
 
-	if err := p.fftX.TransformLines(p.work.Complex, p.shape, 0, false); err != nil {
+	err := p.fftX.TransformLines(p.work.Complex, p.shape, 0, false)
+	if err != nil {
 		return fmt.Errorf("FFT forward axis 0: %w", err)
 	}
 
-	if err := p.fftY.TransformLines(p.work.Complex, p.shape, 1, false); err != nil {
+	err = p.fftY.TransformLines(p.work.Complex, p.shape, 1, false)
+	if err != nil {
 		return fmt.Errorf("FFT forward axis 1: %w", err)
 	}
 
-	if err := p.fftZ.TransformLines(p.work.Complex, p.shape, 2, false); err != nil {
+	err = p.fftZ.TransformLines(p.work.Complex, p.shape, 2, false)
+	if err != nil {
 		return fmt.Errorf("FFT forward axis 2: %w", err)
 	}
 
 	workers := clampWorkers(p.opts.Workers, p.nx)
-	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+
+	err = parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			baseXY := i * p.ny * p.nz
 			for j := range p.ny {
@@ -224,19 +237,23 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 		}
 
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
 
-	if err := p.fftZ.TransformLines(p.work.Complex, p.shape, 2, true); err != nil {
+	err = p.fftZ.TransformLines(p.work.Complex, p.shape, 2, true)
+	if err != nil {
 		return fmt.Errorf("FFT inverse axis 2: %w", err)
 	}
 
-	if err := p.fftY.TransformLines(p.work.Complex, p.shape, 1, true); err != nil {
+	err = p.fftY.TransformLines(p.work.Complex, p.shape, 1, true)
+	if err != nil {
 		return fmt.Errorf("FFT inverse axis 1: %w", err)
 	}
 
-	if err := p.fftX.TransformLines(p.work.Complex, p.shape, 0, true); err != nil {
+	err = p.fftX.TransformLines(p.work.Complex, p.shape, 0, true)
+	if err != nil {
 		return fmt.Errorf("FFT inverse axis 0: %w", err)
 	}
 

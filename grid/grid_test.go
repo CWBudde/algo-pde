@@ -3,6 +3,8 @@ package grid
 import "testing"
 
 func TestShape_Dim(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		shape Shape
@@ -15,6 +17,8 @@ func TestShape_Dim(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.shape.Dim(); got != tt.want {
 				t.Errorf("Shape.Dim() = %v, want %v", got, tt.want)
 			}
@@ -23,6 +27,8 @@ func TestShape_Dim(t *testing.T) {
 }
 
 func TestShape_Size(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		shape Shape
@@ -34,6 +40,8 @@ func TestShape_Size(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.shape.Size(); got != tt.want {
 				t.Errorf("Shape.Size() = %v, want %v", got, tt.want)
 			}
@@ -42,6 +50,8 @@ func TestShape_Size(t *testing.T) {
 }
 
 func TestIndex2D(t *testing.T) {
+	t.Parallel()
+
 	ny := 5
 
 	tests := []struct {
@@ -62,6 +72,8 @@ func TestIndex2D(t *testing.T) {
 }
 
 func TestIndex3D(t *testing.T) {
+	t.Parallel()
+
 	shape := NewShape3D(4, 5, 6)
 
 	tests := []struct {
@@ -83,6 +95,8 @@ func TestIndex3D(t *testing.T) {
 }
 
 func TestFromIndex2D(t *testing.T) {
+	t.Parallel()
+
 	ny := 5
 
 	tests := []struct {
@@ -105,6 +119,8 @@ func TestFromIndex2D(t *testing.T) {
 }
 
 func TestFromIndex3D(t *testing.T) {
+	t.Parallel()
+
 	shape := NewShape3D(4, 5, 6)
 
 	tests := []struct {
@@ -129,6 +145,8 @@ func TestFromIndex3D(t *testing.T) {
 }
 
 func TestRowMajorStride(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		shape Shape
@@ -140,6 +158,8 @@ func TestRowMajorStride(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := RowMajorStride(tt.shape)
 			if got != tt.want {
 				t.Errorf("RowMajorStride(%v) = %v, want %v", tt.shape, got, tt.want)
@@ -149,6 +169,8 @@ func TestRowMajorStride(t *testing.T) {
 }
 
 func TestLineIterator_2D_Axis0(t *testing.T) {
+	t.Parallel()
+
 	// 3x4 grid, iterate along axis 0 (rows)
 	// Should give 4 lines (one per column j=0,1,2,3)
 	shape := NewShape2D(3, 4)
@@ -187,6 +209,8 @@ func TestLineIterator_2D_Axis0(t *testing.T) {
 }
 
 func TestLineIterator_2D_Axis1(t *testing.T) {
+	t.Parallel()
+
 	// 3x4 grid, iterate along axis 1 (columns)
 	// Should give 3 lines (one per row i=0,1,2)
 	shape := NewShape2D(3, 4)
@@ -220,6 +244,8 @@ func TestLineIterator_2D_Axis1(t *testing.T) {
 }
 
 func TestPlaneIterator_3D_Axis0(t *testing.T) {
+	t.Parallel()
+
 	// 3x4x5 grid, planes orthogonal to axis 0 (YZ planes).
 	shape := NewShape3D(3, 4, 5)
 	it := NewPlaneIterator(shape, 0)
@@ -254,6 +280,8 @@ func TestPlaneIterator_3D_Axis0(t *testing.T) {
 }
 
 func TestPlaneIterator_3D_Axis1(t *testing.T) {
+	t.Parallel()
+
 	// 3x4x5 grid, planes orthogonal to axis 1 (XZ planes).
 	shape := NewShape3D(3, 4, 5)
 	it := NewPlaneIterator(shape, 1)
@@ -288,6 +316,8 @@ func TestPlaneIterator_3D_Axis1(t *testing.T) {
 }
 
 func TestPlaneIterator_3D_Axis2(t *testing.T) {
+	t.Parallel()
+
 	// 3x4x5 grid, planes orthogonal to axis 2 (XY planes).
 	shape := NewShape3D(3, 4, 5)
 	it := NewPlaneIterator(shape, 2)
@@ -322,6 +352,8 @@ func TestPlaneIterator_3D_Axis2(t *testing.T) {
 }
 
 func TestIndexRoundTrip2D(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 7, 11
 	for i := range nx {
 		for j := range ny {
@@ -336,6 +368,8 @@ func TestIndexRoundTrip2D(t *testing.T) {
 }
 
 func TestIndexRoundTrip3D(t *testing.T) {
+	t.Parallel()
+
 	shape := NewShape3D(5, 7, 11)
 	for i := range shape[0] {
 		for j := range shape[1] {
@@ -353,6 +387,8 @@ func TestIndexRoundTrip3D(t *testing.T) {
 }
 
 func TestCopyStrided(t *testing.T) {
+	t.Parallel()
+
 	src := []float64{0, 1, 2, 3, 4, 5}
 	dst := make([]float64, 3)
 
@@ -367,6 +403,8 @@ func TestCopyStrided(t *testing.T) {
 }
 
 func TestCopyStridedToContiguous(t *testing.T) {
+	t.Parallel()
+
 	src := []float64{10, 11, 12, 13, 14, 15}
 	dst := make([]float64, 3)
 
@@ -381,6 +419,8 @@ func TestCopyStridedToContiguous(t *testing.T) {
 }
 
 func TestCopyContiguousToStrided(t *testing.T) {
+	t.Parallel()
+
 	src := []float64{7, 8, 9}
 	dst := make([]float64, 6)
 

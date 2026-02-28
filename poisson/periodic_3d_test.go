@@ -217,6 +217,8 @@ func BenchmarkPlan3DPeriodic_Solve_64(b *testing.B)  { benchmarkPlan3DPeriodicSo
 func BenchmarkPlan3DPeriodic_Solve_128(b *testing.B) { benchmarkPlan3DPeriodicSolve(b, 128) }
 
 func benchmarkPlan3DPeriodicSolve(b *testing.B, n int) {
+	b.Helper()
+
 	h := 1.0 / float64(n)
 
 	plan, err := poisson.NewPlan3DPeriodic(n, n, n, h, h, h)
@@ -236,7 +238,8 @@ func benchmarkPlan3DPeriodicSolve(b *testing.B, n int) {
 	b.ResetTimer()
 
 	for range b.N {
-		if err := plan.Solve(dst, rhs); err != nil {
+		err := plan.Solve(dst, rhs)
+		if err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}
 	}

@@ -141,7 +141,9 @@ func (t *dstAxisTransform) transformLines(
 
 		for line := startLine; line < endLine; line++ {
 			start := lineStartIndex(shape, axis, line)
-			if err := t.transformLine(plan, realBuf, imagBuf, data, start, lineLen, lineStride, inverse); err != nil {
+
+			err := t.transformLine(plan, realBuf, imagBuf, data, start, lineLen, lineStride, inverse)
+			if err != nil {
 				return err
 			}
 		}
@@ -299,7 +301,9 @@ func (t *dctAxisTransform) transformLines(
 
 		for line := startLine; line < endLine; line++ {
 			start := lineStartIndex(shape, axis, line)
-			if err := t.transformLine(plan, realBuf, imagBuf, data, start, lineLen, lineStride, inverse); err != nil {
+
+			err := t.transformLine(plan, realBuf, imagBuf, data, start, lineLen, lineStride, inverse)
+			if err != nil {
 				return err
 			}
 		}

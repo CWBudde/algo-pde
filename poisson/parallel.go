@@ -65,7 +65,8 @@ func parallelFor(workers, tasks int, fn func(worker, start, end int) error) erro
 		go func(worker, start, end int) {
 			defer wg.Done()
 
-			if e := fn(worker, start, end); e != nil {
+			e := fn(worker, start, end)
+			if e != nil {
 				errOnce.Do(func() {
 					err = e
 				})

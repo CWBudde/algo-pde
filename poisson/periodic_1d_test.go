@@ -176,7 +176,8 @@ func BenchmarkPlan1DPeriodic_Solve(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		if err := plan.Solve(dst, rhs); err != nil {
+		err := plan.Solve(dst, rhs)
+		if err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}
 	}

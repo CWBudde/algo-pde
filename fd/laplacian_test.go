@@ -9,6 +9,8 @@ import (
 )
 
 func TestApply1DPeriodicModes(t *testing.T) {
+	t.Parallel()
+
 	n := 16
 	h := 1.0 / float64(n)
 	dst := make([]float64, n)
@@ -43,6 +45,8 @@ func TestApply1DPeriodicModes(t *testing.T) {
 }
 
 func TestApply1DDirichletModes(t *testing.T) {
+	t.Parallel()
+
 	n := 12
 	h := 1.0 / float64(n+1)
 	dst := make([]float64, n)
@@ -67,6 +71,8 @@ func TestApply1DDirichletModes(t *testing.T) {
 }
 
 func TestApply1DNeumannModes(t *testing.T) {
+	t.Parallel()
+
 	n := 10
 	h := 1.0
 	dst := make([]float64, n)
@@ -91,6 +97,8 @@ func TestApply1DNeumannModes(t *testing.T) {
 }
 
 func TestApply1DInPlace(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 	h := 1.0
 	src := make([]float64, n)
@@ -111,6 +119,8 @@ func TestApply1DInPlace(t *testing.T) {
 }
 
 func TestApply2DPeriodicModes(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 12, 10
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -147,6 +157,8 @@ func TestApply2DPeriodicModes(t *testing.T) {
 }
 
 func TestApply2DDirichletModes(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 11, 9
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny+1)
@@ -183,6 +195,8 @@ func TestApply2DDirichletModes(t *testing.T) {
 }
 
 func TestApply2DNeumannModes(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 10, 8
 	hx := 1.0
 	hy := 1.0
@@ -219,6 +233,8 @@ func TestApply2DNeumannModes(t *testing.T) {
 }
 
 func TestApply3DPeriodicModes(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 8, 6, 10
 	hx := 1.0 / float64(nx)
 	hy := 1.0 / float64(ny)
@@ -245,7 +261,13 @@ func TestApply3DPeriodicModes(t *testing.T) {
 		}
 	}
 
-	Apply3D(dst, src, shape, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Periodic, poisson.Periodic, poisson.Periodic})
+	Apply3D(
+		dst,
+		src,
+		shape,
+		[3]float64{hx, hy, hz},
+		[3]poisson.BCType{poisson.Periodic, poisson.Periodic, poisson.Periodic},
+	)
 	eigx := EigenvaluesPeriodic(nx, hx)
 	eigy := EigenvaluesPeriodic(ny, hy)
 	eigz := EigenvaluesPeriodic(nz, hz)
@@ -266,6 +288,8 @@ func TestApply3DPeriodicModes(t *testing.T) {
 }
 
 func TestApply3DDirichletModes(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 7, 5, 6
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny+1)
@@ -292,7 +316,13 @@ func TestApply3DDirichletModes(t *testing.T) {
 		}
 	}
 
-	Apply3D(dst, src, shape, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet})
+	Apply3D(
+		dst,
+		src,
+		shape,
+		[3]float64{hx, hy, hz},
+		[3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet},
+	)
 	eigx := EigenvaluesDirichlet(nx, hx)
 	eigy := EigenvaluesDirichlet(ny, hy)
 	eigz := EigenvaluesDirichlet(nz, hz)
@@ -313,6 +343,8 @@ func TestApply3DDirichletModes(t *testing.T) {
 }
 
 func TestApply3DNeumannModes(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 9, 7, 8
 	hx := 1.0
 	hy := 1.0

@@ -150,7 +150,8 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 	}
 
 	for axis := range p.fft {
-		if err := p.transformAxis(axis, false); err != nil {
+		err := p.transformAxis(axis, false)
+		if err != nil {
 			return fmt.Errorf("FFT forward axis %d: %w", axis, err)
 		}
 	}
@@ -158,7 +159,8 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 	p.applyEigenvalues(p.work.Complex)
 
 	for axis := len(p.fft) - 1; axis >= 0; axis-- {
-		if err := p.transformAxis(axis, true); err != nil {
+		err := p.transformAxis(axis, true)
+		if err != nil {
 			return fmt.Errorf("FFT inverse axis %d: %w", axis, err)
 		}
 	}
@@ -229,7 +231,8 @@ func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool) error {
 			start += indices[i] * p.stride[d]
 		}
 
-		if err := p.fft[axis].transformLine(p.work.Complex, start, lineStride, inverse); err != nil {
+		err := p.fft[axis].transformLine(p.work.Complex, start, lineStride, inverse)
+		if err != nil {
 			return err
 		}
 

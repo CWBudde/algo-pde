@@ -130,12 +130,14 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 			p.rbuf[i] = float32(v - offset)
 		}
 
-		if err := p.rfft.Forward(p.rspec, p.rbuf); err != nil {
+		err := p.rfft.Forward(p.rspec, p.rbuf)
+		if err != nil {
 			return fmt.Errorf("real FFT forward: %w", err)
 		}
 
 		workers := clampWorkers(p.opts.Workers, p.nx)
-		if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+
+		err = parallelFor(workers, p.nx, func(_ int, start, end int) error {
 			for i := start; i < end; i++ {
 				base := i * p.rhalf
 				for j := range p.rhalf {
@@ -150,11 +152,13 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 			}
 
 			return nil
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 
-		if err := p.rfft.Inverse(p.rbuf, p.rspec); err != nil {
+		err = p.rfft.Inverse(p.rbuf, p.rspec)
+		if err != nil {
 			return fmt.Errorf("real FFT inverse: %w", err)
 		}
 
@@ -174,16 +178,19 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 		p.work.Complex[i] = complex(v-offset, 0)
 	}
 
-	if err := p.fftX.TransformLines(p.work.Complex, p.shape, 0, false); err != nil {
+	err := p.fftX.TransformLines(p.work.Complex, p.shape, 0, false)
+	if err != nil {
 		return fmt.Errorf("FFT forward axis 0: %w", err)
 	}
 
-	if err := p.fftY.TransformLines(p.work.Complex, p.shape, 1, false); err != nil {
+	err = p.fftY.TransformLines(p.work.Complex, p.shape, 1, false)
+	if err != nil {
 		return fmt.Errorf("FFT forward axis 1: %w", err)
 	}
 
 	workers := clampWorkers(p.opts.Workers, p.nx)
-	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+
+	err = parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			base := i * p.ny
 			for j := range p.ny {
@@ -198,15 +205,18 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 		}
 
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
 
-	if err := p.fftY.TransformLines(p.work.Complex, p.shape, 1, true); err != nil {
+	err = p.fftY.TransformLines(p.work.Complex, p.shape, 1, true)
+	if err != nil {
 		return fmt.Errorf("FFT inverse axis 1: %w", err)
 	}
 
-	if err := p.fftX.TransformLines(p.work.Complex, p.shape, 0, true); err != nil {
+	err = p.fftX.TransformLines(p.work.Complex, p.shape, 0, true)
+	if err != nil {
 		return fmt.Errorf("FFT inverse axis 0: %w", err)
 	}
 

@@ -3,20 +3,28 @@ version = '2'
 [linters]
 default = 'all'
 disable = [
+  'cyclop',
   'depguard',
+  'dupl',
   'err113',          # Using errors.Is for sentinel errors is not always appropriate
+  'exhaustive',
   'exhaustruct',     # Don't require all struct fields
+  'forbidigo',
+  'funlen',
+  'gocognit',
   'godoclint',
   'gomoddirectives',
   'gosec',
   'ireturn',
   'musttag',
+  'nestif',
   'nlreturn',
   'noctx',
   'nonamedreturns',  # Named returns are fine for multi-value returns
-  'noinlineerr',     # Inline error handling is fine
-  'paralleltest',    # Not all tests need t.Parallel()
+  'predeclared',
   'recvcheck',
+  'unparam',
+  'varnamelen',      # Short names are idiomatic in PDE/math code
   'wrapcheck',       # Wrapping errors from same package is not always needed
   'wsl',
 ]
@@ -25,6 +33,9 @@ disable = [
 [[linters.settings.revive.rules]]
 name = "var-naming"
 disabled = true
+
+[linters.settings.gocyclo]
+min-complexity = 35
 
 [linters.settings.varnamelen]
 # Common math/grid variable names
@@ -61,7 +72,7 @@ ignore-decls = ['T any']
 [linters.exclusions]
 generated = 'lax'
 presets = ['comments', 'common-false-positives', 'legacy', 'std-error-handling']
-paths = ['third_party$', 'builtin$', 'examples$']
+paths = ['third_party$', 'builtin$', '^examples/']
 
 [[linters.exclusions.rules]]
 linters = ['mnd']
@@ -87,4 +98,4 @@ enable = ['gofumpt', 'goimports']
 
 [formatters.exclusions]
 generated = 'lax'
-paths = ['third_party$', 'builtin$', 'examples$']
+paths = ['third_party$', 'builtin$', '^examples/']

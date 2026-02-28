@@ -13,14 +13,14 @@ with the spectral plan.
 
 ## 2D
 
-- Periodic: u(x,y) = sin(2πx/Lx) * sin(2πy/Ly)
-- Dirichlet: u(x,y) = sin(πx/Lx) * sin(πy/Ly)
-- Neumann: u(x,y) = cos(πx/Lx) * cos(πy/Ly)
-- Mixed (Periodic, Neumann): u(x,y) = sin(2πx/Lx) * cos(πy/Ly)
+- Periodic: u(x,y) = sin(2πx/Lx) \* sin(2πy/Ly)
+- Dirichlet: u(x,y) = sin(πx/Lx) \* sin(πy/Ly)
+- Neumann: u(x,y) = cos(πx/Lx) \* cos(πy/Ly)
+- Mixed (Periodic, Neumann): u(x,y) = sin(2πx/Lx) \* cos(πy/Ly)
 
 ## 3D
 
-- Periodic: u(x,y,z) = sin(2πx/Lx) * sin(2πy/Ly) * sin(2πz/Lz)
-- Dirichlet: u(x,y,z) = sin(πx/Lx) * sin(πy/Ly) * sin(πz/Lz)
-- Neumann: u(x,y,z) = cos(πx/Lx) * cos(πy/Ly) * cos(πz/Lz)
-- Mixed (Periodic, Dirichlet, Neumann): u(x,y,z) = sin(2πx/Lx) * sin(πy/Ly) * cos(πz/Lz)
+- Periodic: u(x,y,z) = sin(2πx/Lx) _ sin(2πy/Ly) _ sin(2πz/Lz)
+- Dirichlet: u(x,y,z) = sin(πx/Lx) _ sin(πy/Ly) _ sin(πz/Lz)
+- Neumann: u(x,y,z) = cos(πx/Lx) _ cos(πy/Ly) _ cos(πz/Lz)
+- Mixed (Periodic, Dirichlet, Neumann): u(x,y,z) = sin(2πx/Lx) _ sin(πy/Ly) _ cos(πz/Lz)

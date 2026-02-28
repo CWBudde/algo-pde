@@ -19,6 +19,7 @@ just demo-dev
 ```
 
 This will:
+
 1. Build the WASM module from `cmd/acoustics-wasm`
 2. Copy the Go WASM runtime (`wasm_exec.js`)
 3. Install npm dependencies
@@ -70,9 +71,11 @@ For each click at position `(sx, sy)`:
    - Store pressure field `p_i(x,y)`
 
 2. **Animation synthesis**: For each frame at time `t`:
+
    ```
    u(x,y,t) = Σᵢ pᵢ(x,y) · cos(2π fᵢ t) · exp(-γᵢ t)
    ```
+
    where `γᵢ = 0.5 · fᵢ` (frequency-dependent damping)
 
 3. **Visualization**: Apply diverging colormap (blue ← 0 → red) with percentile normalization
@@ -96,12 +99,14 @@ For each click at position `(sx, sy)`:
 ## Browser Compatibility
 
 Requires modern browser with:
+
 - WebAssembly support
 - Web Workers
 - Float32Array
 - Canvas 2D API
 
 Tested on:
+
 - Chrome 120+
 - Firefox 120+
 - Safari 17+
@@ -129,6 +134,7 @@ The demo is automatically deployed to GitHub Pages on every push to the `main` b
 ### Manual Deployment
 
 Trigger a manual deployment from the Actions tab:
+
 1. Go to **Actions** → **Deploy Demo to GitHub Pages**
 2. Click **Run workflow** → **Run workflow**
 
@@ -150,6 +156,7 @@ python3 -m http.server 8000
 ### WASM fails to load
 
 Check browser console for errors. Ensure:
+
 - Files exist: `demo/public/acoustics.wasm` and `wasm_exec.js`
 - Server sends correct MIME type for `.wasm` (Vite handles this)
 

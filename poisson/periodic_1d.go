@@ -78,12 +78,14 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 		p.work.Complex[i] = complex(v-offset, 0)
 	}
 
-	if err := p.fft.TransformLines(p.work.Complex, p.shape, 0, false); err != nil {
+	err := p.fft.TransformLines(p.work.Complex, p.shape, 0, false)
+	if err != nil {
 		return fmt.Errorf("FFT forward: %w", err)
 	}
 
 	workers := clampWorkers(p.opts.Workers, p.n)
-	if err := parallelFor(workers, p.n, func(_ int, start, end int) error {
+
+	err = parallelFor(workers, p.n, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			if p.eig[i] == 0 {
 				p.work.Complex[i] = 0
@@ -94,11 +96,13 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 		}
 
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
 
-	if err := p.fft.TransformLines(p.work.Complex, p.shape, 0, true); err != nil {
+	err = p.fft.TransformLines(p.work.Complex, p.shape, 0, true)
+	if err != nil {
 		return fmt.Errorf("FFT inverse: %w", err)
 	}
 

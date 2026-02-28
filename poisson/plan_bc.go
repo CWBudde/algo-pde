@@ -20,7 +20,8 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 		return p.Solve(dst, rhs)
 	}
 
-	if err := p.validateBoundaryConditions(bc); err != nil {
+	err := p.validateBoundaryConditions(bc)
+	if err != nil {
 		return err
 	}
 
@@ -55,13 +56,15 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 
 	h := p.h
 	if len(dirichlet) > 0 {
-		if err := ApplyDirichletRHS(buf, shape, h, dirichlet); err != nil {
+		err := ApplyDirichletRHS(buf, shape, h, dirichlet)
+		if err != nil {
 			return err
 		}
 	}
 
 	if len(neumann) > 0 {
-		if err := ApplyNeumannRHS(buf, shape, h, neumann); err != nil {
+		err := ApplyNeumannRHS(buf, shape, h, neumann)
+		if err != nil {
 			return err
 		}
 	}

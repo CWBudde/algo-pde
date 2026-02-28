@@ -230,7 +230,8 @@ func (p *DST2Plan) Forward(dst, src []float64) error {
 // The inverse is: x[n] = (2/(N+1)) * DST-I(X)[n].
 func (p *DSTPlan) Inverse(dst, src []float64) error {
 	// DST-I is self-inverse (up to normalization)
-	if err := p.Forward(dst, src); err != nil {
+	err := p.Forward(dst, src)
+	if err != nil {
 		return err
 	}
 

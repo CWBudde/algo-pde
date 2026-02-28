@@ -10,6 +10,8 @@ import (
 const tolerance = 1e-12
 
 func TestEigenvaluesPeriodic(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 	h := 1.0 / float64(n)
 	eig := EigenvaluesPeriodic(n, h)
@@ -48,6 +50,8 @@ func TestEigenvaluesPeriodic(t *testing.T) {
 }
 
 func TestEigenvaluesDirichlet(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 	h := 1.0 / float64(n+1) // Note: Dirichlet grid has n interior points
 	eig := EigenvaluesDirichlet(n, h)
@@ -82,6 +86,8 @@ func TestEigenvaluesDirichlet(t *testing.T) {
 }
 
 func TestEigenvaluesNeumann(t *testing.T) {
+	t.Parallel()
+
 	n := 8
 	h := 1.0 / float64(n)
 	eig := EigenvaluesNeumann(n, h)
@@ -112,6 +118,8 @@ func TestEigenvaluesNeumann(t *testing.T) {
 }
 
 func TestHasZeroEigenvalue(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		bc   poisson.BCType
 		want bool
@@ -129,6 +137,8 @@ func TestHasZeroEigenvalue(t *testing.T) {
 }
 
 func TestZeroEigenvalueIndex(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		bc   poisson.BCType
 		want int
@@ -146,6 +156,8 @@ func TestZeroEigenvalueIndex(t *testing.T) {
 }
 
 func TestEigenvaluesGeneric(t *testing.T) {
+	t.Parallel()
+
 	n := 16
 	h := 0.1
 

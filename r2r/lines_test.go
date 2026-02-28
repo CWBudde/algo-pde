@@ -327,13 +327,17 @@ func TestForwardLines_SizeMismatch(t *testing.T) {
 
 	// DST plan size doesn't match any axis
 	dstPlan, _ := NewDSTPlan(10)
-	if err := dstPlan.ForwardLines(make([]float64, 48), shape, 0); !errors.Is(err, ErrSizeMismatch) {
+
+	err := dstPlan.ForwardLines(make([]float64, 48), shape, 0)
+	if !errors.Is(err, ErrSizeMismatch) {
 		t.Errorf("DST ForwardLines size mismatch: got %v, want ErrSizeMismatch", err)
 	}
 
 	// DCT plan size doesn't match any axis
 	dctPlan, _ := NewDCTPlan(10)
-	if err := dctPlan.ForwardLines(make([]float64, 48), shape, 1); !errors.Is(err, ErrSizeMismatch) {
+
+	err = dctPlan.ForwardLines(make([]float64, 48), shape, 1)
+	if !errors.Is(err, ErrSizeMismatch) {
 		t.Errorf("DCT ForwardLines size mismatch: got %v, want ErrSizeMismatch", err)
 	}
 }

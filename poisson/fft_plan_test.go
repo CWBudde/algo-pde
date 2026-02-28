@@ -12,12 +12,16 @@ import (
 const fftTol = 1e-10
 
 func TestNewFFTPlan_InvalidSize(t *testing.T) {
+	t.Parallel()
+
 	if _, err := NewFFTPlan(0); !errors.Is(err, ErrInvalidSize) {
 		t.Fatalf("NewFFTPlan(0) err = %v, want ErrInvalidSize", err)
 	}
 }
 
 func TestFFTPlan_TransformLines_Errors(t *testing.T) {
+	t.Parallel()
+
 	p, err := NewFFTPlan(4)
 	if err != nil {
 		t.Fatalf("NewFFTPlan failed: %v", err)
@@ -43,6 +47,8 @@ func TestFFTPlan_TransformLines_Errors(t *testing.T) {
 }
 
 func TestFFTPlan_TransformLines_MatchesReference_Axis0_NonContiguous(t *testing.T) {
+	t.Parallel()
+
 	// Axis 0 in row-major 2D has stride = ny (usually != 1).
 	nx, ny := 8, 5
 	shape := grid.NewShape2D(nx, ny)
@@ -79,7 +85,9 @@ func TestFFTPlan_TransformLines_MatchesReference_Axis0_NonContiguous(t *testing.
 
 	for it.Next() {
 		start = it.StartIndex()
-		if err := refPlan.TransformStrided(want[start:], want[start:], stride, false); err != nil {
+
+		err := refPlan.TransformStrided(want[start:], want[start:], stride, false)
+		if err != nil {
 			t.Fatalf("reference TransformStrided failed: %v", err)
 		}
 	}
@@ -92,6 +100,8 @@ func TestFFTPlan_TransformLines_MatchesReference_Axis0_NonContiguous(t *testing.
 }
 
 func TestFFTPlan_TransformLines_RoundTrip_2D_Axis0And1(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 8, 4
 	shape := grid.NewShape2D(nx, ny)
 
@@ -138,6 +148,8 @@ func TestFFTPlan_TransformLines_RoundTrip_2D_Axis0And1(t *testing.T) {
 }
 
 func TestFFTPlan_TransformLines_ParallelMatchesSerial(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 6, 5
 	shape := grid.NewShape2D(nx, ny)
 

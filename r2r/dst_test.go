@@ -340,12 +340,16 @@ func TestDST1_OneShot(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := DST1(dst, src); err != nil {
+
+	err := DST1(dst, src)
+	if err != nil {
 		t.Fatalf("DST1 failed: %v", err)
 	}
 
 	recovered := make([]float64, n)
-	if err := DST1Inverse(recovered, dst); err != nil {
+
+	err = DST1Inverse(recovered, dst)
+	if err != nil {
 		t.Fatalf("DST1Inverse failed: %v", err)
 	}
 
@@ -366,12 +370,16 @@ func TestDST2_OneShot(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := DST2Forward(dst, src); err != nil {
+
+	err := DST2Forward(dst, src)
+	if err != nil {
 		t.Fatalf("DST2Forward failed: %v", err)
 	}
 
 	recovered := make([]float64, n)
-	if err := DST2Inverse(recovered, dst); err != nil {
+
+	err = DST2Inverse(recovered, dst)
+	if err != nil {
 		t.Fatalf("DST2Inverse failed: %v", err)
 	}
 
@@ -439,7 +447,8 @@ func TestDSTPlan_ConcurrentSeparatePlans(t *testing.T) {
 
 	// Wait for all goroutines and check for errors
 	for range numGoroutines {
-		if err := <-done; err != nil {
+		err := <-done
+		if err != nil {
 			t.Errorf("concurrent test error: %v", err)
 		}
 	}
@@ -459,11 +468,13 @@ func runConcurrentWorker(size, worker, iterations int) error {
 			src[i] = float64(worker*1000 + iter*10 + i)
 		}
 
-		if err := plan.Forward(dst, src); err != nil {
+		err := plan.Forward(dst, src)
+		if err != nil {
 			return err
 		}
 
-		if err := plan.Inverse(dst, dst); err != nil {
+		err = plan.Inverse(dst, dst)
+		if err != nil {
 			return err
 		}
 

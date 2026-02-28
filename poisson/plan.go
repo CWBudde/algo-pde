@@ -162,17 +162,20 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 
 	shape := p.shape()
 	for axis := range p.dim {
-		if err := p.tr[axis].Forward(p.work.Complex, shape, axis); err != nil {
+		err := p.tr[axis].Forward(p.work.Complex, shape, axis)
+		if err != nil {
 			return fmt.Errorf("forward axis %d: %w", axis, err)
 		}
 	}
 
-	if err := p.applyEigenvalues(); err != nil {
+	err := p.applyEigenvalues()
+	if err != nil {
 		return err
 	}
 
 	for axis := p.dim - 1; axis >= 0; axis-- {
-		if err := p.tr[axis].Inverse(p.work.Complex, shape, axis); err != nil {
+		err := p.tr[axis].Inverse(p.work.Complex, shape, axis)
+		if err != nil {
 			return fmt.Errorf("inverse axis %d: %w", axis, err)
 		}
 	}
@@ -268,15 +271,4 @@ func (p *Plan) applyEigenvalues() error {
 
 		return nil
 	})
-}
-
-func isZeroMode(indices *[3]int, dim int) bool {
-	for axis := range dim {
-		idx := indices[axis]
-		if idx != 0 {
-			return false
-		}
-	}
-
-	return true
 }

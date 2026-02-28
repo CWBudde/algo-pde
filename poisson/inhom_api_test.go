@@ -11,6 +11,8 @@ import (
 const inhomAPITol = 1e-9
 
 func TestPlan2D_SolveWithBC_DirichletNeumann(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 48, 36
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny)
@@ -75,6 +77,8 @@ func TestPlan2D_SolveWithBC_DirichletNeumann(t *testing.T) {
 }
 
 func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
+	t.Parallel()
+
 	nx, ny, nz := 24, 20, 18
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny+1)
@@ -168,7 +172,17 @@ func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	}
 }
 
-func applyInhomDirichletNeumann2D(dst, src []float64, shape grid.Shape, hx, hy float64, xLow, xHigh, yLow, yHigh []float64) {
+func applyInhomDirichletNeumann2D(
+	dst,
+	src []float64,
+	shape grid.Shape,
+	hx,
+	hy float64,
+	xLow,
+	xHigh,
+	yLow,
+	yHigh []float64,
+) {
 	nx := shape[0]
 	ny := shape[1]
 	invHx2 := 1.0 / (hx * hx)
@@ -205,7 +219,20 @@ func applyInhomDirichletNeumann2D(dst, src []float64, shape grid.Shape, hx, hy f
 	}
 }
 
-func applyInhomDirichletNeumann3D(dst, src []float64, shape grid.Shape, hx, hy, hz float64, xLow, xHigh, yLow, yHigh, zLow, zHigh []float64) {
+func applyInhomDirichletNeumann3D(
+	dst,
+	src []float64,
+	shape grid.Shape,
+	hx,
+	hy,
+	hz float64,
+	xLow,
+	xHigh,
+	yLow,
+	yHigh,
+	zLow,
+	zHigh []float64,
+) {
 	nx := shape[0]
 	ny := shape[1]
 	nz := shape[2]

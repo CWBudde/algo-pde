@@ -18,6 +18,7 @@ That's it! The workflow will automatically deploy on the next push.
 You can trigger the deployment in two ways:
 
 **Option A: Push to main branch**
+
 ```bash
 git add .
 git commit -m "feat: add WebAssembly wave demo"
@@ -25,6 +26,7 @@ git push origin main
 ```
 
 **Option B: Manual workflow dispatch**
+
 1. Go to **Actions** tab
 2. Select **Deploy Demo to GitHub Pages** workflow
 3. Click **Run workflow** → Select `main` branch → **Run workflow**
@@ -59,6 +61,7 @@ The deployment workflow (`.github/workflows/deploy-demo.yml`) does the following
 ### Automatic Triggers
 
 The workflow runs automatically on:
+
 - Push to `main` branch when these paths change:
   - `cmd/acoustics-wasm/**`
   - `demo/**`
@@ -68,6 +71,7 @@ The workflow runs automatically on:
 ### Manual Triggers
 
 You can also trigger the workflow manually:
+
 - Go to **Actions** tab
 - Select the workflow
 - Click **Run workflow**
@@ -83,11 +87,13 @@ You can also trigger the workflow manually:
 ### Workflow Fails on Build
 
 **Check Go version**: Ensure the workflow uses Go 1.23+
+
 ```yaml
-go-version: '1.23'
+go-version: "1.23"
 ```
 
 **Check WASM build**: Verify locally with:
+
 ```bash
 just wasm
 ```
@@ -95,11 +101,13 @@ just wasm
 ### Workflow Fails on Deploy
 
 **Check Pages Settings**:
+
 - Ensure GitHub Pages source is set to "GitHub Actions"
 - Check if Pages is enabled for your repository
 
 **Check Permissions**:
 The workflow needs these permissions (already configured):
+
 ```yaml
 permissions:
   contents: read
@@ -110,8 +118,9 @@ permissions:
 ### Demo Loads but Shows Errors
 
 **Check Base Path**: Vite config uses relative base (`./`) for GitHub Pages:
+
 ```typescript
-base: './'
+base: "./";
 ```
 
 **Check Asset Loading**: Browser console will show if WASM/JS files fail to load
@@ -119,6 +128,7 @@ base: './'
 ### Force Redeploy
 
 If the deployment seems stuck:
+
 1. Go to **Actions** → **Deploy Demo to GitHub Pages**
 2. Click **Run workflow** → **Run workflow**
 3. Wait 2-3 minutes for completion
@@ -163,6 +173,7 @@ git push origin main
 ## Cost & Limits
 
 GitHub Pages is free for public repositories with these limits:
+
 - **Bandwidth**: 100 GB/month
 - **Build time**: 10 minutes per workflow
 - **Storage**: 1 GB
@@ -174,6 +185,7 @@ The demo is ~4 MB, so this should be more than sufficient.
 To use a custom domain:
 
 1. Add a `CNAME` file to `demo/public/`:
+
    ```
    demo.yourdomain.com
    ```
@@ -187,6 +199,7 @@ To use a custom domain:
 ## Security Notes
 
 The workflow:
+
 - Uses pinned action versions (`@v4`, `@v5`)
 - Minimal permissions (read contents, write pages)
 - No secrets required
@@ -195,6 +208,7 @@ The workflow:
 ## Support
 
 For issues with:
+
 - **Workflow**: Check `.github/workflows/deploy-demo.yml`
 - **Build**: Check `demo/vite.config.ts` and `justfile`
 - **Demo**: Check `demo/README.md`

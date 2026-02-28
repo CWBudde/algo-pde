@@ -252,6 +252,8 @@ func BenchmarkPlan2DPeriodic_Solve_1024(b *testing.B) {
 }
 
 func benchmarkPlan2DPeriodicSolve(b *testing.B, n int) {
+	b.Helper()
+
 	h := 1.0 / float64(n)
 
 	plan, err := poisson.NewPlan2DPeriodic(n, n, h, h)
@@ -269,7 +271,8 @@ func benchmarkPlan2DPeriodicSolve(b *testing.B, n int) {
 	b.ResetTimer()
 
 	for range b.N {
-		if err := plan.Solve(dst, rhs); err != nil {
+		err := plan.Solve(dst, rhs)
+		if err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}
 	}

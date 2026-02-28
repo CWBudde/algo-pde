@@ -17,6 +17,8 @@ const (
 )
 
 func TestHelmholtzPlan1D_PositiveAlpha(t *testing.T) {
+	t.Parallel()
+
 	n := 64
 	h := 1.0 / float64(n+1)
 	L := float64(n+1) * h
@@ -52,6 +54,8 @@ func TestHelmholtzPlan1D_PositiveAlpha(t *testing.T) {
 }
 
 func TestHelmholtzPlan1D_NegativeAlphaResonant(t *testing.T) {
+	t.Parallel()
+
 	n := 32
 	h := 1.0 / float64(n+1)
 	alpha := -fd.EigenvaluesDirichlet(n, h)[0]
@@ -70,6 +74,8 @@ func TestHelmholtzPlan1D_NegativeAlphaResonant(t *testing.T) {
 }
 
 func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
+	t.Parallel()
+
 	nx, ny := 48, 36
 	hx := 1.0 / float64(nx+1)
 	hy := 1.0 / float64(ny+1)
@@ -77,7 +83,13 @@ func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
 	Ly := float64(ny+1) * hy
 	alpha := 1.25
 
-	plan, err := poisson.NewHelmholtzPlan(2, []int{nx, ny}, []float64{hx, hy}, []poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}, alpha)
+	plan, err := poisson.NewHelmholtzPlan(
+		2,
+		[]int{nx, ny},
+		[]float64{hx, hy},
+		[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet},
+		alpha,
+	)
 	if err != nil {
 		t.Fatalf("NewHelmholtzPlan failed: %v", err)
 	}
@@ -94,7 +106,13 @@ func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny)
-	fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet})
+	fd.Apply2D(
+		lap,
+		u,
+		grid.Shape{nx, ny},
+		[2]float64{hx, hy},
+		[2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet},
+	)
 
 	rhs := make([]float64, nx*ny)
 	for i := range rhs {
@@ -121,7 +139,13 @@ func TestHelmholtzPlan3D_PositiveAlpha(t *testing.T) {
 	Lz := float64(nz+1) * hz
 	alpha := 0.9
 
-	plan, err := poisson.NewHelmholtzPlan(3, []int{nx, ny, nz}, []float64{hx, hy, hz}, []poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet}, alpha)
+	plan, err := poisson.NewHelmholtzPlan(
+		3,
+		[]int{nx, ny, nz},
+		[]float64{hx, hy, hz},
+		[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet},
+		alpha,
+	)
 	if err != nil {
 		t.Fatalf("NewHelmholtzPlan failed: %v", err)
 	}
@@ -144,7 +168,13 @@ func TestHelmholtzPlan3D_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny*nz)
-	fd.Apply3D(lap, u, grid.Shape{nx, ny, nz}, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet})
+	fd.Apply3D(
+		lap,
+		u,
+		grid.Shape{nx, ny, nz},
+		[3]float64{hx, hy, hz},
+		[3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet},
+	)
 
 	rhs := make([]float64, nx*ny*nz)
 	for i := range rhs {

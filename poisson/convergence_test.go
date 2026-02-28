@@ -10,6 +10,8 @@ import (
 const convergenceMinRate = 1.8
 
 func TestConvergence1D_Dirichlet(t *testing.T) {
+	t.Parallel()
+
 	sizes := []int{32, 64, 128}
 	errors := make([]float64, len(sizes))
 	hs := make([]float64, len(sizes))
@@ -50,6 +52,8 @@ func TestConvergence1D_Dirichlet(t *testing.T) {
 }
 
 func TestConvergence2D_Dirichlet(t *testing.T) {
+	t.Parallel()
+
 	sizes := []int{16, 32, 64}
 	errors := make([]float64, len(sizes))
 	hs := make([]float64, len(sizes))

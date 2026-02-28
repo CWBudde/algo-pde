@@ -142,7 +142,20 @@ func (p *FFTPlan) TransformLines(data []complex128, shape grid.Shape, axis int, 
 
 		for line := startLine; line < endLine; line++ {
 			start := lineStartIndex(shape, axis, line)
-			if err := p.transformLine(plan, fastPlan, scratchA, scratchB, data, start, lineStride, inverse, useOutOfPlace, useFast); err != nil {
+
+			err := p.transformLine(
+				plan,
+				fastPlan,
+				scratchA,
+				scratchB,
+				data,
+				start,
+				lineStride,
+				inverse,
+				useOutOfPlace,
+				useFast,
+			)
+			if err != nil {
 				return err
 			}
 		}

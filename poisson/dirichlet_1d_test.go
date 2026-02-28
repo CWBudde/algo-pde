@@ -11,6 +11,8 @@ import (
 const dirichlet1dTol = 1e-10
 
 func TestPlan1DDirichlet_Solve_Fundamental(t *testing.T) {
+	t.Parallel()
+
 	n := 64
 	h := 1.0 / float64(n+1)
 	L := float64(n+1) * h
@@ -44,6 +46,8 @@ func TestPlan1DDirichlet_Solve_Fundamental(t *testing.T) {
 }
 
 func TestPlan1DDirichlet_Solve_Combination(t *testing.T) {
+	t.Parallel()
+
 	n := 96
 	h := 1.0 / float64(n+1)
 	L := float64(n+1) * h

@@ -226,12 +226,16 @@ func TestDCT1_OneShot(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := DCT1(dst, src); err != nil {
+
+	err := DCT1(dst, src)
+	if err != nil {
 		t.Fatalf("DCT1 failed: %v", err)
 	}
 
 	recovered := make([]float64, n)
-	if err := DCT1Inverse(recovered, dst); err != nil {
+
+	err = DCT1Inverse(recovered, dst)
+	if err != nil {
 		t.Fatalf("DCT1Inverse failed: %v", err)
 	}
 
@@ -408,12 +412,16 @@ func TestDCT2_OneShot(t *testing.T) {
 	}
 
 	dst := make([]float64, n)
-	if err := DCT2Forward(dst, src); err != nil {
+
+	err := DCT2Forward(dst, src)
+	if err != nil {
 		t.Fatalf("DCT2Forward failed: %v", err)
 	}
 
 	recovered := make([]float64, n)
-	if err := DCT2Inverse(recovered, dst); err != nil {
+
+	err = DCT2Inverse(recovered, dst)
+	if err != nil {
 		t.Fatalf("DCT2Inverse failed: %v", err)
 	}
 

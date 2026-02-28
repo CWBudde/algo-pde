@@ -17,11 +17,11 @@ Test configuration: 128x128 grid, Dirichlet boundary conditions.
 
 ### Results
 
-| Component | Cumulative Time | % of Total |
-|-----------|-----------------|------------|
-| DST/FFT transforms (algo-fft) | ~8.1s | 95.2% |
-| Eigenvalue division | ~30-50ms | 0.3% |
-| Other (setup, parallelization overhead) | ~0.3s | ~4.5% |
+| Component                               | Cumulative Time | % of Total |
+| --------------------------------------- | --------------- | ---------- |
+| DST/FFT transforms (algo-fft)           | ~8.1s           | 95.2%      |
+| Eigenvalue division                     | ~30-50ms        | 0.3%       |
+| Other (setup, parallelization overhead) | ~0.3s           | ~4.5%      |
 
 The FFT-based transforms completely dominate runtime, which is expected for spectral solvers with O(N log N) complexity.
 
@@ -44,6 +44,7 @@ Despite being O(N) for the total grid size, this operation accounts for less tha
 **Decision: SIMD optimization of eigenvalue division is not implemented.**
 
 Rationale:
+
 - Maximum potential gain: ~0.3% of total runtime
 - Even a 10x speedup would yield only ~0.27% total improvement
 - Maintenance cost of assembly code outweighs negligible benefit
@@ -53,6 +54,7 @@ Rationale:
 ### FFT Operations (Handled by algo-fft)
 
 The `algo-fft` dependency provides extensive SIMD optimizations:
+
 - 134 assembly kernels for amd64 (AVX2) and arm64 (NEON)
 - Automatic CPU feature detection
 - Architecture-specific radix implementations
@@ -62,6 +64,7 @@ Since FFT operations consume 95%+ of runtime, optimizations in algo-fft have max
 ### Eigenvalue Division (Pure Go)
 
 The eigenvalue division loop uses pure Go and benefits from:
+
 - Go compiler optimizations (bounds check elimination, inlining)
 - Parallelization via `parallelFor()` for multi-core scaling
 - Sequential memory access patterns for good cache behavior
@@ -85,10 +88,10 @@ BenchmarkPlanSolve2D_Dirichlet-12    76    28281632 ns/op    8056 B/op    140 al
 The solver exhibits O(N log N) complexity dominated by FFT operations:
 
 | Grid Size | Approximate Time |
-|-----------|------------------|
-| 64x64 | ~5ms |
-| 128x128 | ~20ms |
-| 256x256 | ~90ms |
-| 512x512 | ~400ms |
+| --------- | ---------------- |
+| 64x64     | ~5ms             |
+| 128x128   | ~20ms            |
+| 256x256   | ~90ms            |
+| 512x512   | ~400ms           |
 
 Multi-threaded scaling improves performance for larger grids where parallel overhead is amortized.

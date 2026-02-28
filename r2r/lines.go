@@ -72,13 +72,15 @@ func transformAllLines(
 	}
 
 	// Process first line (iterator starts at position 0)
-	if err := processOneLine(data, it.StartIndex(), lineLen, lineStride, buf, transform); err != nil {
+	err := processOneLine(data, it.StartIndex(), lineLen, lineStride, buf, transform)
+	if err != nil {
 		return err
 	}
 
 	// Process remaining lines
 	for it.Next() {
-		if err := processOneLine(data, it.StartIndex(), lineLen, lineStride, buf, transform); err != nil {
+		err := processOneLine(data, it.StartIndex(), lineLen, lineStride, buf, transform)
+		if err != nil {
 			return err
 		}
 	}
@@ -100,7 +102,8 @@ func processOneLine(
 		buf[i] = data[start+i*stride]
 	}
 
-	if err := transform(buf, buf); err != nil {
+	err := transform(buf, buf)
+	if err != nil {
 		return err
 	}
 

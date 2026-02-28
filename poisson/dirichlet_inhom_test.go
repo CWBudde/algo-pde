@@ -11,6 +11,8 @@ import (
 const dirichletInhomTol = 1e-10
 
 func TestApplyDirichletRHS1D_NonZero(t *testing.T) {
+	t.Parallel()
+
 	n := 64
 	h := 1.0 / float64(n+1)
 	L := float64(n+1) * h
@@ -51,6 +53,8 @@ func TestApplyDirichletRHS1D_NonZero(t *testing.T) {
 }
 
 func TestApplyDirichletRHS2D_NonZero(t *testing.T) {
+	t.Parallel()
+
 	nx := 48
 	ny := 40
 	hx := 1.0 / float64(nx+1)
@@ -99,7 +103,12 @@ func TestApplyDirichletRHS2D_NonZero(t *testing.T) {
 		t.Fatalf("ApplyDirichletRHS failed: %v", err)
 	}
 
-	plan, err := poisson.NewPlan(2, []int{nx, ny}, []float64{hx, hy}, []poisson.BCType{poisson.Dirichlet, poisson.Dirichlet})
+	plan, err := poisson.NewPlan(
+		2,
+		[]int{nx, ny},
+		[]float64{hx, hy},
+		[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet},
+	)
 	if err != nil {
 		t.Fatalf("NewPlan failed: %v", err)
 	}
