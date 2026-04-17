@@ -99,3 +99,7 @@ demo-build: wasm
     @echo "Building demo for production..."
     cd demo && npm install && npm run build
     @echo "Production build complete: demo/dist/"
+
+fix:
+    just lint-fix
+    just fmt
