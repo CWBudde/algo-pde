@@ -1,25 +1,28 @@
-version = '2'
+version = "2"
 
 [linters]
 default = 'all'
 disable = [
-  'depguard',
-  'err113',           # Using errors.Is for sentinel errors is not always appropriate
-  'exhaustruct',      # Don't require all struct fields
-  'godoclint',
-  'gomoddirectives',
-  'gosec',
-  'ireturn',
-  'musttag',
-  'nlreturn',
-  'noctx',
-  'nonamedreturns',   # Named returns are fine for multi-value returns
-  'noinlineerr',      # Inline error handling is fine
-  'paralleltest',     # Not all tests need t.Parallel()
-  'recvcheck',
-  'wrapcheck',        # Wrapping errors from same package is not always needed
-  'wsl',
-  'wsl_v5',           # Whitespace linting is too strict
+    'depguard',
+    'err113',
+    'exhaustruct',
+    'godoclint',
+    'gomoddirectives',
+    'gosec',
+    'ireturn',
+    'musttag',
+    'nlreturn',
+    'noctx',
+    'nonamedreturns',
+    'noinlineerr',
+    'paralleltest',
+    'recvcheck',
+    'wrapcheck',
+    'wsl',
+    'wsl_v5',
+]
+enable = [
+    "revive",
 ]
 
 [linters.settings.revive]
@@ -27,6 +30,13 @@ disable = [
 name = "var-naming"
 disabled = true
 
+[[linters.settings.revive.rules]]
+name = "file-length-limit"
+
+[[linters.settings.revive.rules.arguments]]
+max = 1500
+skip-comments = false
+skip-blank-lines = false
 [linters.settings.varnamelen]
 # Common math/grid variable names
 ignore-names = ['a', 'b', 'x', 'y', 'z', 'i', 'j', 'k', 'n', 'm', 'h', 'ok', 'bc', 'nx', 'ny', 'nz', 'hx', 'hy', 'hz', 'tt', 'h2', 'pi', 'it', 'w', 'k1', 'k2']

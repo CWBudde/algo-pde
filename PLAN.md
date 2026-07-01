@@ -1,738 +1,313 @@
-# algo-pde Implementation Plan
+# algo-pde Roadmap
 
-A fast spectral Poisson/Helmholtz solver library for Go, built on top of `algo-fft`.
+Fast spectral Poisson/Helmholtz solver library for Go, built on `algo-fft`.
 
----
+This plan was reset in July 2026 after a deep adversarial review. The initial
+build-out (grid, r2r transforms, fd operators, periodic/Dirichlet/Neumann/mixed
+solvers, inhomogeneous BC, Helmholtz, WASM demo) is done and lives in git
+history. What follows is only what is **ahead of us**, ordered by priority.
 
-## Phase 1: Grid Package (`grid/`) ✅ COMPLETE
-
-- Shape/stride types, indexing helpers, and row-major stride computation.
-- Iterators for lines and planes, plus strided copy utilities.
-- Unit tests covering indexing and iterator behavior.
-
----
-
-## Phase 2: Real-to-Real & Line Transforms (`r2r/`) ✅
-
-- [x] **DST/DCT Core**: DST-I/II and DCT-I/II implemented via FFT embedding with full normalization and correctness tests.
-- [x] **Plan API**: `DSTPlan`, `DCTPlan`, and `FFTPlan` for allocation-conscious, axis-wise transforms on N-D grids.
-- [x] **Multi-D Support**: `ForwardLines`/`InverseLines` for all transform types with 2D/3D unit tests.
-- [x] **Performance**: Verified O(N log N) scaling and optimized buffer management.
+The review's verdict, for context: the numerical core (transform kernels,
+eigenvalue formulas, boundary-lifting algebra) is verified correct. What is
+broken is the contract layer around it — documentation claims that are false,
+tests that structurally cannot fail, options that silently no-op, and a demo
+that solves the wrong equation. No rewrite; targeted repair.
 
 ---
 
-## Phase 3: Finite Difference Operators (`fd/`) - PARTIAL ✅
+## Phase A: Fix False Contracts (highest priority)
 
-### 3.1 Laplacian eigenvalues
+The library currently makes three headline promises — concurrent-safe plans,
+O(N log N), zero allocations — and all three are false. Fix or retract each.
 
-- [x] Implement `EigenvaluesPeriodic(n int, h float64) []float64`
-  - Formula: λ_m = (2 - 2\*cos(2πm/N)) / h²
-- [x] Implement `EigenvaluesDirichlet(n int, h float64) []float64`
-  - Formula: λ_m = (2 - 2\*cos(πm/(N+1))) / h²
-- [x] Implement `EigenvaluesNeumann(n int, h float64) []float64`
-  - Formula: λ_m = (2 - 2\*cos(πm/N)) / h²
-- [x] Write tests comparing eigenvalues to explicit matrix eigendecomposition
-- [x] Document eigenvalue formulas and grid conventions
+### A.1 Concurrency: make the doc.go claim true (or delete it)
 
-### 3.2 Laplacian stencil (for testing/validation)
+`doc.go` claims "Plans are safe for concurrent Solve() calls". Every plan type
+funnels each call through shared plan-owned workspaces with no synchronization
+(`poisson/periodic_1d.go:77`, `periodic_2d.go:128`, `periodic_3d.go:140`,
+`periodic_nd.go:142`, `plan.go:153`). `PlanNDPeriodic` additionally mutates
+plan-level index state (`eigIndices`, `axisIdx`) per call.
 
-- [x] Implement `Apply1D(dst, src []float64, h float64, bc BCType)`
-- [x] Implement `Apply2D(dst, src []float64, shape Shape, h [2]float64, bc [2]BCType)`
-- [x] Implement `Apply3D(...)`
-- [x] Write tests verifying Δu matches expected for known u
+- [ ] Decide the contract: per-call workspace via `sync.Pool`, or document
+      "one goroutine per plan" and delete the doc.go claim. (Recommended:
+      `sync.Pool` of workspaces — keeps the zero-alloc steady state.)
+- [ ] Remove per-call plan mutation in `periodic_nd.go` (make Solve stateless
+      w.r.t. the plan).
+- [ ] Remove the lazy `p.work.Real` reallocation in `plan_bc.go:29-31`
+      (dead or racy; the buffer is already pre-allocated in `plan.go:116`).
+- [ ] Fix `FFTPlan.TransformLines` — concurrent callers on the same plan share
+      `plans[0]`/`scratchA[0]` (`fft_plan.go:96`).
+- [ ] Add a concurrent-Solve race test (N goroutines, one shared plan, verify
+      results match serial) for every plan type; run under `just test-race`.
 
----
+### A.2 Performance: kill the O(N²) inverse transforms
 
-## Phase 4: Periodic Poisson Solver (`poisson/`)
+`DST2Plan.Inverse` and `DCT2Plan.Inverse` are naive O(N²) triple loops
+recomputing `math.Sin`/`math.Cos` per element (`r2r/dst.go:263`,
+`r2r/dct.go:258` — the TODO admits it). Measured 513–650× slower than Forward
+at n=1024; every Neumann axis in the Poisson solver pays this per line. This
+falsifies the O(N log N) claim.
 
-### 4.1 1D Periodic Solver
+- [ ] Implement DST-III/DCT-III via FFT embedding (same technique as the
+      forwards), using the plan's existing FFT and buffers.
+- [ ] Eliminate the per-call allocation in the aliased `Inverse(buf, buf)`
+      path that `poisson/axis_transform.go:316-330` always hits.
+- [ ] Add `ForwardLines`/`InverseLines` to `DST2Plan`/`DCT2Plan` and delete
+      the duplicated 84-line strided-iteration block in
+      `poisson/axis_transform.go` (105–188 ≙ 256–339).
+- [ ] Benchmark Neumann vs Dirichlet vs periodic solves at 256²/512²/1024²
+      and assert comparable scaling.
 
-- [x] Implement `Plan1DPeriodic` struct
-- [x] Implement `NewPlan1DPeriodic(nx int, hx float64, opts ...Option) (*Plan1DPeriodic, error)`
-- [x] Pre-compute eigenvalues in plan creation
-- [x] Pre-allocate FFT plan from algo-fft
-- [x] Pre-allocate work buffers
-- [x] Implement `Plan.Solve(dst, rhs []float64) error`
-- [x] Implement `Plan.SolveInPlace(buf []float64) error`
-- [x] Implement zero-mode (mean) handling:
-  - [x] Option: RequireMeanZeroRHS (error if not)
-  - [x] Option: SubtractMean (auto-subtract before solve)
-  - [x] Option: SetSolutionMean (set u's mean to specified value)
-- [x] Write unit tests with manufactured solutions
-- [x] Write benchmark tests
+### A.3 Correctness traps that return garbage with err == nil
 
-### 4.2 2D Periodic Solver
+- [ ] Helmholtz resonance: replace exact `denom == 0` (`plan.go:244`) with a
+      relative-tolerance check (`|denom| < eps * |alpha|`-scale); return
+      `ErrResonant` for near-resonance instead of a ~1e16-amplified field.
+- [ ] Validate `alpha` and `h` for NaN/Inf at plan creation (`plan.go:34,79` —
+      `h <= 0` does not reject NaN).
+- [ ] Fix the nullspace mean gate: `meanTol = 1e-12` (`plan.go:144`) rejects
+      analytically compatible inhomogeneous Neumann problems whose lifted RHS
+      mean is O(h²) quadrature error (~1e-4 at n=100). Scale the tolerance
+      with the discretization (or with the lifting magnitude), and use
+      pairwise/Kahan summation in `meanAndMaxAbs` so the gate is stable at
+      512³. Today every test dodges this via `WithSubtractMean()` — the
+      default path is untested and unusable.
+- [ ] `WithRealFFT(true)` silently downgrades the whole solve to float32
+      buffers (`periodic_2d.go:128`). Either document the ~1e-6 accuracy
+      contract loudly in the option, or rename it (`WithFloat32`), and add a
+      test comparing float32 vs float64 paths on the same input.
+- [ ] With `NullspaceError`, periodic plans construct fine but every Solve
+      fails (`periodic_1d.go:63`). Fail at plan creation instead.
 
-- [x] Implement `Plan2DPeriodic` struct
-- [x] Implement `NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPeriodic, error)`
-- [x] Use algo-fft's 2D real FFT plans where possible
-- [x] Implement eigenvalue division in spectral space
-- [x] Implement zero-mode handling (same options as 1D)
-- [x] Write manufactured solution tests:
-  - [x] u = sin(2πx/Lx) \* sin(2πy/Ly)
-  - [x] u = cos(2πx/Lx) \* cos(4πy/Ly) (mixed frequencies)
-- [x] Write convergence tests (error vs grid spacing)
-- [x] Benchmark: 64², 128², 256², 512², 1024²
+### A.4 Document the grid conventions (cheap, prevents the worst failure mode)
 
-### 4.3 3D Periodic Solver
+Dirichlet axes are vertex-centered (nodes at (i+1)h, length (n+1)h, DST-I);
+Neumann axes are cell-centered (nodes at (i+½)h, length nh, DCT-II). This is
+nowhere documented — users sampling f/g at the wrong points converge smoothly
+to the wrong answer. `bc.go:15` documents Neumann as outward-normal ∂u/∂n = g
+but the implementation uses the positive-axis derivative (sign-flipped at low
+faces).
 
-- [x] Implement `Plan3DPeriodic` struct
-- [x] Implement `NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option)`
-- [x] Use algo-fft's 3D real FFT plans
-- [x] Implement eigenvalue division
-- [x] Implement zero-mode handling
-- [x] Write manufactured solution tests
-- [x] Benchmark: 32³, 64³, 128³
-
-### 4.4 ND Periodic Solver (generic)
-
-- [x] Implement `PlanNDPeriodic` for arbitrary dimensions
-- [x] Implement `NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option)`
-- [x] Write tests for 4D case (stress test)
-
----
-
-## Phase 5: Dirichlet/Neumann Poisson Solver
-
-### 5.1 Unified Plan type with per-axis BC
-
-- [x] Implement main `Plan` struct:
-  ```go
-  type Plan struct {
-      dim      int
-      n        [3]int
-      h        [3]float64
-      bc       [3]BCType
-      eig      [3][]float64
-      tr       [3]AxisTransform
-      work     workspace
-      opts     Options
-  }
-  ```
-- [x] Implement `NewPlan(dim int, n []int, h []float64, bc []BCType, opts ...Option) (*Plan, error)`
-- [x] Select appropriate eigenvalue formula per axis based on BC
-- [x] Select appropriate transform (FFT/DST/DCT) per axis based on BC
-- [x] Validate BC combinations (document restrictions if any)
-
-### 5.2 1D Dirichlet Solver
-
-- [x] Wire DST transform for Dirichlet BC
-- [x] Compute Dirichlet eigenvalues
-- [x] Write manufactured solution tests:
-  - [x] u = sin(πx/L) (fundamental mode)
-  - [x] u = sin(2πx/L) \* sin(πx/L) (combination)
-- [x] Verify boundary values are exactly zero
-
-### 5.3 1D Neumann Solver
-
-- [x] Wire DCT transform for Neumann BC
-- [x] Compute Neumann eigenvalues
-- [x] Handle nullspace (constant mode has zero eigenvalue)
-- [x] Write manufactured solution tests:
-  - [x] u = cos(πx/L)
-  - [x] u = cos(2πx/L)
-- [x] Verify derivative at boundaries is zero (finite difference check)
-
-### 5.4 2D Mixed BC Solver
-
-- [x] Test Dirichlet-Dirichlet (both axes)
-- [x] Test Neumann-Neumann (both axes)
-- [x] Test Periodic-Dirichlet (mixed)
-- [x] Test Dirichlet-Neumann (mixed)
-- [x] Write manufactured solution tests for each combination
-- [x] Document which combinations have nullspace issues
-
-### 5.5 3D Mixed BC Solver
-
-- [x] Implement 3D with arbitrary BC per axis
-- [x] Test all 27 combinations (3³) or representative subset
-- [x] Benchmark against periodic-only solver
+- [ ] Write the conventions section in `poisson/doc.go`: node placement per
+      BC, domain length per BC, Neumann sign convention, mixed-axis
+      implications. Include an ASCII diagram.
+- [ ] Fix the `bc.go` Neumann sign doc to match the implementation (or flip
+      the implementation to outward-normal and migrate — decide once, now).
+- [ ] Document eigenvalue formulas and memory layout (carried over from the
+      old plan; still open).
 
 ---
 
-## Phase 6: Inhomogeneous Boundary Conditions
+## Phase B: Rebuild Test Trust
 
-### 6.1 Boundary value data structures
+The suite probes modes 1–3 only; the general-RHS case — the point of a Poisson
+solver — is essentially unverified. A corrupted eigenvalue above index 3 would
+ship green today.
 
-- [x] Define `BoundaryFace` enum (XLow, XHigh, YLow, YHigh, ZLow, ZHigh)
-- [x] Define `BoundaryData` struct:
-  ```go
-  type BoundaryData struct {
-      Face   BoundaryFace
-      Type   BCType  // Dirichlet or Neumann
-      Values []float64  // boundary values (shape of face)
-  }
-  ```
-- [x] Define `BoundaryConditions` as collection of `BoundaryData`
-
-### 6.2 RHS modification for inhomogeneous Dirichlet
-
-- [x] Implement RHS contribution from boundary values
-- [x] For each boundary cell: `rhs[i] -= u_boundary / h²`
-- [x] Write tests with non-zero Dirichlet values
-- [x] Verify solution matches boundary values at edges
-
-### 6.3 RHS modification for inhomogeneous Neumann
-
-- [x] Implement ghost point elimination or modified stencil
-- [x] For each boundary cell: adjust RHS based on derivative condition
-- [x] Write tests with non-zero Neumann values
-- [x] Verify derivative at boundary matches specified value
-
-### 6.4 Unified inhomogeneous API
-
-- [x] Implement `Plan.SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error`
-- [x] Write comprehensive tests for 2D and 3D
-- [x] Add examples to examples/ directory
-
----
-
-## Phase 7: Helmholtz Solver Extension
-
-### 7.1 Helmholtz operator: (α - Δ)u = f
-
-- [x] Extend `Plan` with `alpha` parameter (shift)
-- [x] Modify eigenvalue division: divide by `α + λ` instead of just `λ`
-- [x] Implement `NewHelmholtzPlan(...)` constructor
-- [x] Handle α = 0 case (reduces to Poisson with nullspace)
-- [x] Write tests for positive α (well-posed problem)
-- [x] Write tests for negative α (potential resonance issues - document)
-
-### 7.2 Screened Poisson / reaction-diffusion steady state
-
-- [x] Document use case: `u - νΔu = f` (implicit diffusion step)
-- [x] Add example for diffusion time-stepping
-- [x] Benchmark against iterative methods for comparison
+- [ ] **Random-RHS residual checks** (the single highest-leverage item): for
+      every BC combination in 1D/2D/3D, solve a random RHS and assert
+      `fd.Apply*(solution) ≈ rhs` to tight tolerance. This pins the entire
+      spectrum, not just low modes.
+- [ ] Feed the dense Gaussian-elimination reference
+      (`reference_solver_test.go`) **random** RHS, and extend it beyond 2D
+      homogeneous Dirichlet: Neumann, periodic, mixed, anisotropic h,
+      Helmholtz, inhomogeneous BC.
+- [ ] Give the fuzz test a property: currently `_ = plan.Solve(dst, rhs)`
+      (`fuzz_test.go:58`) asserts nothing. Check err handling, finite output,
+      and (for valid inputs) the residual. Un-tie `nz` from `nx` (line 27).
+- [ ] Delete or fix vacuous assertions:
+      `(u[0]-u[0])/h` in `neumann_1d_test.go:131` (identically zero),
+      the `t.Logf`-only `TestDCTPlan_KnownValues` (`dct_test.go:117`),
+      the `math.Sin(0)` checks in `dirichlet_1d_test.go:29,62`.
+- [ ] Tighten the periodic convergence test: `0.6×` per halving accepts
+      first-order schemes (`periodic_2d_test.go:160`); require rate ≥ 1.8 as
+      `convergence_test.go` already does — and add strict-order tests for
+      Neumann, periodic, mixed, and 3D.
+- [ ] Replace the circular eigenvalue tests (`fd/eigenvalues_test.go` re-types
+      the identical formula inline) with actual small-matrix
+      eigendecomposition or brute-force stencil checks on random vectors.
+- [ ] Helmholtz gaps: solve tests for negative non-resonant α, a
+      near-resonant α test (1 ulp off — must return ErrResonant, not
+      garbage), Neumann/periodic BC with α > 0.
+- [ ] Cover the 0%-coverage surface: `Plan.SolveInPlace`,
+      `Plan2DPeriodic.SolveInPlace`, `Plan3DPeriodic.SolveInPlace`,
+      `WithNullspace`, `WithWorkers`, `WithInPlace`.
+- [ ] Asymmetric Neumann data through `SolveWithBC` (currently only constant,
+      symmetric faces — `inhom_api_test.go:50,134`; swapped/mirrored faces
+      would pass).
+- [ ] Add a naive-DFT reference test for DST-I/DCT-I amplitudes (only type-II
+      has one), and a test pinning the Hermitian/Nyquist bin in the real-FFT
+      path.
 
 ---
 
-## Phase 8: Performance Optimization
+## Phase C: API Hardening — no more silent failure
 
-### 8.1 Zero-allocation solve path
+House style today: bad input → silent no-op, silent garbage, or panic. Pick
+one contract (errors) and enforce it.
 
-- [x] Audit `Solve()` for heap allocations using benchmarks
-- [x] Ensure all scratch memory is pre-allocated in Plan
-- [x] Add `Plan.WorkBytes()` method for memory introspection
-- [x] Write allocation benchmarks: `go test -bench=. -benchmem`
-- [x] Target: 0 allocs/op for Solve with pre-made plan
-
-### 8.2 Parallelism support
-
-- [ ] Pass through `Options{Workers: n}` to algo-fft plans
-- [x] Pass through `Options{Workers: n}` to algo-fft plans
-- [x] Parallelize eigenvalue division loop (if beneficial)
-- [x] Parallelize line-wise DST/DCT transforms
-- [x] Benchmark single-threaded vs multi-threaded
-- [x] Document scaling characteristics
-
-### 8.3 SIMD considerations
-
-- [ ] Profile hot paths (eigenvalue division likely)
-- [ ] Consider SIMD for eigenvalue division if beneficial
-- [ ] Document any architecture-specific optimizations
-
-### 8.4 Plan caching / reuse
-
-- [ ] Document plan reuse patterns in README
-- [ ] Consider `sync.Pool` for temporary buffers if needed
-- [ ] Ensure thread-safety for concurrent Solve() calls on same plan
-
----
-
-## Phase 9: Validation & Testing
-
-### 9.1 Manufactured solution test suite
-
-- [x] Create `testdata/` with analytic test cases
-- [x] 1D periodic: u = sin(2πx/L)
-- [x] 1D Dirichlet: u = sin(πx/L)
-- [x] 1D Neumann: u = cos(πx/L) + x (linear + cosine)
-- [x] 2D periodic: u = sin(2πx/Lx) \* sin(2πy/Ly)
-- [x] 2D Dirichlet: u = sin(πx/Lx) \* sin(πy/Ly)
-- [x] 2D Neumann: u = cos(πx/Lx) \* cos(πy/Ly)
-- [x] 2D mixed: combinations of above
-- [x] 3D cases for each BC type
-
-### 9.2 Convergence tests
-
-- [x] Implement `TestConvergence_*` tests
-- [x] Verify O(h²) error convergence for 2nd-order FD
-- [ ] Plot convergence (log-log) in documentation
-
-### 9.3 Reference solver comparison
-
-- [x] Implement naive dense solver for small grids (8x8, 16x16)
-- [x] Compare spectral solution against direct solve
-- [ ] Maximum error should be O(machine epsilon \* condition number)
-
-### 9.4 Fuzzing
-
-- [x] Add fuzz tests for robustness
-- [x] Fuzz input sizes, values, BC combinations
-- [x] Ensure no panics on edge cases
+- [ ] `fd.Apply1D/2D/3D`: size mismatch is a silent no-op leaving stale data
+      in dst (`fd/laplacian.go:13,82,165`) — return an error. Unknown BCType
+      silently becomes zeros in `Eigenvalues` and Dirichlet in `Apply2D/3D` —
+      error in both.
+- [ ] `r2r` lines API: panics on short buffers, bad axis, zero-extent shapes
+      (`r2r/lines.go:61-87`) — validate and return `ErrSizeMismatch` /
+      `ErrInvalidAxis`.
+- [ ] `grid`: `LineIterator`/`PlaneIterator` yield phantom lines for shapes
+      with a zero extent (`grid/grid.go:149-206`); validate shape and axis at
+      construction. Reject negative extents in `NewShape*`.
+- [ ] `grid.Shape.Dim()` infers dimension from trailing extents, so 64×64×1
+      reports 2D and `SolveWithBC` rejects its Y faces — store the declared
+      dimension instead of guessing.
+- [ ] Options that silently no-op — make each either work or error:
+      `WithWorkers` on `PlanNDPeriodic` (ignored entirely),
+      `WithSolutionMean` on plans without nullspace (`plan.go:174`),
+      `WithRealFFT` on the BC-plan path, `WithInPlace` on periodic plans.
+- [ ] `SolveWithBC`: reject duplicate faces (two `XLow` entries silently
+      double the contribution); don't corrupt the caller's rhs on a mid-loop
+      error in the `InPlace` path (`plan_bc.go:36-62`).
+- [ ] `NormOrtho` DCT-I is not orthonormal (missing √2 endpoint weights) —
+      fix or document; Parseval-based uses are silently wrong today.
+- [ ] `NormalizationFactor` is a dead API whose documented semantics are
+      wrong by O(N) (`r2r/dct.go:293`, `transform.go:21`) — delete it or fix
+      doc + implementation to agree.
+- [ ] Replace `log` calls on the real-FFT fallback (`periodic_2d.go:54`) with
+      an inspectable plan property (`p.UsedRealFFT() bool`) or an option-level
+      error.
+- [ ] Fix misleading fd docs: formulas are for the **negative** Laplacian;
+      `fd/doc.go` says "Laplacian".
 
 ---
 
-## Phase 10: Documentation & Examples
+## Phase D: Structural Debt
 
-### 10.1 Package documentation
-
-- [x] Write comprehensive doc.go for each package
-- [ ] Document eigenvalue formulas with LaTeX/math
-- [ ] Document memory layout conventions
-- [ ] Document BC conventions and grid alignment
-
-### 10.2 README.md
-
-- [x] Project overview and motivation
-- [x] Installation instructions
-- [x] Quick start example
-- [x] Performance characteristics
-- [x] Comparison with alternatives
-
-### 10.3 Examples
-
-- [x] `examples/periodic1d/` - basic 1D periodic solve
-- [x] `examples/periodic2d/` - 2D periodic solve with visualization
-- [x] `examples/dirichlet2d/` - 2D Dirichlet problem
-- [x] `examples/neumann2d/` - 2D Neumann problem
-- [x] `examples/mixed2d/` - 2D mixed BC problem
-- [x] `examples/helmholtz/` - Helmholtz equation
-- [x] `examples/diffusion/` - implicit diffusion time-stepping
-
-### 10.4 Benchmarks documentation
-
-- [ ] Create BENCHMARKS.md with performance data
-- [ ] Compare against gonum sparse solvers (if applicable)
-- [ ] Document scaling: problem size vs time
+- [ ] **Un-duplicate the eigenvalue formulas.** `fd` imports `poisson` for
+      `BCType`, so `poisson` carries verbatim copies
+      (`eigenvalues_bc.go`, `eigenvalues_periodic.go`) of `fd/eigenvalues.go`.
+      Extract a leaf package (e.g. `bc/`: BCType + eigenvalue formulas) that
+      both import. This is the most likely source of a future silent
+      numerical divergence.
+- [ ] One `Shape` type. `grid.Shape` (fixed `[3]int`) and `poisson`'s
+      `Shape []int` (`shape_nd.go`) coexist; `parallel.go`'s helpers hardcode
+      3 axes and would silently miscount for >3D.
+- [ ] Deduplicate the pow2/non-pow2 strided-transform logic copy-pasted
+      between `periodic_nd.go:263` and `fft_plan.go:120-157`.
+- [ ] Delete dead code: `isZeroMode` (`plan.go:258`), `AxisBC`/`NewAxisBC`
+      (`bc.go:41`), `Index1D`/`FromIndex1D` (`grid/grid.go:57,77`), the
+      unreachable lazy-grow in `plan_bc.go`, `fd.HasZeroEigenvalue` (verbatim
+      duplicate of `BCType.HasNullspace`).
+- [ ] Parallel layer polish: propagate/cancel on first worker error instead
+      of dropping the rest (`parallel.go:57`); threshold gate so 1D solves
+      don't spawn GOMAXPROCS goroutines for a pointwise division
+      (`periodic_1d.go:85`); partition over the largest dimension, not always
+      nx (`periodic_2d.go:136`); lazy per-worker FFT plan allocation in
+      `NewFFTPlanWithWorkers` (currently eager GOMAXPROCS × plans+scratch).
+- [ ] Fix `sizeStr` benchmark labels (`fd/eigenvalues_test.go:190` — breaks
+      for n ≥ 10240) and size-brittle absolute tolerances in
+      `fd/laplacian_test.go` (use relative error).
 
 ---
 
-## Phase 11: Future Extensions (Out of Scope for MVP)
+## Phase E: Demo Repair (or removal)
 
-### 11.1 Projection for incompressible flow
+The shipped demo is broken end-to-end and actively misrepresents the library.
+Either fix all of the below or pull it from the README until fixed.
 
-- [ ] Design API for pressure projection
-- [ ] Implement divergence computation
-- [ ] Implement gradient computation
-- [ ] Write Navier-Stokes projection example
-
-### 11.2 Variable coefficients
-
-- [ ] Research preconditioned iterative methods
-- [ ] Consider spectral method as preconditioner
-
-### 11.3 Non-rectangular domains
-
-- [ ] Research immersed boundary methods
-- [ ] Consider mask-based approaches
-
----
-
-## Phase 12: Simple WebAssembly Wave Demo ✅ COMPLETE
-
-A minimal, shippable browser demo showcasing wave propagation using the Helmholtz solver. No UI controls - just click to ping.
-
-### 12.1 Minimal UI Specification
-
-**Interface:**
-
-- [x] Fullscreen canvas
-- [x] Top-left tiny text overlay: FPS + "Click to ping"
-- [x] Interactions:
-  - [x] **Click:** set source position; restart animation
-  - [ ] **(Optional) R:** cycle resolution 128²/256²/512² - NOT IN MVP
-  - [ ] **(Optional) B:** cycle boundary preset (Rigid / Open / Periodic) - NOT IN MVP
-- [x] No forms, no sliders
-
-### 12.2 Simulation Approach
-
-**Approach A (Implemented): Multi-frequency synthesis animation**
-
-- [x] Pick a small set of frequencies (16 bins, 80-600 Hz)
-- [x] For each f_i:
-  - [x] Solve steady field p_i(x,y) for source at click position
-- [x] During animation frame t, render:
-  ```
-  u(x,y,t) = Σ_i w_i * p_i(x,y) * cos(2π f_i t) * exp(-γ_i t)
-  ```
-- [x] Add damping via exp(-γ_i t) with γ_i = 0.5 * f_i
-- [x] Result: expanding/rippling patterns that reflect and decay
-
-### 12.3 Core Pipeline
-
-**On startup:**
-
-- [x] Set grid: nx=256, ny=256
-- [x] Set BC preset (rigid: Neumann on both axes)
-- [x] Build and cache Helmholtz plan(s) for grid/BC
-
-**On click(x,y):**
-
-- [x] Convert click to grid indices (sx, sy)
-- [x] Build source blob s(x,y) (Gaussian with radius=3 cells)
-- [x] For each frequency bin f_i:
-  - [x] Compute k_i = 2π f_i / c
-  - [x] Set Helmholtz parameter (alpha = k_i²)
-  - [x] Solve → store p_i (Float32Array)
-- [x] Send ack to UI: "ready to animate"
-
-**Each animation frame:**
-
-- [x] Worker computes frame field u(x,y,t) and sends pixels
-- [x] Worker returns Uint8ClampedArray rgba (already colormapped)
-- [x] UI blits ImageData to canvas
-
-### 12.4 Web/WASM Structure
-
-**Files:**
-
-- [x] `demo/index.html` - canvas + overlay
-- [x] `demo/main.ts` - UI + click handling
-- [x] `demo/sim.worker.ts` - loads wasm + does all compute
-- [x] `cmd/acoustics-wasm/main.go` - exports functions
-- [x] `demo/package.json` - Vite + TypeScript config
-- [x] `demo/README.md` - Documentation
-
-**Worker message protocol:**
-
-- [x] `init {nx, ny, dx, dy, bcX, bcY}`
-- [x] `ping {sx, sy, frequencies}`
-- [x] `frame {t}`
-- [x] Worker → UI: `pixels {rgba, width, height}` or `error`
-
-### 12.5 WASM Exports (Minimal API)
-
-**Three core entrypoints:**
-
-- [x] `goInitPlan(nx, ny, dx, dy, bcX, bcY) -> {planID, nx, ny}`
-- [x] `goSolve(planID, alpha, sx, sy, srcRadius) -> {field: Float32Array}`
-- [x] `goGetPlanInfo(planID) -> {nx, ny, dx, dy}`
-
-Everything else (synthesis, colormap, animation loop) lives in Worker JS/TS.
-
-### 12.6 Visual Design
-
-- [x] Render signed field with diverging colormap (blue-white-red)
-- [x] Auto-scale using percentile clamp (5th–95th percentile)
-- [ ] Add faint outline box showing room boundary - NOT IN MVP
-- [ ] (Optional) Draw small dot at last click position - NOT IN MVP
-
-### 12.7 Performance Knobs (No UI)
-
-**NOT IN MVP - Future enhancements**
-
-- [ ] **R:** cycle resolution (128²/256²/512²)
-- [ ] **B:** cycle boundary conditions
-- [ ] **F:** number of frequency bins (16/32/64)
-- [ ] **D:** damping strength
-
-### 12.8 Milestones
-
-- [x] **Milestone 1:** Canvas + Worker + WASM loads ✅
-- [x] **Milestone 2:** Multi-frequency solve on click ✅
-- [x] **Milestone 3:** Multi-frequency synthesis animation ✅
-- [x] **Milestone 4:** Diverging colormap with percentile normalization ✅
-- [x] **Milestone 5:** FPS counter and performance optimization ✅
-
-**Implementation Complete!** 🎉
-
-Run with: `just demo-dev` and open http://localhost:5173
-
-**Bundle size:** 4.1 MB WASM + 17 KB runtime
-**Performance:** ~72ms for 16-mode solve, 60 FPS animation
-**Files:** See `demo/README.md` for full documentation
+- [ ] **Wrong equation:** worker passes `alpha = +k²` (`demo/sim.worker.ts:250`),
+      solving screened Poisson `(k² − Δ)p = s` — monotone decaying blobs, no
+      waves, no room modes. Acoustic Helmholtz needs `alpha = −k²` — which
+      requires Phase A.3's near-resonance handling plus a damping strategy
+      (complex shift via two real solves, or stay with the screened form and
+      re-brand the demo honestly as a "room modes / decay-length lab").
+- [ ] **Broken deploy:** root-absolute `fetch('/wasm_exec.js')` /
+      `fetch('/acoustics.wasm')` (`sim.worker.ts:175,188`) 404 under the
+      GitHub-Pages subpath + Vite `base: './'`. Use relative URLs.
+- [ ] **Dead plan cache:** `InitPlan` caches a plan that is never used;
+      `Solve` builds a fresh plan per call (`cmd/acoustics-wasm/main.go:80`
+      vs `:131`) — 16 plan constructions per click. Cache by
+      `(nx,ny,dx,dy,bc,alpha-independent)` and reuse.
+- [ ] Replace the ~49k `jsArray.SetIndex` calls per solve with
+      `js.CopyBytesToJS` over a `Uint8Array` view (`main.go:158` — the
+      comment claiming this is impossible is wrong).
+- [ ] Add timeout/error path to the WASM readiness poll
+      (`sim.worker.ts:196` — hangs forever on half-failed instantiation).
+- [ ] Fix README/demo-README claims: `yourusername` placeholder link, grid
+      256×192 not 256×256, damping γ = ω/20 not 0.5·f, "80ms well under
+      16.67ms" arithmetic, "reflections" claim.
+- [ ] Modern build constraint in `cmd/acoustics-wasm/main.go:1`
+      (`//go:build js && wasm`), `Release()` strategy or comment for
+      `js.FuncOf` callbacks, note the single-threaded assumption on
+      `planCache`.
 
 ---
 
-## Phase 13: Full-Featured WebAssembly Acoustic Room Demo
-
-A comprehensive browser-based interactive demo showcasing the Helmholtz solver for 2D acoustic room simulation with full controls and audio output.
-
-### 13.1 Product Specification (MVP User Journey)
-
-**What users can do:**
-
-1. Pick a **room preset** (Rectangular, Lx×Ly)
-2. Drag **Source (🔊)** and **Mic (🎤)** points on the room
-3. Scrub a **frequency slider**
-4. See:
-   - a **pressure field heatmap** (amplitude; optional animated phase)
-   - a **mic response plot** (amplitude vs frequency)
-5. Click **Play** to auralize using an impulse response generated from the sweep
-
-**Controls (MVP):**
-
-- Room: width/height (meters), grid resolution (e.g. 128²/256²/512²)
-- BC per edge (or per axis):
-  - **Rigid** (Neumann)
-  - **Open** (Dirichlet)
-  - **Periodic** (for "waveguide loop" fun)
-- Medium:
-  - speed of sound `c` (default 343 m/s)
-  - damping/loss knob (needed for nice, stable resonances)
-- Source:
-  - type: monopole (point-ish blob)
-  - gain
-- Mic:
-  - readouts: SPL-ish (relative), phase (optional), transfer magnitude
-
-**Nice-to-have:**
-
-- [ ] "**Mode explorer**": show resonant patterns + highlight peaks
-- [ ] "**Quality while dragging**": low-res preview then refine
-- [ ] Shareable URLs encoding parameters
-
-**Design constraint:**
-
-- ✅ Rectangular rooms with clean BCs → perfect fit for separable spectral solver
-- ⚠️ Arbitrary internal obstacles/polygons → **not directly supported** (MVP uses rectangular rooms only; obstacles can come later via iterative wrapper)
-
-### 13.2 Architecture & Data Flow
-
-**Runtime components:**
-
-- [ ] **UI thread (React/TS)**
-  - [ ] Canvas/WebGL rendering
-  - [ ] Controls + plots
-  - [ ] Audio playback
-- [ ] **Simulation Worker**
-  - [ ] Owns the WASM instance (runs hot without blocking UI)
-  - [ ] Caching of plans/results
-- [ ] **Go WASM module**
-  - [ ] Wraps `algo-pde` plans
-  - [ ] Performs field solve + sweep sampling
-  - [ ] Returns arrays/buffers to worker
-
-**Data flow:**
-
-- UI → Worker: params, source/mic positions, "solve" requests
-- Worker → WASM: numeric solve/sweep
-- Worker → UI: field buffer, response arrays, progress updates
-- UI → WebAudio: IR buffer (AudioBuffer) + dry audio input → ConvolverNode
-
-### 13.3 Repository Structure
-
-**Monorepo layout:**
-
-- [ ] `/cmd/acoustics-wasm/` - Go `main` for wasm exports
-- [ ] `/demo/` - Vite + React + TS
-  - [ ] `/src/worker/sim.worker.ts`
-  - [ ] `/src/wasm/loader.ts`
-  - [ ] `/src/render/fieldRenderer.ts`
-  - [ ] `/src/audio/auralizer.ts`
-  - [ ] `/public/wasm/` - built artifacts: `acoustics.wasm`, `wasm_exec.js`
-
-### 13.4 WASM Build & Integration
-
-**Build strategy:**
-
-- [ ] Compile with `GOOS=js GOARCH=wasm go build -o acoustics.wasm`
-- [ ] Bundle/copy `wasm_exec.js` from Go's distribution
-
-**Vite integration:**
-
-- [ ] Treat `acoustics.wasm` as static asset
-- [ ] Load in worker via `fetch()` + `WebAssembly.instantiateStreaming`
-- [ ] (Optional later) Use Vite plugin for cleaner bundling
-
-### 13.5 Go WASM API Design
-
-**Exported functions (MVP):**
-
-- [ ] `init() -> version/info`
-- [ ] `createPlan2D(nx, ny, dx, dy, bcX, bcY, nullspaceMode) -> planHandle`
-  - [ ] Implement plan caching by key: `(nx,ny,dx,dy,bcX,bcY)`
-- [ ] `solveField(planHandle, k, damping, sourceX, sourceY, sourceWidthCells) -> Float32Array field`
-  - [ ] Returns amplitude field (or signed pressure)
-- [ ] `sampleAt(planHandle, lastFieldOrSolveResult, micX, micY) -> float`
-- [ ] `sweepResponse(planHandle, fMin, fMax, nBins, damping, source…, mic…) -> Float32Array mags`
-  - [ ] Return log-spaced frequencies
-
-**Memory strategy:**
-
-- [ ] Return raw `[]float32` to JS as `Uint8Array/Float32Array` (copied buffer)
-- [ ] (Optional perf) Implement pinned "output buffer" in wasm for zero-copy reads
-
-### 13.6 Acoustic Physics Mapping
-
-**Helmholtz form:**
-
-- [ ] Use stable shifted form: `(-Δ + k²) p = s` (screened Poisson)
-- [ ] Map: `k = 2π f / c`, set `alpha = k²`
-- [ ] Add damping as frequency-dependent smoothing or effective loss parameter
-
-**Source injection:**
-
-- [ ] Implement small Gaussian-ish blob over a few cells
-- [ ] Normalize energy so loudness doesn't explode with resolution changes
-
-**Field visualization:**
-
-- [ ] Output `field = p(x,y)` (signed) or `abs(p)` (amplitude)
-- [ ] (Optional) Animation: `frame(t) = p(x,y) * cos(2π f t)`
-
-### 13.7 Frontend Implementation (React + Canvas/WebGL)
-
-**UI components:**
-
-- [ ] **RoomCanvas**
-  - [ ] Draw border/BC icons
-  - [ ] Draggable source/mic handles
-  - [ ] Mouse events → normalized coordinates
-- [ ] **ControlPanel**
-  - [ ] Sliders + dropdowns
-  - [ ] Preset selector
-  - [ ] "Compute" + "auto update" toggle
-- [ ] **Plots**
-  - [ ] Mic magnitude vs freq (line plot)
-  - [ ] (Optional) Show peaks / modal markers
-
-**Rendering approach:**
-
-- [ ] MVP: **Canvas2D ImageData** (fast enough for 256², OK for 512²)
-- [ ] Later: **WebGL2 texture** upload for smoother scaling and faster colormaps
-
-**Rendering pipeline:**
-
-- [ ] Receive `Float32Array field`
-- [ ] Compute min/max (robust: percentile clamp)
-- [ ] Map to pixels via colormap LUT
-- [ ] Paint to canvas (nearest-neighbor scaling)
-
-**Interaction performance:**
-
-- [ ] While dragging source/mic: run low-res plan (128²) quickly
-- [ ] On release / idle: recompute at chosen quality (256²/512²)
-
-### 13.8 Audio Auralization
-
-**Tier A (MVP): Magnitude-only → minimum-phase IR**
-
-- [ ] Sweep frequencies, get magnitude response at mic: `|H(f)|`
-- [ ] Assume minimum phase and reconstruct phase from log-magnitude (Hilbert / cepstrum method)
-- [ ] Build complex spectrum `H(f)` and IFFT → impulse response
-- [ ] Create `AudioBuffer`, feed into `ConvolverNode.buffer`
-- [ ] Prepare buffer off main thread to avoid jank
-
-**Tier B (Upgrade): True complex response**
-
-- [ ] Add "complex Helmholtz" path by representing complex values as two real fields (Re/Im)
-- [ ] Do same transforms twice with complex division in spectral space
-- [ ] Yields true phase and cleaner impulse responses
-
-### 13.9 Testing & Validation
-
-**Numerical validation:**
-
-- [ ] Add validation suite runnable in Node (Go wasm under Node)
-- [ ] Test cases:
-  - [ ] Known analytic modes in a rectangle (compare eigenvalues / patterns)
-  - [ ] Symmetry tests (move source and check mirrored field)
-  - [ ] BC sanity (Dirichlet edges should go ~0 at boundaries)
-
-**Web integration tests:**
-
-- [ ] Worker start/stop, re-init correctness
-- [ ] Determinism (same params → same result)
-- [ ] Memory stability (repeat 100 solves, ensure no growth)
-
-**Audio tests:**
-
-- [ ] IR normalization and clipping safety
-- [ ] Convolver on/off A/B toggles
-- [ ] Export IR as WAV (simple PCM writer)
-
-### 13.10 Deployment
-
-- [ ] Build demo as static site (Vite)
-- [ ] Host on **GitHub Pages** (or any static host)
-- [ ] Ensure correct MIME types for `.wasm`
-
-### 13.11 Milestones
-
-**Milestone 1 — "Field viewer"**
-
-- [ ] WASM loads in worker
-- [ ] Rectangular room + BCs
-- [ ] Source/mic drag
-- [ ] Frequency slider updates heatmap
-
-**Milestone 2 — "Response + plots"**
-
-- [ ] Sweep response magnitude at mic
-- [ ] Plot magnitude vs frequency
-- [ ] Presets + quality modes + caching
-
-**Milestone 3 — "Audio MVP"**
-
-- [ ] Convert magnitude response → IR (minimum-phase)
-- [ ] WebAudio convolver pipeline with A/B dry/wet
-- [ ] Export IR
-
-**Milestone 4 — "Polish + performance"**
-
-- [ ] Progressive refinement while dragging
-- [ ] WebGL renderer (optional)
-- [ ] URL sharing + preset gallery
-- [ ] Perf telemetry overlay (FPS, solve ms, allocations)
-
-**Milestone 5 — "Physics upgrade (optional)"**
-
-- [ ] Complex response for true phase
-- [ ] Better damping model
-- [ ] Mode explorer
-
-### 13.12 Risk Mitigation
-
-**Risk: Users want obstacles (pillars, L-shaped rooms)**
-
-- Mitigation: Ship MVP as "Room Modes Lab (Rectangles)" with strong educational framing
-- Later: Add obstacles via iterative method (penalty / immersed boundary) using spectral solver as fast inner solve
-
-**Risk: Indefinite Helmholtz causes instability**
-
-- Mitigation: Use stable shifted form for MVP, add damping, clamp peaks, present as "steady-state field"
-
-**Risk: WASM ↔ JS overhead / UI jank**
-
-- Mitigation: Keep WASM inside Worker; return transferable buffers; limit recomputes during drag
+## Phase F: Hygiene & Release Readiness
+
+- [ ] **LICENSE file.** README says "TBD" while giving `go get` instructions;
+      legally nobody may use the library today. Pick one (MIT/Apache-2.0).
+- [ ] `gofmt` the tree: 7 of 8 examples + the WASM main currently fail plain
+      gofmt despite a formatting CI job. Then figure out why CI didn't catch
+      it (format workflow scope).
+- [ ] Remove root clutter: `check_fft.go` debug script, `coverage.out`,
+      `poisson_cov2.out`, `poisson_newtests.out`, empty `internal/` dir,
+      `goal.md` (superseded by this file).
+- [ ] Commit or revert the local `.gitignore`/`.golangci.toml` drift; resolve
+      the `demo/package-lock.json` tracked-but-gitignored contradiction (CI's
+      `npm ci` depends on the lockfile).
+- [ ] Align CI Go version with go.mod (CI pins 1.23, go.mod demands 1.25 —
+      the pin is dead config via GOTOOLCHAIN).
+- [ ] Fix the two examples whose plan is never used (`examples/neumann2d`,
+      `examples/periodic1d` — staticcheck SA4006); add a correctness check to
+      `examples/helmholtz` (currently prints a number with no verification).
+- [ ] Work through the substantive `golangci-lint` findings (exhaustive
+      switch in `plan_bc.go:38`, dupl, staticcheck); decide policy on the
+      style ones (varnamelen etc.) and configure the linter accordingly.
+- [ ] BENCHMARKS.md with honest numbers per BC type (carried over; blocked on
+      A.2 — current Neumann numbers would be embarrassing).
+- [ ] Convergence log-log plots in docs (carried over).
 
 ---
 
-## Implementation Order Summary
+## Phase G: Future Extensions (unchanged ambitions, after the above)
 
-**MVP (Phases 0-4):** ~2-3 weeks of focused work
+### G.1 Full acoustic room demo ("Room Modes Lab")
 
-1. Phase 0: Setup ✅ COMPLETE
-2. Phase 1: Grid package ✅ COMPLETE (core functionality)
-3. Phase 2: R2R transforms ✅ PARTIAL (DST-I/DCT-I done, line-wise pending)
-4. Phase 3: FD operators ✅ PARTIAL (eigenvalues done)
-5. Phase 4: Periodic Poisson (1 week)
+The old Phase-13 vision — React UI, draggable source/mic, frequency sweep, mic
+response plot, minimum-phase IR auralization via WebAudio ConvolverNode,
+GitHub Pages deploy. Rectangular rooms only (separable spectral solver).
+Prerequisites: Phase E fixed, Phase A.3 (negative α) decided. Details in git
+history (`PLAN.md` @ 3acff0c, Phase 13).
 
-**Feature Complete (Phases 5-7):** ~2-3 weeks additional 6. Phase 5: Dirichlet/Neumann (1 week) 7. Phase 6: Inhomogeneous BC (3-4 days) 8. Phase 7: Helmholtz (2-3 days)
+### G.2 Solver features
 
-**Polish (Phases 8-10):** ~1-2 weeks 9. Phase 8: Optimization (ongoing) 10. Phase 9: Validation (ongoing, parallel with implementation) 11. Phase 10: Documentation (ongoing)
+- [ ] True complex Helmholtz (Re/Im as two real solves) → correct phase,
+      damping via complex shift.
+- [ ] Robin / per-face asymmetric BCs (the `AxisBC` promise, currently dead
+      code — implement or drop).
+- [ ] Pressure projection API for incompressible flow (divergence, gradient,
+      Navier–Stokes projection example).
+- [ ] Variable coefficients: spectral solve as preconditioner for an
+      iterative method.
+- [ ] Non-rectangular domains via immersed-boundary / masking, using the
+      spectral solver as the fast inner solve.
+
+### G.3 Performance
+
+- [ ] SIMD for the eigenvalue-division loop (profile first).
+- [ ] Real-input FFT (or compact DCT algorithms) instead of full complex128
+      FFT of the 2(N±1) extension — currently ~4× redundant work — without
+      the float32 downgrade of the current `WithRealFFT`.
 
 ---
 
-## Dependencies
+## Success Criteria (revised)
 
-- `github.com/MeKo-Christian/algo-fft` - FFT plans and execution
-- Standard library only otherwise (no external deps)
-
-## Testing Strategy
-
-- Unit tests for every exported function
-- Table-driven tests for BC combinations
-- Manufactured solution tests for correctness
-- Benchmark tests for performance regression
-- Fuzz tests for robustness
-
-## Success Criteria
-
-1. **Correctness:** All manufactured solution tests pass with error < 1e-10 (for double precision, h → 0)
-2. **Performance:** O(N log N) complexity verified empirically
-3. **Memory:** Zero allocations in Solve() with pre-made plan
-4. **API:** Clean, plan-based API consistent with algo-fft style
-5. **Documentation:** All public APIs documented with examples
+1. **Honest contracts:** every claim in doc.go/README is enforced by a test
+   (concurrency, complexity, allocations).
+2. **Spectrum-complete correctness:** random-RHS residual tests pass for
+   every BC combination in 1D/2D/3D; dense-reference comparison on random RHS.
+3. **No silent failure:** invalid input → error; never a no-op, panic in an
+   error-returning API, or garbage with err == nil.
+4. **One source of truth** for eigenvalue formulas and shapes.
+5. **Shippable repo:** LICENSE, gofmt-clean, working demo (or none), CI that
+   actually gates what it claims to gate.
