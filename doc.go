@@ -18,8 +18,13 @@
 //  2. The plan pre-computes eigenvalues and allocates work buffers
 //  3. Call Solve() repeatedly with different right-hand sides
 //
-// Plans are safe for concurrent Solve() calls and should be reused
-// for multiple solves on the same grid.
+// Plans are safe for concurrent Solve() calls and should be reused for
+// multiple solves on the same grid. Each call draws its working buffers from
+// an internal pool: a single goroutine calling Solve repeatedly reuses one
+// cached workspace and does not allocate in steady state, while a burst of
+// concurrent calls transiently allocates one workspace per concurrent call.
+// Peak memory therefore scales with the peak number of concurrent Solve
+// calls on a plan.
 //
 // # Packages
 //

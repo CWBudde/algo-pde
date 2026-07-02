@@ -28,16 +28,20 @@ funnels each call through shared plan-owned workspaces with no synchronization
 `periodic_nd.go:142`, `plan.go:153`). `PlanNDPeriodic` additionally mutates
 plan-level index state (`eigIndices`, `axisIdx`) per call.
 
-- [ ] Decide the contract: per-call workspace via `sync.Pool`, or document
+- [x] Decide the contract: per-call workspace via `sync.Pool`, or document
       "one goroutine per plan" and delete the doc.go claim. (Recommended:
       `sync.Pool` of workspaces — keeps the zero-alloc steady state.)
-- [ ] Remove per-call plan mutation in `periodic_nd.go` (make Solve stateless
+      → Implemented `sync.Pool` everywhere; pool entries are built with full
+      constructors, never `algofft.Plan.Clone`/`PlanReal2D.Clone` (both are
+      defective upstream: Clone leaves `stridedScratch` nil, PlanReal2D.Clone
+      shares the stateful row plan — worth upstream bug reports).
+- [x] Remove per-call plan mutation in `periodic_nd.go` (make Solve stateless
       w.r.t. the plan).
-- [ ] Remove the lazy `p.work.Real` reallocation in `plan_bc.go:29-31`
+- [x] Remove the lazy `p.work.Real` reallocation in `plan_bc.go:29-31`
       (dead or racy; the buffer is already pre-allocated in `plan.go:116`).
-- [ ] Fix `FFTPlan.TransformLines` — concurrent callers on the same plan share
+- [x] Fix `FFTPlan.TransformLines` — concurrent callers on the same plan share
       `plans[0]`/`scratchA[0]` (`fft_plan.go:96`).
-- [ ] Add a concurrent-Solve race test (N goroutines, one shared plan, verify
+- [x] Add a concurrent-Solve race test (N goroutines, one shared plan, verify
       results match serial) for every plan type; run under `just test-race`.
 
 ### A.2 Performance: kill the O(N²) inverse transforms

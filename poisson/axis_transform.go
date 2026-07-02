@@ -36,52 +36,35 @@ func (t *fftAxisTransform) NormalizationFactor() float64 {
 	return 1.0
 }
 
+// dstWorker bundles a DST plan with line buffers for one goroutine. r2r plans
+// carry mutable internal scratch, so concurrent goroutines must not share one.
+type dstWorker struct {
+	plan    *r2r.DSTPlan
+	realBuf []float64
+	imagBuf []float64
+}
+
 type dstAxisTransform struct {
-	plan     *r2r.DSTPlan
-	realBuf  []float64
-	imagBuf  []float64
-	workers  int
-	plans    []*r2r.DSTPlan
-	realBufs [][]float64
-	imagBufs [][]float64
+	n       int
+	workers int
+	norm    float64
+	pool    *residentPool[dstWorker]
 }
 
 func newDSTAxisTransform(n int, workers int) (AxisTransform, error) {
-	plan, err := r2r.NewDSTPlan(n)
+	workers = effectiveWorkers(workers)
+	transform := &dstAxisTransform{
+		n:       n,
+		workers: workers,
+		pool:    newResidentPool[dstWorker](workers),
+	}
+
+	worker, err := transform.newWorker()
 	if err != nil {
 		return nil, err
 	}
-
-	workers = effectiveWorkers(workers)
-	transform := &dstAxisTransform{
-		plan:    plan,
-		realBuf: make([]float64, n),
-		imagBuf: make([]float64, n),
-		workers: workers,
-	}
-
-	if workers == 1 {
-		return transform, nil
-	}
-
-	plans := make([]*r2r.DSTPlan, workers)
-	realBufs := make([][]float64, workers)
-	imagBufs := make([][]float64, workers)
-	plans[0] = plan
-	realBufs[0] = transform.realBuf
-	imagBufs[0] = transform.imagBuf
-	for i := 1; i < workers; i++ {
-		clone, err := r2r.NewDSTPlan(n)
-		if err != nil {
-			return nil, err
-		}
-		plans[i] = clone
-		realBufs[i] = make([]float64, n)
-		imagBufs[i] = make([]float64, n)
-	}
-	transform.plans = plans
-	transform.realBufs = realBufs
-	transform.imagBufs = imagBufs
+	transform.norm = worker.plan.NormalizationFactor()
+	transform.pool.put(worker)
 
 	return transform, nil
 }
@@ -95,11 +78,31 @@ func (t *dstAxisTransform) Inverse(data []complex128, shape grid.Shape, axis int
 }
 
 func (t *dstAxisTransform) Length() int {
-	return t.plan.Len()
+	return t.n
 }
 
 func (t *dstAxisTransform) NormalizationFactor() float64 {
-	return t.plan.NormalizationFactor()
+	return t.norm
+}
+
+func (t *dstAxisTransform) newWorker() (*dstWorker, error) {
+	plan, err := r2r.NewDSTPlan(t.n)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dstWorker{
+		plan:    plan,
+		realBuf: make([]float64, t.n),
+		imagBuf: make([]float64, t.n),
+	}, nil
+}
+
+func (t *dstAxisTransform) getWorker() (*dstWorker, error) {
+	if worker := t.pool.get(); worker != nil {
+		return worker, nil
+	}
+	return t.newWorker()
 }
 
 func (t *dstAxisTransform) transformLines(
@@ -116,7 +119,7 @@ func (t *dstAxisTransform) transformLines(
 		return ErrSizeMismatch
 	}
 
-	if shape.N(axis) != t.plan.Len() {
+	if shape.N(axis) != t.n {
 		return ErrSizeMismatch
 	}
 
@@ -125,19 +128,16 @@ func (t *dstAxisTransform) transformLines(
 	numLines := lineCount(shape, axis)
 	workers := clampWorkers(t.workers, numLines)
 
-	return parallelFor(workers, numLines, func(worker, startLine, endLine int) error {
-		plan := t.plan
-		realBuf := t.realBuf
-		imagBuf := t.imagBuf
-		if workers > 1 {
-			plan = t.plans[worker]
-			realBuf = t.realBufs[worker]
-			imagBuf = t.imagBufs[worker]
+	return parallelFor(workers, numLines, func(_ int, startLine, endLine int) error {
+		worker, err := t.getWorker()
+		if err != nil {
+			return err
 		}
+		defer t.pool.put(worker)
 
 		for line := startLine; line < endLine; line++ {
 			start := lineStartIndex(shape, axis, line)
-			if err := t.transformLine(plan, realBuf, imagBuf, data, start, lineLen, lineStride, inverse); err != nil {
+			if err := transformDSTLine(worker, data, start, lineLen, lineStride, inverse); err != nil {
 				return err
 			}
 		}
@@ -145,94 +145,74 @@ func (t *dstAxisTransform) transformLines(
 	})
 }
 
-func (t *dstAxisTransform) transformLine(
-	plan *r2r.DSTPlan,
-	realBuf []float64,
-	imagBuf []float64,
+func transformDSTLine(
+	w *dstWorker,
 	data []complex128,
 	start int,
 	length int,
 	stride int,
 	inverse bool,
 ) error {
-	for i := 0; i < length; i++ {
+	for i := range length {
 		v := data[start+i*stride]
-		realBuf[i] = real(v)
-		imagBuf[i] = imag(v)
+		w.realBuf[i] = real(v)
+		w.imagBuf[i] = imag(v)
 	}
 
 	var err error
 	if inverse {
-		err = plan.Inverse(realBuf, realBuf)
+		err = w.plan.Inverse(w.realBuf, w.realBuf)
 	} else {
-		err = plan.Forward(realBuf, realBuf)
+		err = w.plan.Forward(w.realBuf, w.realBuf)
 	}
 	if err != nil {
 		return fmt.Errorf("DST real line: %w", err)
 	}
 
 	if inverse {
-		err = plan.Inverse(imagBuf, imagBuf)
+		err = w.plan.Inverse(w.imagBuf, w.imagBuf)
 	} else {
-		err = plan.Forward(imagBuf, imagBuf)
+		err = w.plan.Forward(w.imagBuf, w.imagBuf)
 	}
 	if err != nil {
 		return fmt.Errorf("DST imag line: %w", err)
 	}
 
-	for i := 0; i < length; i++ {
-		data[start+i*stride] = complex(realBuf[i], imagBuf[i])
+	for i := range length {
+		data[start+i*stride] = complex(w.realBuf[i], w.imagBuf[i])
 	}
 
 	return nil
 }
 
+// dctWorker bundles a DCT-II plan with line buffers for one goroutine.
+type dctWorker struct {
+	plan    *r2r.DCT2Plan
+	realBuf []float64
+	imagBuf []float64
+}
+
 type dctAxisTransform struct {
-	plan     *r2r.DCT2Plan
-	realBuf  []float64
-	imagBuf  []float64
-	workers  int
-	plans    []*r2r.DCT2Plan
-	realBufs [][]float64
-	imagBufs [][]float64
+	n       int
+	workers int
+	norm    float64
+	pool    *residentPool[dctWorker]
 }
 
 func newDCTAxisTransform(n int, workers int) (AxisTransform, error) {
-	plan, err := r2r.NewDCT2Plan(n)
+	workers = effectiveWorkers(workers)
+	transform := &dctAxisTransform{
+		n:       n,
+		workers: workers,
+		pool:    newResidentPool[dctWorker](workers),
+	}
+
+	worker, err := transform.newWorker()
 	if err != nil {
 		return nil, err
 	}
-
-	workers = effectiveWorkers(workers)
-	transform := &dctAxisTransform{
-		plan:    plan,
-		realBuf: make([]float64, n),
-		imagBuf: make([]float64, n),
-		workers: workers,
-	}
-
-	if workers == 1 {
-		return transform, nil
-	}
-
-	plans := make([]*r2r.DCT2Plan, workers)
-	realBufs := make([][]float64, workers)
-	imagBufs := make([][]float64, workers)
-	plans[0] = plan
-	realBufs[0] = transform.realBuf
-	imagBufs[0] = transform.imagBuf
-	for i := 1; i < workers; i++ {
-		clone, err := r2r.NewDCT2Plan(n)
-		if err != nil {
-			return nil, err
-		}
-		plans[i] = clone
-		realBufs[i] = make([]float64, n)
-		imagBufs[i] = make([]float64, n)
-	}
-	transform.plans = plans
-	transform.realBufs = realBufs
-	transform.imagBufs = imagBufs
+	transform.norm = worker.plan.NormalizationFactor()
+	transform.pool.put(worker)
 
 	return transform, nil
 }
@@ -246,11 +226,31 @@ func (t *dctAxisTransform) Inverse(data []complex128, shape grid.Shape, axis int
 }
 
 func (t *dctAxisTransform) Length() int {
-	return t.plan.Len()
+	return t.n
 }
 
 func (t *dctAxisTransform) NormalizationFactor() float64 {
-	return t.plan.NormalizationFactor()
+	return t.norm
+}
+
+func (t *dctAxisTransform) newWorker() (*dctWorker, error) {
+	plan, err := r2r.NewDCT2Plan(t.n)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dctWorker{
+		plan:    plan,
+		realBuf: make([]float64, t.n),
+		imagBuf: make([]float64, t.n),
+	}, nil
+}
+
+func (t *dctAxisTransform) getWorker() (*dctWorker, error) {
+	if worker := t.pool.get(); worker != nil {
+		return worker, nil
+	}
+	return t.newWorker()
 }
 
 func (t *dctAxisTransform) transformLines(
@@ -267,7 +267,7 @@ func (t *dctAxisTransform) transformLines(
 		return ErrSizeMismatch
 	}
 
-	if shape.N(axis) != t.plan.Len() {
+	if shape.N(axis) != t.n {
 		return ErrSizeMismatch
 	}
 
@@ -276,19 +276,16 @@ func (t *dctAxisTransform) transformLines(
 	numLines := lineCount(shape, axis)
 	workers := clampWorkers(t.workers, numLines)
 
-	return parallelFor(workers, numLines, func(worker, startLine, endLine int) error {
-		plan := t.plan
-		realBuf := t.realBuf
-		imagBuf := t.imagBuf
-		if workers > 1 {
-			plan = t.plans[worker]
-			realBuf = t.realBufs[worker]
-			imagBuf = t.imagBufs[worker]
+	return parallelFor(workers, numLines, func(_ int, startLine, endLine int) error {
+		worker, err := t.getWorker()
+		if err != nil {
+			return err
 		}
+		defer t.pool.put(worker)
 
 		for line := startLine; line < endLine; line++ {
 			start := lineStartIndex(shape, axis, line)
-			if err := t.transformLine(plan, realBuf, imagBuf, data, start, lineLen, lineStride, inverse); err != nil {
+			if err := transformDCTLine(worker, data, start, lineLen, lineStride, inverse); err != nil {
 				return err
 			}
 		}
@@ -296,43 +293,41 @@ func (t *dctAxisTransform) transformLines(
 	})
 }
 
-func (t *dctAxisTransform) transformLine(
-	plan *r2r.DCT2Plan,
-	realBuf []float64,
-	imagBuf []float64,
+func transformDCTLine(
+	w *dctWorker,
 	data []complex128,
 	start int,
 	length int,
 	stride int,
 	inverse bool,
 ) error {
-	for i := 0; i < length; i++ {
+	for i := range length {
 		v := data[start+i*stride]
-		realBuf[i] = real(v)
-		imagBuf[i] = imag(v)
+		w.realBuf[i] = real(v)
+		w.imagBuf[i] = imag(v)
 	}
 
 	var err error
 	if inverse {
-		err = plan.Inverse(realBuf, realBuf)
+		err = w.plan.Inverse(w.realBuf, w.realBuf)
 	} else {
-		err = plan.Forward(realBuf, realBuf)
+		err = w.plan.Forward(w.realBuf, w.realBuf)
 	}
 	if err != nil {
 		return fmt.Errorf("DCT-II real line: %w", err)
 	}
 
 	if inverse {
-		err = plan.Inverse(imagBuf, imagBuf)
+		err = w.plan.Inverse(w.imagBuf, w.imagBuf)
 	} else {
-		err = plan.Forward(imagBuf, imagBuf)
+		err = w.plan.Forward(w.imagBuf, w.imagBuf)
 	}
 	if err != nil {
 		return fmt.Errorf("DCT-II imag line: %w", err)
 	}
 
-	for i := 0; i < length; i++ {
-		data[start+i*stride] = complex(realBuf[i], imagBuf[i])
+	for i := range length {
+		data[start+i*stride] = complex(w.realBuf[i], w.imagBuf[i])
 	}
 
 	return nil

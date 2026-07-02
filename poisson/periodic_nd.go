@@ -3,9 +3,15 @@ package poisson
 import (
 	"fmt"
 	"log"
-
-	algofft "github.com/MeKo-Christian/algo-fft"
 )
+
+// ndWorkspace holds the per-solve buffers for PlanNDPeriodic: the complex
+// working grid plus an index slice reused as the odometer counter by the
+// (sequential) eigenvalue and axis-transform loops.
+type ndWorkspace struct {
+	complexBuf []complex128
+	idx        []int
+}
 
 // PlanNDPeriodic is a reusable plan for solving N-dimensional periodic Poisson problems.
 // It solves -Δu = f on a periodic grid with spacing h per axis.
@@ -13,15 +19,13 @@ type PlanNDPeriodic struct {
 	shape  Shape
 	h      []float64
 	eig    [][]float64
-	fft    []*axisPlan
+	fft    []*fftWorkerPool
 	stride []int
-	work   Workspace
+	wsPool *residentPool[ndWorkspace]
 	opts   Options
 
-	eigIndices []int
-	axisDims   [][]int
-	axisIdx    [][]int
-	axisOther  [][]int
+	axisDims  [][]int
+	axisOther [][]int
 }
 
 // NewPlanNDPeriodic creates a new N-dimensional periodic Poisson plan.
@@ -65,13 +69,14 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 		eig[i] = eigenvaluesPeriodic(n, hCopy[i])
 	}
 
-	plans := make([]*axisPlan, len(dims))
+	pools := make([]*fftWorkerPool, len(dims))
 	for i, n := range dims {
-		plan, err := newAxisPlan(n)
+		// The ND line loop is sequential, so one resident worker per axis.
+		pool, err := newFFTWorkerPool(n, 1)
 		if err != nil {
 			return nil, fmt.Errorf("creating FFT plan for axis %d: %w", i, err)
 		}
-		plans[i] = plan
+		pools[i] = pool
 	}
 
 	stride := make([]int, len(dims))
@@ -82,7 +87,6 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 	}
 
 	axisDims := make([][]int, len(dims))
-	axisIdx := make([][]int, len(dims))
 	axisOther := make([][]int, len(dims))
 	for axis := range dims {
 		reduced := make([]int, 0, len(dims)-1)
@@ -95,23 +99,21 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 			other = append(other, d)
 		}
 		axisDims[axis] = reduced
-		axisIdx[axis] = make([]int, len(reduced))
 		axisOther[axis] = other
 	}
 
-	return &PlanNDPeriodic{
-		shape:      dims,
-		h:          hCopy,
-		eig:        eig,
-		fft:        plans,
-		stride:     stride,
-		work:       NewWorkspace(0, dims.Size()),
-		opts:       options,
-		eigIndices: make([]int, len(dims)),
-		axisDims:   axisDims,
-		axisIdx:    axisIdx,
-		axisOther:  axisOther,
-	}, nil
+	plan := &PlanNDPeriodic{
+		shape:     dims,
+		h:         hCopy,
+		eig:       eig,
+		fft:       pools,
+		stride:    stride,
+		wsPool:    newResidentPool[ndWorkspace](1),
+		opts:      options,
+		axisDims:  axisDims,
+		axisOther: axisOther,
+	}
+	return plan, nil
 }
 
 // Solve computes the solution into dst for a given RHS.
@@ -139,20 +141,23 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 		offset = mean
 	}
 
+	workspace := p.getWorkspace()
+	defer p.wsPool.put(workspace)
+
 	for i, v := range rhs {
-		p.work.Complex[i] = complex(v-offset, 0)
+		workspace.complexBuf[i] = complex(v-offset, 0)
 	}
 
 	for axis := range p.fft {
-		if err := p.transformAxis(axis, false); err != nil {
+		if err := p.transformAxis(axis, false, workspace.complexBuf, workspace.idx); err != nil {
 			return fmt.Errorf("FFT forward axis %d: %w", axis, err)
 		}
 	}
 
-	p.applyEigenvalues(p.work.Complex)
+	p.applyEigenvalues(workspace.complexBuf, workspace.idx)
 
 	for axis := len(p.fft) - 1; axis >= 0; axis-- {
-		if err := p.transformAxis(axis, true); err != nil {
+		if err := p.transformAxis(axis, true, workspace.complexBuf, workspace.idx); err != nil {
 			return fmt.Errorf("FFT inverse axis %d: %w", axis, err)
 		}
 	}
@@ -162,8 +167,8 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 		addMean = *p.opts.SolutionMean
 	}
 
-	for i := range p.work.Complex {
-		dst[i] = real(p.work.Complex[i]) + addMean
+	for i, v := range workspace.complexBuf {
+		dst[i] = real(v) + addMean
 	}
 
 	return nil
@@ -174,22 +179,32 @@ func (p *PlanNDPeriodic) SolveInPlace(buf []float64) error {
 	return p.Solve(buf, buf)
 }
 
-func (p *PlanNDPeriodic) applyEigenvalues(data []complex128) {
-	indices := p.eigIndices
+func (p *PlanNDPeriodic) getWorkspace() *ndWorkspace {
+	if workspace := p.wsPool.get(); workspace != nil {
+		return workspace
+	}
+	return &ndWorkspace{
+		complexBuf: make([]complex128, p.shape.Size()),
+		idx:        make([]int, len(p.shape)),
+	}
+}
+
+func (p *PlanNDPeriodic) applyEigenvalues(data []complex128, idx []int) {
+	indices := idx[:len(p.shape)]
 	for i := range indices {
 		indices[i] = 0
 	}
 
-	for idx := range data {
+	for i := range data {
 		denom := 0.0
 		for d, eig := range p.eig {
 			denom += eig[indices[d]]
 		}
 
 		if denom == 0 {
-			data[idx] = 0
+			data[i] = 0
 		} else {
-			data[idx] /= complex(denom, 0)
+			data[i] /= complex(denom, 0)
 		}
 
 		for d := len(indices) - 1; d >= 0; d-- {
@@ -202,24 +217,31 @@ func (p *PlanNDPeriodic) applyEigenvalues(data []complex128) {
 	}
 }
 
-func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool) error {
+func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, data []complex128, idx []int) error {
 	lineLen := p.shape[axis]
 	lineStride := p.stride[axis]
 	totalLines := p.shape.Size() / lineLen
 
 	reducedDims := p.axisDims[axis]
-	indices := p.axisIdx[axis]
+	indices := idx[:len(reducedDims)]
 	for i := range indices {
 		indices[i] = 0
 	}
 	otherAxes := p.axisOther[axis]
+
+	worker, err := p.fft[axis].get()
+	if err != nil {
+		return err
+	}
+	defer p.fft[axis].put(worker)
+
 	for range totalLines {
 		start := 0
 		for i, d := range otherAxes {
 			start += indices[i] * p.stride[d]
 		}
 
-		if err := p.fft[axis].transformLine(p.work.Complex, start, lineStride, inverse); err != nil {
+		if err := fftTransformLine(worker, lineLen, data, start, lineStride, inverse); err != nil {
 			return err
 		}
 
@@ -230,73 +252,6 @@ func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool) error {
 			}
 			indices[i] = 0
 		}
-	}
-
-	return nil
-}
-
-type axisPlan struct {
-	n        int
-	fftPlan  *algofft.Plan[complex128]
-	scratchA []complex128
-	scratchB []complex128
-}
-
-func newAxisPlan(n int) (*axisPlan, error) {
-	if n < 1 {
-		return nil, ErrInvalidSize
-	}
-
-	fftPlan, err := algofft.NewPlan64(n)
-	if err != nil {
-		return nil, err
-	}
-
-	return &axisPlan{
-		n:        n,
-		fftPlan:  fftPlan,
-		scratchA: make([]complex128, n),
-		scratchB: make([]complex128, n),
-	}, nil
-}
-
-func (p *axisPlan) transformLine(data []complex128, start int, stride int, inverse bool) error {
-	useOutOfPlace := !isPowerOfTwo(p.n)
-	if !useOutOfPlace {
-		return p.fftPlan.TransformStrided(data[start:], data[start:], stride, inverse)
-	}
-
-	if stride == 1 {
-		line := data[start : start+p.n]
-		var err error
-		if inverse {
-			err = p.fftPlan.Inverse(p.scratchB, line)
-		} else {
-			err = p.fftPlan.Forward(p.scratchB, line)
-		}
-		if err != nil {
-			return err
-		}
-		copy(line, p.scratchB)
-		return nil
-	}
-
-	for i := 0; i < p.n; i++ {
-		p.scratchA[i] = data[start+i*stride]
-	}
-
-	var err error
-	if inverse {
-		err = p.fftPlan.Inverse(p.scratchB, p.scratchA)
-	} else {
-		err = p.fftPlan.Forward(p.scratchB, p.scratchA)
-	}
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < p.n; i++ {
-		data[start+i*stride] = p.scratchB[i]
 	}
 
 	return nil

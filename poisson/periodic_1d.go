@@ -16,7 +16,7 @@ type Plan1DPeriodic struct {
 	h     float64
 	eig   []float64
 	fft   *FFTPlan
-	work  Workspace
+	work  *workspacePool
 	opts  Options
 	shape grid.Shape
 }
@@ -44,7 +44,7 @@ func NewPlan1DPeriodic(nx int, hx float64, opts ...Option) (*Plan1DPeriodic, err
 		h:     hx,
 		eig:   eigenvaluesPeriodic(nx, hx),
 		fft:   fftPlan,
-		work:  NewWorkspace(0, nx),
+		work:  newWorkspacePool(0, nx),
 		opts:  options,
 		shape: grid.NewShape1D(nx),
 	}, nil
@@ -74,11 +74,14 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 		offset = mean
 	}
 
+	workspace := p.work.get()
+	defer p.work.put(workspace)
+
 	for i, v := range rhs {
-		p.work.Complex[i] = complex(v-offset, 0)
+		workspace.Complex[i] = complex(v-offset, 0)
 	}
 
-	if err := p.fft.TransformLines(p.work.Complex, p.shape, 0, false); err != nil {
+	if err := p.fft.TransformLines(workspace.Complex, p.shape, 0, false); err != nil {
 		return fmt.Errorf("FFT forward: %w", err)
 	}
 
@@ -86,17 +89,17 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 	if err := parallelFor(workers, p.n, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			if p.eig[i] == 0 {
-				p.work.Complex[i] = 0
+				workspace.Complex[i] = 0
 				continue
 			}
-			p.work.Complex[i] /= complex(p.eig[i], 0)
+			workspace.Complex[i] /= complex(p.eig[i], 0)
 		}
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	if err := p.fft.TransformLines(p.work.Complex, p.shape, 0, true); err != nil {
+	if err := p.fft.TransformLines(workspace.Complex, p.shape, 0, true); err != nil {
 		return fmt.Errorf("FFT inverse: %w", err)
 	}
 
@@ -106,7 +109,7 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 	}
 
 	for i := range p.n {
-		dst[i] = real(p.work.Complex[i]) + addMean
+		dst[i] = real(workspace.Complex[i]) + addMean
 	}
 
 	return nil

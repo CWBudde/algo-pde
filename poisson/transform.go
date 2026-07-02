@@ -44,3 +44,32 @@ func NewWorkspace(realSize, complexSize int) Workspace {
 func (w *Workspace) Bytes() int {
 	return len(w.Real)*8 + len(w.Complex)*16
 }
+
+// workspacePool hands out per-solve Workspaces so concurrent Solve calls on a
+// shared plan never write into the same buffers. A single-goroutine caller
+// reuses one cached Workspace; concurrent bursts transiently allocate extras.
+type workspacePool struct {
+	realSize    int
+	complexSize int
+	pool        *residentPool[Workspace]
+}
+
+func newWorkspacePool(realSize, complexSize int) *workspacePool {
+	return &workspacePool{
+		realSize:    realSize,
+		complexSize: complexSize,
+		pool:        newResidentPool[Workspace](1),
+	}
+}
+
+func (p *workspacePool) get() *Workspace {
+	if ws := p.pool.get(); ws != nil {
+		return ws
+	}
+	ws := NewWorkspace(p.realSize, p.complexSize)
+	return &ws
+}
+
+func (p *workspacePool) put(ws *Workspace) {
+	p.pool.put(ws)
+}

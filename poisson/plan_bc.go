@@ -24,12 +24,12 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 		return err
 	}
 
+	workspace := p.work.get()
+	defer p.work.put(workspace)
+
 	buf := rhs
 	if !p.opts.InPlace {
-		if len(p.work.Real) < size {
-			p.work.Real = make([]float64, size)
-		}
-		buf = p.work.Real[:size]
+		buf = workspace.Real[:size]
 		copy(buf, rhs)
 	}
 
@@ -61,7 +61,7 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 		}
 	}
 
-	return p.Solve(dst, buf)
+	return p.solve(dst, buf, workspace)
 }
 
 func (p *Plan) validateBoundaryConditions(bc BoundaryConditions) error {

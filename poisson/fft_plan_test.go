@@ -3,6 +3,7 @@ package poisson
 import (
 	"errors"
 	"math"
+	"sync"
 	"testing"
 
 	algofft "github.com/MeKo-Christian/algo-fft"
@@ -160,6 +161,49 @@ func TestFFTPlan_TransformLines_ParallelMatchesSerial(t *testing.T) {
 		if cmplxAbs(got[i]-want[i]) > fftTol {
 			t.Fatalf("parallel mismatch at %d: got %v, want %v", i, got[i], want[i])
 		}
+	}
+}
+
+func TestFFTPlan_TransformLines_Concurrent(t *testing.T) {
+	// Power-of-two n hits the aliased strided path; non-power-of-two n hits
+	// the out-of-place scratch path. Both must be safe on one shared plan.
+	for _, n := range []int{16, 12} {
+		shape := grid.NewShape2D(n, 8)
+
+		plan, err := NewFFTPlanWithWorkers(n, 2)
+		if err != nil {
+			t.Fatalf("NewFFTPlanWithWorkers(%d, 2) failed: %v", n, err)
+		}
+
+		data := make([]complex128, shape.Size())
+		for i := range data {
+			data[i] = complex(float64(i%11+1), float64(50+i))
+		}
+
+		want := append([]complex128(nil), data...)
+		if err := plan.TransformLines(want, shape, 0, false); err != nil {
+			t.Fatalf("reference TransformLines failed: %v", err)
+		}
+
+		var waitGroup sync.WaitGroup
+		for range 8 {
+			waitGroup.Go(func() {
+				for range 10 {
+					got := append([]complex128(nil), data...)
+					if err := plan.TransformLines(got, shape, 0, false); err != nil {
+						t.Errorf("n=%d: concurrent TransformLines failed: %v", n, err)
+						return
+					}
+					for i := range got {
+						if cmplxAbs(got[i]-want[i]) > fftTol {
+							t.Errorf("n=%d: concurrent mismatch at %d: got %v, want %v", n, i, got[i], want[i])
+							return
+						}
+					}
+				}
+			})
+		}
+		waitGroup.Wait()
 	}
 }
 

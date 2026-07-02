@@ -8,15 +8,17 @@ import (
 
 // Plan is a reusable Poisson/Helmholtz solver plan with per-axis boundary conditions.
 type Plan struct {
-	dim   int
-	n     [3]int
-	h     [3]float64
-	bc    [3]BCType
-	eig   [3][]float64
-	tr    [3]AxisTransform
-	work  Workspace
-	opts  Options
-	alpha float64
+	dim         int
+	n           [3]int
+	h           [3]float64
+	bc          [3]BCType
+	eig         [3][]float64
+	tr          [3]AxisTransform
+	work        *workspacePool
+	realSize    int
+	complexSize int
+	opts        Options
+	alpha       float64
 }
 
 // NewPlan creates a new Poisson plan with per-axis boundary conditions.
@@ -117,7 +119,9 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	if !options.InPlace {
 		realSize = size
 	}
-	plan.work = NewWorkspace(realSize, size)
+	plan.realSize = realSize
+	plan.complexSize = size
+	plan.work = newWorkspacePool(realSize, size)
 
 	return plan, nil
 }
@@ -133,6 +137,14 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 		return ErrSizeMismatch
 	}
 
+	workspace := p.work.get()
+	defer p.work.put(workspace)
+
+	return p.solve(dst, rhs, workspace)
+}
+
+// solve runs the transform pipeline using the given per-call workspace.
+func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	hasNullspace := p.hasNullspace()
 	if hasNullspace && p.opts.Nullspace == NullspaceError {
 		return ErrNullspace
@@ -151,22 +163,22 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 	}
 
 	for i, v := range rhs {
-		p.work.Complex[i] = complex(v-offset, 0)
+		workspace.Complex[i] = complex(v-offset, 0)
 	}
 
 	shape := p.shape()
 	for axis := 0; axis < p.dim; axis++ {
-		if err := p.tr[axis].Forward(p.work.Complex, shape, axis); err != nil {
+		if err := p.tr[axis].Forward(workspace.Complex, shape, axis); err != nil {
 			return fmt.Errorf("forward axis %d: %w", axis, err)
 		}
 	}
 
-	if err := p.applyEigenvalues(); err != nil {
+	if err := p.applyEigenvalues(workspace.Complex); err != nil {
 		return err
 	}
 
 	for axis := p.dim - 1; axis >= 0; axis-- {
-		if err := p.tr[axis].Inverse(p.work.Complex, shape, axis); err != nil {
+		if err := p.tr[axis].Inverse(workspace.Complex, shape, axis); err != nil {
 			return fmt.Errorf("inverse axis %d: %w", axis, err)
 		}
 	}
@@ -176,8 +188,8 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 		addMean = *p.opts.SolutionMean
 	}
 
-	for i := range p.work.Complex {
-		dst[i] = real(p.work.Complex[i]) + addMean
+	for i := range workspace.Complex {
+		dst[i] = real(workspace.Complex[i]) + addMean
 	}
 
 	return nil
@@ -188,9 +200,11 @@ func (p *Plan) SolveInPlace(buf []float64) error {
 	return p.Solve(buf, buf)
 }
 
-// WorkBytes returns the size of the plan's workspace buffers in bytes.
+// WorkBytes returns the size of the workspace buffers one Solve call uses, in
+// bytes. Concurrent Solve calls each draw their own workspace, so the peak
+// memory use is WorkBytes times the peak number of concurrent calls.
 func (p *Plan) WorkBytes() int {
-	return p.work.Bytes()
+	return p.realSize*8 + p.complexSize*16
 }
 
 func (p *Plan) shape() grid.Shape {
@@ -218,7 +232,7 @@ func (p *Plan) hasNullspace() bool {
 	return true
 }
 
-func (p *Plan) applyEigenvalues() error {
+func (p *Plan) applyEigenvalues(buf []complex128) error {
 	_, ny, nz := p.n[0], p.n[1], p.n[2]
 	strideYZ := ny * nz
 	strideZ := nz
@@ -243,13 +257,13 @@ func (p *Plan) applyEigenvalues() error {
 
 			if denom == 0 {
 				if allowZeroMode && i == 0 && (p.dim < 2 || j == 0) && (p.dim < 3 || k == 0) {
-					p.work.Complex[idx] = 0
+					buf[idx] = 0
 					continue
 				}
 				return ErrResonant
 			}
 
-			p.work.Complex[idx] /= complex(denom, 0)
+			buf[idx] /= complex(denom, 0)
 		}
 		return nil
 	})
