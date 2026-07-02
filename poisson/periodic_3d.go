@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"log"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
 
 // real3DWorkspace bundles a real FFT plan with its buffers for one Solve call.
-// PlanReal3D carries mutable internal scratch (and its Clone shares a stateful
-// width plan), so each concurrent Solve needs a fully constructed instance.
+// PlanReal3D carries mutable internal scratch, so each concurrent Solve needs
+// its own instance (algo-fft < v0.6.13 additionally had a Clone that shared a
+// stateful width plan; full construction sidesteps that entirely).
 type real3DWorkspace struct {
 	rfft  *algofft.PlanReal3D
 	rbuf  []float32

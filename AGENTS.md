@@ -8,7 +8,7 @@
 - `examples/` contains small runnable programs, one per boundary-condition/solver scenario.
 - Tests are alongside code as `*_test.go` (e.g., `poisson/`, `r2r/`, `grid/`, `fd/`).
 - Tooling/config: `justfile` (task runner), `treefmt.toml` (formatters), `go.mod`/`go.sum` (deps).
-- FFT kernels come from `github.com/MeKo-Christian/algo-fft`.
+- FFT kernels come from `github.com/cwbudde/algo-fft`.
 
 ## Build, Test, and Development Commands
 

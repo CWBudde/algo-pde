@@ -31,10 +31,13 @@ plan-level index state (`eigIndices`, `axisIdx`) per call.
 - [x] Decide the contract: per-call workspace via `sync.Pool`, or document
       "one goroutine per plan" and delete the doc.go claim. (Recommended:
       `sync.Pool` of workspaces — keeps the zero-alloc steady state.)
-      → Implemented `sync.Pool` everywhere; pool entries are built with full
-      constructors, never `algofft.Plan.Clone`/`PlanReal2D.Clone` (both are
-      defective upstream: Clone leaves `stridedScratch` nil, PlanReal2D.Clone
-      shares the stateful row plan — worth upstream bug reports).
+      → Implemented pooled per-solve workspaces everywhere; pool entries are
+      built with full constructors rather than `Clone`. Both upstream Clone
+      defects (nil `stridedScratch` in `Plan.Clone`; `PlanReal2D/3D.Clone`
+      sharing the stateful row/width plan) are fixed in algo-fft v0.6.13,
+      which this repo now depends on (module path moved to
+      `github.com/cwbudde/algo-fft`). Switching pool entries to `Clone` to
+      share twiddle tables is an optional follow-up optimization.
 - [x] Remove per-call plan mutation in `periodic_nd.go` (make Solve stateless
       w.r.t. the plan).
 - [x] Remove the lazy `p.work.Real` reallocation in `plan_bc.go:29-31`

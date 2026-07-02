@@ -3,7 +3,7 @@ package poisson
 import (
 	"fmt"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
 
@@ -43,9 +43,10 @@ func newFFTWorkerPool(n int, capacity int) (*fftWorkerPool, error) {
 	return workerPool, nil
 }
 
-// newWorker builds a full plan rather than using algo-fft's Plan.Clone:
-// Clone does not allocate the strided scratch buffer that the aliased
-// TransformStrided path requires.
+// newWorker builds a full plan per pool entry. algo-fft's Plan.Clone (safe
+// since v0.6.13; earlier versions left stridedScratch unallocated) could
+// share twiddle tables here as a cheaper alternative; full construction is
+// kept for simplicity.
 func (p *fftWorkerPool) newWorker() (*fftWorker, error) {
 	plan, err := algofft.NewPlan64(p.n)
 	if err != nil {

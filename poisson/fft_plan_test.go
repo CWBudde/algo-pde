@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
 

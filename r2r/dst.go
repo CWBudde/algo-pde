@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // DSTPlan is a pre-computed Discrete Sine Transform plan.
