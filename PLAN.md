@@ -166,10 +166,21 @@ The suite probes modes 1–3 only; the general-RHS case — the point of a Poiss
 solver — is essentially unverified. A corrupted eigenvalue above index 3 would
 ship green today.
 
-- [ ] **Random-RHS residual checks** (the single highest-leverage item): for
+- [x] **Random-RHS residual checks** (the single highest-leverage item): for
       every BC combination in 1D/2D/3D, solve a random RHS and assert
       `fd.Apply*(solution) ≈ rhs` to tight tolerance. This pins the entire
       spectrum, not just low modes.
+      → `poisson/random_residual_test.go` exercises all 3 BCs in 1D, all 9
+      pairs in 2D, and all 27 triples in 3D (distinct extents/spacings per
+      axis to catch axis-swapped indexing). Each test solves a deterministic
+      random RHS and asserts the reapplied `fd.Apply{1,2,3}D` reproduces it to
+      1e-9 relative. Nullspace cases (all-Neumann/Periodic) project out the RHS
+      mean up front and solve with `WithSubtractMean`, since only the mean-zero
+      RHS is in the operator's range. A mutation that corrupts the highest
+      Dirichlet eigenvalue (index n, far above the modes the manufactured
+      sine/cosine tests probe) fails this check at 2e-3 while every manufactured
+      test still passes — confirming it pins the whole spectrum, not just low
+      modes.
 - [ ] Feed the dense Gaussian-elimination reference
       (`reference_solver_test.go`) **random** RHS, and extend it beyond 2D
       homogeneous Dirichlet: Neumann, periodic, mixed, anisotropic h,
