@@ -26,9 +26,10 @@
 // Each axis is discretized independently, and the boundary condition on that
 // axis fixes three things: which transform is used, where the n sample points
 // sit relative to the physical domain, and how long the domain is. Sample the
-// source term f (and any inhomogeneous boundary data g) at exactly these node
-// coordinates — sampling at the wrong points converges smoothly to the wrong
-// answer with no error reported.
+// source term f at exactly these node coordinates — sampling at the wrong
+// points converges smoothly to the wrong answer with no error reported.
+// (Inhomogeneous boundary data passed to SolveWithBC is sampled on the
+// boundary face instead; see below.)
 //
 //	BC          Transform  Node x_i (i = 0..n-1)  Domain length L
 //	Periodic    FFT        i·h                    n·h
@@ -57,6 +58,14 @@
 // unit interval, for example, choose hx = 1/(nx+1) on a Dirichlet axis but
 // hy = 1/ny on a Neumann or periodic axis. See the examples/ programs
 // (dirichlet2d, neumann2d, periodic2d, mixed2d) for worked samplings.
+//
+// Inhomogeneous boundary data supplied to SolveWithBC lives on the physical
+// boundary face, not at an interior node. A face's Values array is indexed by
+// the grid nodes of the tangential axes, but the normal coordinate is fixed at
+// the face itself. For a Dirichlet XLow face the value is u at x=0 (not at the
+// first interior node x=h); for XHigh it is u at x=(n+1)h. For a Neumann face
+// it is the derivative evaluated at that face (x=0 or x=n·h). See
+// examples/inhomogeneous_bc.
 //
 // Neumann sign convention: the boundary value g supplied to SolveWithBC is the
 // derivative along the positive axis direction, ∂u/∂x_axis, at that face — not
