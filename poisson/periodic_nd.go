@@ -1,7 +1,10 @@
 package poisson
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/MeKo-Tech/algo-pde/bc"
 )
 
 // ndWorkspace holds the per-solve buffers for PlanNDPeriodic: the complex
@@ -71,7 +74,7 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 
 	eig := make([][]float64, len(dims))
 	for i, n := range dims {
-		eig[i] = eigenvaluesPeriodic(n, hCopy[i])
+		eig[i] = bc.EigenvaluesPeriodic(n, hCopy[i])
 	}
 
 	pools := make([]*fftWorkerPool, len(dims))
@@ -228,7 +231,11 @@ func (p *PlanNDPeriodic) applyEigenvalues(data []complex128) error {
 	size := p.shape.Size()
 	workers := clampWorkers(p.opts.Workers, size)
 
-	return parallelFor(workers, size, func(_ int, start, end int) error {
+	return parallelFor(workers, size, func(ctx context.Context, _ int, start, end int) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		indices := make([]int, len(p.shape))
 		ndMultiIndex(indices, p.shape, start)
 
@@ -259,7 +266,7 @@ func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, data []complex128
 	otherAxes := p.axisOther[axis]
 	workers := clampWorkers(p.opts.Workers, totalLines)
 
-	return parallelFor(workers, totalLines, func(_ int, startLine, endLine int) error {
+	return parallelFor(workers, totalLines, func(ctx context.Context, _ int, startLine, endLine int) error {
 		worker, err := p.fft[axis].get()
 		if err != nil {
 			return err
@@ -270,6 +277,10 @@ func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, data []complex128
 		ndMultiIndex(indices, reducedDims, startLine)
 
 		for line := startLine; line < endLine; line++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
 			start := 0
 			for i, d := range otherAxes {
 				start += indices[i] * p.stride[d]

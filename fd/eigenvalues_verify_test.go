@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/MeKo-Tech/algo-pde/bc"
 )
 
 // TestEigenvaluesMatchStencil is an independent, non-circular verification that
@@ -21,7 +21,7 @@ func TestEigenvaluesMatchStencil(t *testing.T) {
 
 	cases := []struct {
 		name string
-		bc   poisson.BCType
+		bc   bc.BCType
 		// vec returns the k-th eigenvector's value at node i, sampled at the
 		// node positions the BC uses (periodic: i·h, Dirichlet: (i+1)·h,
 		// Neumann: (i+½)·h). These are the analytic eigenvectors of the
@@ -30,21 +30,21 @@ func TestEigenvaluesMatchStencil(t *testing.T) {
 	}{
 		{
 			name: "Periodic",
-			bc:   poisson.Periodic,
+			bc:   bc.Periodic,
 			vec: func(i, k int) float64 {
 				return math.Cos(2.0 * math.Pi * float64(k) * float64(i) / float64(n))
 			},
 		},
 		{
 			name: "Dirichlet",
-			bc:   poisson.Dirichlet,
+			bc:   bc.Dirichlet,
 			vec: func(i, k int) float64 {
 				return math.Sin(math.Pi * float64(k+1) * float64(i+1) / float64(n+1))
 			},
 		},
 		{
 			name: "Neumann",
-			bc:   poisson.Neumann,
+			bc:   bc.Neumann,
 			vec: func(i, k int) float64 {
 				return math.Cos(math.Pi * float64(k) * (float64(i) + 0.5) / float64(n))
 			},
@@ -53,7 +53,7 @@ func TestEigenvaluesMatchStencil(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			eig, err := Eigenvalues(n, h, tc.bc)
+			eig, err := bc.Eigenvalues(n, h, tc.bc)
 			if err != nil {
 				t.Fatalf("Eigenvalues failed: %v", err)
 			}

@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/MeKo-Tech/algo-pde/bc"
 	"github.com/MeKo-Tech/algo-pde/fd"
 	"github.com/MeKo-Tech/algo-pde/grid"
 	"github.com/MeKo-Tech/algo-pde/poisson"
@@ -56,7 +57,7 @@ func TestHelmholtzPlan1D_PositiveAlpha(t *testing.T) {
 func TestHelmholtzPlan1D_NegativeAlphaResonant(t *testing.T) {
 	n := 32
 	h := 1.0 / float64(n+1)
-	alpha := -fd.EigenvaluesDirichlet(n, h)[0]
+	alpha := -bc.EigenvaluesDirichlet(n, h)[0]
 
 	plan, err := poisson.NewHelmholtzPlan(1, []int{n}, []float64{h}, []poisson.BCType{poisson.Dirichlet}, alpha)
 	if err != nil {

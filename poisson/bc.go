@@ -1,58 +1,26 @@
 package poisson
 
-// BCType represents the type of boundary condition.
-type BCType int
+import "github.com/MeKo-Tech/algo-pde/bc"
 
+// BCType represents the type of boundary condition. It is an alias for
+// bc.BCType so that the public poisson API (poisson.BCType, poisson.Dirichlet,
+// x.HasNullspace(), …) keeps working while the single source of truth lives in
+// the leaf bc package.
+type BCType = bc.BCType
+
+// Boundary condition constants re-exported from the bc package.
 const (
 	// Periodic boundary condition: u(0) = u(L), u'(0) = u'(L).
-	// The domain wraps around.
-	Periodic BCType = iota
+	Periodic = bc.Periodic
 
 	// Dirichlet boundary condition: u = g on the boundary.
-	// For homogeneous Dirichlet: u = 0 at boundaries.
-	Dirichlet
+	Dirichlet = bc.Dirichlet
 
-	// Neumann boundary condition: the derivative along the positive axis
-	// direction, ∂u/∂x_axis = g, is prescribed on the boundary. This is the
-	// positive-axis derivative, not the outward normal: at a low face the
-	// outward normal points in the −axis direction, so there g = −∂u/∂n, while
-	// at a high face g = +∂u/∂n. See package docs (Grid Conventions) and
-	// ApplyNeumannRHS. For homogeneous Neumann: g = 0 at all boundaries.
-	Neumann
+	// Neumann boundary condition: the positive-axis derivative ∂u/∂x_axis = g is
+	// prescribed on the boundary. See package docs (Grid Conventions) and
+	// ApplyNeumannRHS.
+	Neumann = bc.Neumann
 )
-
-// String returns the string representation of the boundary condition type.
-func (bc BCType) String() string {
-	switch bc {
-	case Periodic:
-		return "Periodic"
-	case Dirichlet:
-		return "Dirichlet"
-	case Neumann:
-		return "Neumann"
-	default:
-		return "Unknown"
-	}
-}
-
-// HasNullspace returns true if this boundary condition type has a nullspace
-// (i.e., a constant mode with zero eigenvalue).
-// Periodic and Neumann have nullspaces; Dirichlet does not.
-func (bc BCType) HasNullspace() bool {
-	return bc == Periodic || bc == Neumann
-}
-
-// AxisBC represents boundary conditions for a single axis.
-// Currently supports the same BC type on both ends.
-// Future: may support different left/right conditions.
-type AxisBC struct {
-	Type BCType
-}
-
-// NewAxisBC creates a new AxisBC with the given type.
-func NewAxisBC(t BCType) AxisBC {
-	return AxisBC{Type: t}
-}
 
 // BoundaryFace identifies a specific boundary face of the domain.
 // The low/high names refer to the coordinate direction.

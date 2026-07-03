@@ -1,8 +1,10 @@
 package poisson
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/MeKo-Tech/algo-pde/bc"
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
 
@@ -46,7 +48,7 @@ func NewPlan1DPeriodic(nx int, hx float64, opts ...Option) (*Plan1DPeriodic, err
 	return &Plan1DPeriodic{
 		n:     nx,
 		h:     hx,
-		eig:   eigenvaluesPeriodic(nx, hx),
+		eig:   bc.EigenvaluesPeriodic(nx, hx),
 		fft:   fftPlan,
 		work:  newWorkspacePool(0, nx),
 		opts:  options,
@@ -88,7 +90,10 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 	}
 
 	workers := clampWorkers(p.opts.Workers, p.n)
-	if err := parallelFor(workers, p.n, func(_ int, start, end int) error {
+	if err := parallelFor(workers, p.n, func(ctx context.Context, _ int, start, end int) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		for i := start; i < end; i++ {
 			if p.eig[i] == 0 {
 				workspace.Complex[i] = 0

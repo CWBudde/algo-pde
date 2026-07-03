@@ -286,30 +286,32 @@ one contract (errors) and enforce it.
 
 ## Phase D: Structural Debt
 
-- [ ] **Un-duplicate the eigenvalue formulas.** `fd` imports `poisson` for
-      `BCType`, so `poisson` carries verbatim copies
-      (`eigenvalues_bc.go`, `eigenvalues_periodic.go`) of `fd/eigenvalues.go`.
-      Extract a leaf package (e.g. `bc/`: BCType + eigenvalue formulas) that
-      both import. This is the most likely source of a future silent
-      numerical divergence.
+- [x] **Un-duplicate the eigenvalue formulas.** Extracted leaf package `bc/`
+      (BCType + the single copy of the eigenvalue formulas). `poisson.BCType`
+      is now an alias of `bc.BCType`; `poisson/eigenvalues_bc.go` and
+      `eigenvalues_periodic.go` are deleted, `fd/eigenvalues.go` is deleted, and
+      `fd` no longer imports `poisson` (cycle broken). The `(2-2cos)/h²`
+      formula now lives only in `bc/eigenvalues.go`.
 - [ ] One `Shape` type. `grid.Shape` (fixed `[3]int`) and `poisson`'s
       `Shape []int` (`shape_nd.go`) coexist; `parallel.go`'s helpers hardcode
       3 axes and would silently miscount for >3D.
 - [ ] Deduplicate the pow2/non-pow2 strided-transform logic copy-pasted
       between `periodic_nd.go:263` and `fft_plan.go:120-157`.
-- [ ] Delete dead code: `isZeroMode` (`plan.go:258`), `AxisBC`/`NewAxisBC`
-      (`bc.go:41`), `Index1D`/`FromIndex1D` (`grid/grid.go:57,77`), the
-      unreachable lazy-grow in `plan_bc.go`, `fd.HasZeroEigenvalue` (verbatim
-      duplicate of `BCType.HasNullspace`).
-- [ ] Parallel layer polish: propagate/cancel on first worker error instead
-      of dropping the rest (`parallel.go:57`); threshold gate so 1D solves
-      don't spawn GOMAXPROCS goroutines for a pointwise division
-      (`periodic_1d.go:85`); partition over the largest dimension, not always
-      nx (`periodic_2d.go:136`); lazy per-worker FFT plan allocation in
+- [ ] Delete dead code: `isZeroMode` (`plan.go:258`), the unreachable
+      lazy-grow in `plan_bc.go`. (Done: `AxisBC`/`NewAxisBC`,
+      `Index1D`/`FromIndex1D`, and `fd.HasZeroEigenvalue` — the last now lives
+      only as `bc.HasZeroEigenvalue`/`BCType.HasNullspace`.)
+- [ ] Parallel layer polish: lazy per-worker FFT plan allocation in
       `NewFFTPlanWithWorkers` (currently eager GOMAXPROCS × plans+scratch).
-- [ ] Fix `sizeStr` benchmark labels (`fd/eigenvalues_test.go:190` — breaks
-      for n ≥ 10240) and size-brittle absolute tolerances in
-      `fd/laplacian_test.go` (use relative error).
+      (Done: `parallelFor` now cancels remaining workers on the first error via
+      a per-call `context.WithCancel`, still returning the first error;
+      `periodic_2d.go` now partitions the spectral divide over the larger of the
+      two axes. The 1D-threshold-gate claim was inaccurate — 1D already clamps
+      workers to the task count.)
+- [x] Fix `sizeStr` benchmark labels (`fd/eigenvalues_test.go` — used
+      `string(rune(...))`, broke for n ≥ 10240; now `strconv`-based) and
+      size-brittle absolute tolerances in `fd/laplacian_test.go` (now scaled to
+      the expected field magnitude via `eigTol`).
 
 ---
 

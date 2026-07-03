@@ -1,9 +1,11 @@
 package poisson
 
 import (
+	"context"
 	"fmt"
 	"math"
 
+	"github.com/MeKo-Tech/algo-pde/bc"
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
 
@@ -42,7 +44,7 @@ func NewHelmholtzPlan(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	return newPlanWithAlpha(dim, n, h, bc, alpha, opts...)
 }
 
-func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64, opts ...Option) (*Plan, error) {
+func newPlanWithAlpha(dim int, n []int, h []float64, bcs []BCType, alpha float64, opts ...Option) (*Plan, error) {
 	if dim < 1 || dim > 3 {
 		return nil, &ValidationError{
 			Field:   "dim",
@@ -64,7 +66,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		}
 	}
 
-	if len(bc) != dim {
+	if len(bcs) != dim {
 		return nil, &ValidationError{
 			Field:   "bc",
 			Message: msgLenMustMatchDim,
@@ -95,7 +97,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 			return nil, ErrInvalidSpacing
 		}
 
-		switch bc[axis] {
+		switch bcs[axis] {
 		case Periodic, Dirichlet, Neumann:
 		default:
 			return nil, &ValidationError{
@@ -106,7 +108,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 
 		plan.n[axis] = n[axis]
 		plan.h[axis] = h[axis]
-		plan.bc[axis] = bc[axis]
+		plan.bc[axis] = bcs[axis]
 		size *= n[axis]
 	}
 
@@ -114,13 +116,13 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		var err error
 		switch plan.bc[axis] {
 		case Periodic:
-			plan.eig[axis] = eigenvaluesPeriodic(plan.n[axis], plan.h[axis])
+			plan.eig[axis] = bc.EigenvaluesPeriodic(plan.n[axis], plan.h[axis])
 			plan.tr[axis], err = newFFTAxisTransform(plan.n[axis], options.Workers)
 		case Dirichlet:
-			plan.eig[axis] = eigenvaluesDirichlet(plan.n[axis], plan.h[axis])
+			plan.eig[axis] = bc.EigenvaluesDirichlet(plan.n[axis], plan.h[axis])
 			plan.tr[axis], err = newDSTAxisTransform(plan.n[axis], options.Workers)
 		case Neumann:
-			plan.eig[axis] = eigenvaluesNeumann(plan.n[axis], plan.h[axis])
+			plan.eig[axis] = bc.EigenvaluesNeumann(plan.n[axis], plan.h[axis])
 			plan.tr[axis], err = newDCTAxisTransform(plan.n[axis], options.Workers)
 		}
 		if err != nil {
@@ -295,8 +297,17 @@ func (p *Plan) applyEigenvalues(buf []complex128) error {
 	size := p.size()
 	workers := clampWorkers(p.opts.Workers, size)
 
-	return parallelFor(workers, size, func(_ int, start, end int) error {
+	return parallelFor(workers, size, func(ctx context.Context, _ int, start, end int) error {
 		for idx := start; idx < end; idx++ {
+			// A resonant mode makes one worker return early; poll the context at
+			// a coarse stride so the others abandon the remaining divides without
+			// paying a synchronized check on every element.
+			if idx&cancelPollMask == 0 {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+			}
+
 			i := idx / strideYZ
 			rem := idx % strideYZ
 			j := rem / strideZ

@@ -1,6 +1,7 @@
 package poisson
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MeKo-Tech/algo-pde/grid"
@@ -177,7 +178,7 @@ func (p *FFTPlan) TransformLines(data []complex128, shape grid.Shape, axis int, 
 	numLines := lineCount(shape, axis)
 	workers := clampWorkers(p.workers, numLines)
 
-	return parallelFor(workers, numLines, func(_ int, startLine, endLine int) error {
+	return parallelFor(workers, numLines, func(ctx context.Context, _ int, startLine, endLine int) error {
 		worker, err := p.workerPool.get()
 		if err != nil {
 			return err
@@ -185,6 +186,10 @@ func (p *FFTPlan) TransformLines(data []complex128, shape grid.Shape, axis int, 
 		defer p.workerPool.put(worker)
 
 		for line := startLine; line < endLine; line++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
 			start := lineStartIndex(shape, axis, line)
 			if err := fftTransformLine(worker, p.n, data, start, lineStride, inverse); err != nil {
 				return err
