@@ -66,6 +66,11 @@ func TestEigenvaluesErrors(t *testing.T) {
 		t.Fatalf("bogus BC: got %v, want ErrInvalidBC", err)
 	}
 
+	// A negative n must return an error, not panic in make (no-panic contract).
+	if _, err := Eigenvalues(-1, 1.0, poisson.Periodic); !errors.Is(err, ErrSizeMismatch) {
+		t.Fatalf("negative n: got %v, want ErrSizeMismatch", err)
+	}
+
 	eig, err := Eigenvalues(4, 1.0, poisson.Periodic)
 	if err != nil {
 		t.Fatalf("valid call: unexpected error %v", err)

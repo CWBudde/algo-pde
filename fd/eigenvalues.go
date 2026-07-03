@@ -21,6 +21,9 @@ import (
 //
 // It returns ErrInvalidBC if bc is not a supported boundary condition.
 func Eigenvalues(n int, h float64, bc poisson.BCType) ([]float64, error) {
+	if n < 0 {
+		return nil, ErrSizeMismatch
+	}
 	eig := make([]float64, n)
 	h2 := h * h
 
