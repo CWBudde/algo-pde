@@ -55,15 +55,32 @@ recomputing `math.Sin`/`math.Cos` per element (`r2r/dst.go:263`,
 at n=1024; every Neumann axis in the Poisson solver pays this per line. This
 falsifies the O(N log N) claim.
 
-- [ ] Implement DST-III/DCT-III via FFT embedding (same technique as the
+- [x] Implement DST-III/DCT-III via FFT embedding (same technique as the
       forwards), using the plan's existing FFT and buffers.
-- [ ] Eliminate the per-call allocation in the aliased `Inverse(buf, buf)`
-      path that `poisson/axis_transform.go:316-330` always hits.
-- [ ] Add `ForwardLines`/`InverseLines` to `DST2Plan`/`DCT2Plan` and delete
-      the duplicated 84-line strided-iteration block in
-      `poisson/axis_transform.go` (105–188 ≙ 256–339).
-- [ ] Benchmark Neumann vs Dirichlet vs periodic solves at 256²/512²/1024²
-      and assert comparable scaling.
+      → `DST2Plan.Inverse`/`DCT2Plan.Inverse` now pack the weighted
+      coefficients into a single **real** 2N-point FFT (cosine part
+      even-symmetric, sine part odd-symmetric around the midpoint) and read
+      `Re(FFT)+Im(FFT)`. Real FFT input is deliberate: algo-fft's mixed-radix
+      kernel returns wrong results for 2N ∈ {40,80,160,320,200,400}
+      (n ∈ {20,40,80,160,100,200}) — see `fftSoundSizes` in
+      `r2r/inverse_fft_test.go`; that upstream defect breaks the (real-only)
+      Forward identically, so the inverse is correct wherever Forward is.
+      `TestD{S,C}T2PlanInverse_MatchesNaive` pins the new path against the old
+      O(N²) formula across all FFT-sound sizes.
+- [x] Eliminate the per-call allocation in the aliased `Inverse(buf, buf)`
+      path. src is now fully consumed into the plan's FFT buffer before dst is
+      written, so aliasing needs no scratch copy; `TestInverseAllocFree`
+      asserts 0 allocs/call.
+- [x] Add `ForwardLines`/`InverseLines` to `DST2Plan`/`DCT2Plan` (`r2r/lines.go`)
+      and collapse the two ~84-line strided blocks in
+      `poisson/axis_transform.go` into one generic `realAxisTransform[P]` over
+      a `realLinePlan` interface (DST-I and DCT-II share it).
+- [x] Benchmark Neumann vs Dirichlet vs periodic solves at 256²/512²/1024²
+      (`poisson/bc_scaling_bench_test.go`). Neumann (DCT-II inverse) went from
+      236 ms → 4.0 ms at 256² and 1756 ms → 18.8 ms at 512² (~59× / ~93×) and
+      now scales linearithmically like periodic instead of O(N²). (The
+      Dirichlet path is slow only at these sizes because 2(n+1) is a
+      Bluestein-heavy prime factorization — an orthogonal FFT-size concern.)
 
 ### A.3 Correctness traps that return garbage with err == nil
 

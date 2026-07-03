@@ -245,41 +245,66 @@ func (p *DSTPlan) Inverse(dst, src []float64) error {
 	return nil
 }
 
-// Inverse computes the inverse DST-II transform.
+// Inverse computes the inverse DST-II transform (a DST-III up to scaling).
 // dst and src must have length n. They may be the same slice for in-place operation.
 //
-// Note: DST-II is inverted by a weighted transpose of the DST-II kernel.
+// It evaluates x[n] = Σ_k w[k]·X[k]·sin(π(n+½)(k+1)/N) — the weighted transpose
+// of the DST-II kernel — in O(N log N) via a single 2N-point FFT rather than the
+// naive O(N²) double loop. The weighted coefficients w[k]·X[k] are packed with
+// the plan's phase factors so that -Im(FFT(·)) yields the DST-III result
+// directly. src is fully consumed into the plan's FFT buffer before dst is
+// written, so aliasing (Inverse(buf, buf)) is safe without an extra copy.
 func (p *DST2Plan) Inverse(dst, src []float64) error {
 	if len(dst) != p.n || len(src) != p.n {
 		return ErrSizeMismatch
 	}
 
-	srcData := src
-	if len(src) > 0 && len(dst) > 0 && &src[0] == &dst[0] {
-		srcData = make([]float64, p.n)
-		copy(srcData, src)
+	n := p.n
+	ortho := p.opts.Normalization == NormOrtho
+
+	// As in DCT2Plan.Inverse, the FFT input is kept purely real (cosine part
+	// even-symmetric, sine part odd-symmetric around the 2N midpoint) so that
+	// Re(FFT)+Im(FFT) reconstructs the DST-III and no complex-input FFT is
+	// needed. The sine basis places coefficient k at frequency index k+1.
+	for i := range p.extendedN {
+		p.fftIn[i] = 0
 	}
 
-	// Weighted transpose of DST-II kernel (O(N^2)); TODO: replace with FFT-based DST-II inverse.
-	for n := range p.n {
-		sum := 0.0
-		for k := range p.n {
-			weight := 2.0 / float64(p.n)
-			if k == p.n-1 {
-				weight = 1.0 / float64(p.n)
-			}
-
-			if p.opts.Normalization == NormOrtho {
-				weight = math.Sqrt(2.0 / float64(p.n))
-				if k == p.n-1 {
-					weight = 1.0 / math.Sqrt(float64(p.n))
-				}
-			}
-
-			sum += (srcData[k] * weight) * DST2Coefficient(n, k, p.n)
+	for k := range n {
+		weight := 2.0 / float64(n)
+		if k == n-1 {
+			weight = 1.0 / float64(n)
 		}
 
-		dst[n] = sum
+		if ortho {
+			weight = math.Sqrt(2.0 / float64(n))
+			if k == n-1 {
+				weight = 1.0 / math.Sqrt(float64(n))
+			}
+		}
+
+		a := src[k] * weight
+		// cos(π(k+1)/2N), sin(π(k+1)/2N) from phase[k] = exp(-iπ(k+1)/2N).
+		cosPart := a * real(p.phase[k])
+		sinPart := a * -imag(p.phase[k])
+
+		if k == n-1 {
+			// Midpoint frequency j = N: cosine maps to (-1)^n, sine vanishes.
+			p.fftIn[n] = complex(sinPart, 0)
+			continue
+		}
+
+		j := k + 1
+		p.fftIn[j] = complex((sinPart-cosPart)/2, 0)
+		p.fftIn[p.extendedN-j] = complex((sinPart+cosPart)/2, 0)
+	}
+
+	if err := p.fftPlan.Forward(p.fftOut, p.fftIn); err != nil {
+		return fmt.Errorf("FFT forward: %w", err)
+	}
+
+	for i := range n {
+		dst[i] = real(p.fftOut[i]) + imag(p.fftOut[i])
 	}
 
 	return nil
