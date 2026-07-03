@@ -138,10 +138,12 @@ func TestPlan2DPeriodic_Solve_RealFFT(t *testing.T) {
 
 func TestPlan2DPeriodic_Convergence(t *testing.T) {
 	sizes := []int{16, 32, 64}
-	errors := make([]float64, len(sizes))
+	errs := make([]float64, len(sizes))
+	hs := make([]float64, len(sizes))
 
 	for idx, n := range sizes {
 		h := 1.0 / float64(n)
+		hs[idx] = h
 		plan, err := poisson.NewPlan2DPeriodic(n, n, h, h)
 		if err != nil {
 			t.Fatalf("NewPlan2DPeriodic failed: %v", err)
@@ -156,13 +158,77 @@ func TestPlan2DPeriodic_Convergence(t *testing.T) {
 			t.Fatalf("Solve failed: %v", err)
 		}
 
-		errors[idx] = maxAbsDiff(got, u)
+		errs[idx] = maxAbsDiff(got, u)
 	}
 
-	for i := 1; i < len(errors); i++ {
-		if errors[i] >= errors[i-1]*0.6 {
-			t.Fatalf("expected error to decrease, got %g -> %g", errors[i-1], errors[i])
+	// Strict second-order log-log rate check, matching convergence_test.go.
+	checkConvergenceRates(t, hs, errs)
+}
+
+// TestPlan2DPeriodic_RealFFT_NyquistBin pins the Hermitian/Nyquist bin in the
+// real-FFT (float32) periodic path. The RHS is dominated by the pure Nyquist
+// mode (-1)^j along the reduced (y) axis, whose coefficient lives in the
+// self-conjugate Nyquist bin (index ny/2) of the real transform. If that bin
+// were mishandled the alternating mode would come back wrong, so we require the
+// real solve to match the complex solve well inside the float32 contract.
+func TestPlan2DPeriodic_RealFFT_NyquistBin(t *testing.T) {
+	const nx, ny = 32, 32 // power-of-two, even ny: qualifies for the real path
+	hx := 1.0 / float64(nx)
+	hy := 1.0 / float64(ny)
+	Lx := float64(nx) * hx
+
+	u := make([]float64, nx*ny)
+	for i := range nx {
+		x := float64(i) * hx
+		row := i * ny
+		for j := range ny {
+			sign := 1.0
+			if j%2 == 1 {
+				sign = -1.0
+			}
+			u[row+j] = math.Cos(2.0*math.Pi*x/Lx) * sign
 		}
+	}
+
+	rhs := make([]float64, nx*ny)
+	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+		poisson.Periodic, poisson.Periodic,
+	})
+
+	complexPlan, err := poisson.NewPlan2DPeriodic(nx, ny, hx, hy)
+	if err != nil {
+		t.Fatalf("complex plan: %v", err)
+	}
+	realPlan, err := poisson.NewPlan2DPeriodic(nx, ny, hx, hy, poisson.WithRealFFT(true))
+	if err != nil {
+		t.Fatalf("real plan: %v", err)
+	}
+	if !realPlan.UsedRealFFT() {
+		t.Fatalf("real plan did not take the real-FFT path at qualifying sizes")
+	}
+
+	solComplex := make([]float64, nx*ny)
+	solReal := make([]float64, nx*ny)
+	if err := complexPlan.Solve(solComplex, rhs); err != nil {
+		t.Fatalf("complex solve: %v", err)
+	}
+	if err := realPlan.Solve(solReal, rhs); err != nil {
+		t.Fatalf("real solve: %v", err)
+	}
+
+	// The complex path must recover the manufactured Nyquist-dominated field.
+	if e := maxAbsDiff(solComplex, u); e > periodic2dTol {
+		t.Fatalf("complex solve failed to recover Nyquist mode: max error %g", e)
+	}
+
+	scale := 0.0
+	for _, v := range solComplex {
+		if a := math.Abs(v); a > scale {
+			scale = a
+		}
+	}
+	if rel := maxAbsDiff(solReal, solComplex) / scale; rel > 1e-4 {
+		t.Fatalf("real vs complex Nyquist-bin mismatch: rel error %g exceeds 1e-4", rel)
 	}
 }
 

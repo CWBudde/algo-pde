@@ -115,7 +115,11 @@ func TestDCTPlan_Orthogonality(t *testing.T) {
 }
 
 func TestDCTPlan_KnownValues(t *testing.T) {
-	// Test with a single cosine mode
+	// A pure interior DCT-I mode k must transform to a single spike of amplitude
+	// (N-1) at index k and (numerically) zero everywhere else. The unnormalized
+	// DCT-I forward is X[k] = 2·Σ w[i]·x[i]·cos(πik/(N-1)) with endpoint weights
+	// w[0] = w[N-1] = ½, so for x[i] = cos(πik₀/(N-1)) the orthogonality relation
+	// gives X[k₀] = 2·(N-1)/2 = (N-1).
 	n := 8
 
 	plan, err := NewDCTPlan(n)
@@ -123,30 +127,74 @@ func TestDCTPlan_KnownValues(t *testing.T) {
 		t.Fatalf("NewDCTPlan failed: %v", err)
 	}
 
-	// Create a pure cosine mode (mode k=2)
-	k := 2
-	src := make([]float64, n)
-	for i := range n {
-		src[i] = DCT1Coefficient(i, k, n)
-	}
+	expected := float64(n - 1)
+	for _, k := range []int{2, 3, 5} {
+		src := make([]float64, n)
+		for i := range n {
+			src[i] = DCT1Coefficient(i, k, n)
+		}
 
-	dst := make([]float64, n)
-	if err := plan.Forward(dst, src); err != nil {
-		t.Fatalf("Forward failed: %v", err)
-	}
+		dst := make([]float64, n)
+		if err := plan.Forward(dst, src); err != nil {
+			t.Fatalf("Forward failed: %v", err)
+		}
 
-	// For a pure mode k, the DCT should give a spike at position k
-	// and (approximately) zero elsewhere
-	for j := range n {
-		if j == k {
-			// The amplitude should be (N-1) for endpoints, (N-1)/2 for interior
-			expected := float64(n-1) / 2.0
-			// Allow some tolerance for the complex relationship
-			if math.Abs(dst[j]-expected) > 0.1*expected && math.Abs(dst[j]) > tolerance {
-				t.Logf("dst[%d] = %v, expected around %v (may differ due to normalization)",
-					j, dst[j], expected)
+		for j := range n {
+			if j == k {
+				if math.Abs(dst[j]-expected) > 1e-9 {
+					t.Errorf("k=%d: dst[%d] = %v, want %v (spike)", k, j, dst[j], expected)
+				}
+			} else if math.Abs(dst[j]) > 1e-9 {
+				t.Errorf("k=%d: dst[%d] = %v, want 0", k, j, dst[j])
 			}
 		}
+	}
+}
+
+// dct1Reference is a direct O(N²) evaluation of the unnormalized DCT-I used to
+// cross-check the FFT-based DCTPlan.Forward. Endpoint samples carry weight ½.
+func dct1Reference(dst, src []float64) {
+	n := len(src)
+	for k := range n {
+		sum := 0.0
+		for i := range n {
+			w := 1.0
+			if i == 0 || i == n-1 {
+				w = 0.5
+			}
+			sum += w * src[i] * DCT1Coefficient(i, k, n)
+		}
+		dst[k] = 2.0 * sum
+	}
+}
+
+func TestDCTPlan_Reference(t *testing.T) {
+	sizes := []int{2, 3, 4, 5, 8, 9, 16}
+	for _, n := range sizes {
+		t.Run("dct1-"+sizeStr(n), func(t *testing.T) {
+			plan, err := NewDCTPlan(n)
+			if err != nil {
+				t.Fatalf("NewDCTPlan(%d) failed: %v", n, err)
+			}
+
+			src := make([]float64, n)
+			for i := range n {
+				src[i] = math.Sin(float64(i)*0.7) + 0.3*float64(i%3) - 0.5
+			}
+
+			dst := make([]float64, n)
+			if err := plan.Forward(dst, src); err != nil {
+				t.Fatalf("Forward failed: %v", err)
+			}
+
+			ref := make([]float64, n)
+			dct1Reference(ref, src)
+			for i := range n {
+				if math.Abs(dst[i]-ref[i]) > 1e-9 {
+					t.Errorf("n=%d reference mismatch at [%d]: got %v, want %v", n, i, dst[i], ref[i])
+				}
+			}
+		})
 	}
 }
 
