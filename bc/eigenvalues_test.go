@@ -197,6 +197,13 @@ func TestEigenvaluesInvalidBC(t *testing.T) {
 	}
 }
 
+func TestEigenvaluesNegativeN(t *testing.T) {
+	// A negative n must return an error, not panic in make (no-panic contract).
+	if _, err := Eigenvalues(-1, 1.0, Periodic); !errors.Is(err, ErrInvalidSize) {
+		t.Fatalf("negative n: got %v, want ErrInvalidSize", err)
+	}
+}
+
 func TestString(t *testing.T) {
 	tests := []struct {
 		bc   BCType
