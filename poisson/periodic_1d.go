@@ -2,12 +2,9 @@ package poisson
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
-
-const meanTol = 1e-12
 
 // Plan1DPeriodic is a reusable plan for solving 1D periodic Poisson problems.
 // It solves -Δu = f on a periodic grid with spacing h.
@@ -27,12 +24,19 @@ func NewPlan1DPeriodic(nx int, hx float64, opts ...Option) (*Plan1DPeriodic, err
 		return nil, ErrInvalidSize
 	}
 
-	if hx <= 0 {
+	if !validSpacing(hx) {
 		return nil, ErrInvalidSpacing
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
 	options.Workers = effectiveWorkers(options.Workers)
+
+	// A periodic problem always carries the constant nullspace, so
+	// NullspaceError can never yield a usable Solve. Reject it up front rather
+	// than failing on every call.
+	if options.Nullspace == NullspaceError {
+		return nil, ErrNullspace
+	}
 
 	fftPlan, err := NewFFTPlanWithWorkers(nx, options.Workers)
 	if err != nil {
@@ -60,12 +64,10 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 		return ErrSizeMismatch
 	}
 
-	if p.opts.Nullspace == NullspaceError {
-		return ErrNullspace
-	}
-
+	// Periodic quadrature is spectrally accurate, so a compatible RHS has a
+	// mean at roundoff level: gate tightly and keep rejecting real DC offsets.
 	mean, maxAbs := meanAndMaxAbs(rhs)
-	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs) {
+	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRoundoffFloor) {
 		return ErrNonZeroMean
 	}
 
@@ -118,25 +120,4 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 // SolveInPlace solves the system in-place, overwriting buf with the solution.
 func (p *Plan1DPeriodic) SolveInPlace(buf []float64) error {
 	return p.Solve(buf, buf)
-}
-
-func meanAndMaxAbs(values []float64) (mean, maxAbs float64) {
-	if len(values) == 0 {
-		return 0, 0
-	}
-
-	sum := 0.0
-	for _, v := range values {
-		sum += v
-		abs := math.Abs(v)
-		if abs > maxAbs {
-			maxAbs = abs
-		}
-	}
-
-	return sum / float64(len(values)), maxAbs
-}
-
-func meanWithinTolerance(mean, maxAbs float64) bool {
-	return math.Abs(mean) <= meanTol*(1.0+maxAbs)
 }

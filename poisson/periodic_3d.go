@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	algofft "github.com/cwbudde/algo-fft"
 	"github.com/MeKo-Tech/algo-pde/grid"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // real3DWorkspace bundles a real FFT plan with its buffers for one Solve call.
@@ -43,12 +43,18 @@ func NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option) (*Pla
 		return nil, ErrInvalidSize
 	}
 
-	if hx <= 0 || hy <= 0 || hz <= 0 {
+	if !validSpacing(hx) || !validSpacing(hy) || !validSpacing(hz) {
 		return nil, ErrInvalidSpacing
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
 	options.Workers = effectiveWorkers(options.Workers)
+
+	// A periodic problem always carries the constant nullspace, so
+	// NullspaceError can never yield a usable Solve. Reject it up front.
+	if options.Nullspace == NullspaceError {
+		return nil, ErrNullspace
+	}
 
 	plan := &Plan3DPeriodic{
 		nx:    nx,
@@ -112,12 +118,10 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 		return ErrSizeMismatch
 	}
 
-	if p.opts.Nullspace == NullspaceError {
-		return ErrNullspace
-	}
-
+	// Periodic quadrature is spectrally accurate, so a compatible RHS has a
+	// mean at roundoff level: gate tightly and keep rejecting real DC offsets.
 	mean, maxAbs := meanAndMaxAbs(rhs)
-	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs) {
+	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRoundoffFloor) {
 		return ErrNonZeroMean
 	}
 
@@ -153,10 +157,10 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			baseXY := i * p.ny * p.nz
-			for j := 0; j < p.ny; j++ {
+			for j := range p.ny {
 				base := baseXY + j*p.nz
 				xy := p.eigX[i] + p.eigY[j]
-				for k := 0; k < p.nz; k++ {
+				for k := range p.nz {
 					denom := xy + p.eigZ[k]
 					if denom == 0 {
 						workspace.Complex[base+k] = 0
@@ -198,6 +202,13 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 // SolveInPlace solves the system in-place, overwriting buf with the solution.
 func (p *Plan3DPeriodic) SolveInPlace(buf []float64) error {
 	return p.Solve(buf, buf)
+}
+
+// UsedRealFFT reports whether the plan runs the single-precision (float32)
+// real-FFT path. It is false when WithRealFFT/WithFloat32 was not set or when
+// the sizes did not qualify and the plan fell back to the float64 complex FFT.
+func (p *Plan3DPeriodic) UsedRealFFT() bool {
+	return p.useR
 }
 
 func (p *Plan3DPeriodic) newRealWorkspace() (*real3DWorkspace, error) {
@@ -260,10 +271,10 @@ func (p *Plan3DPeriodic) divideRealSpectrum(rspec []complex64) error {
 	return parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			baseXY := i * p.ny * p.rhalf
-			for j := 0; j < p.ny; j++ {
+			for j := range p.ny {
 				base := baseXY + j*p.rhalf
 				xy := p.eigX[i] + p.eigY[j]
-				for k := 0; k < p.rhalf; k++ {
+				for k := range p.rhalf {
 					denom := xy + p.eigZ[k]
 					if denom == 0 {
 						rspec[base+k] = 0

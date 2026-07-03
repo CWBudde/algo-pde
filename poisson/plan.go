@@ -2,9 +2,18 @@ package poisson
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
+
+// resonanceRelTol is the relative-cancellation threshold below which the
+// Helmholtz operator is treated as singular. A mode is flagged resonant when
+// |alpha + eigenvalues| drops below resonanceRelTol times the sum of the term
+// magnitudes, i.e. the divide would amplify by more than ~1/resonanceRelTol and
+// return a near-garbage field. Poisson problems never trip it: with alpha == 0
+// all terms are non-negative, so |denom| == scale for every non-zero mode.
+const resonanceRelTol = 1e-9
 
 // Plan is a reusable Poisson/Helmholtz solver plan with per-axis boundary conditions.
 type Plan struct {
@@ -44,22 +53,26 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	if len(n) != dim {
 		return nil, &ValidationError{
 			Field:   "n",
-			Message: "length must match dim",
+			Message: msgLenMustMatchDim,
 		}
 	}
 
 	if len(h) != dim {
 		return nil, &ValidationError{
 			Field:   "h",
-			Message: "length must match dim",
+			Message: msgLenMustMatchDim,
 		}
 	}
 
 	if len(bc) != dim {
 		return nil, &ValidationError{
 			Field:   "bc",
-			Message: "length must match dim",
+			Message: msgLenMustMatchDim,
 		}
+	}
+
+	if !validAlpha(alpha) {
+		return nil, ErrInvalidAlpha
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
@@ -74,11 +87,11 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	}
 
 	size := 1
-	for axis := 0; axis < dim; axis++ {
+	for axis := range dim {
 		if n[axis] < 1 {
 			return nil, ErrInvalidSize
 		}
-		if h[axis] <= 0 {
+		if !validSpacing(h[axis]) {
 			return nil, ErrInvalidSpacing
 		}
 
@@ -97,7 +110,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		size *= n[axis]
 	}
 
-	for axis := 0; axis < dim; axis++ {
+	for axis := range dim {
 		var err error
 		switch plan.bc[axis] {
 		case Periodic:
@@ -113,6 +126,13 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		if err != nil {
 			return nil, fmt.Errorf("axis %d: %w", axis, err)
 		}
+	}
+
+	// The nullspace is fully determined by alpha and the boundary conditions,
+	// both fixed at construction. If the problem has a nullspace, NullspaceError
+	// makes every Solve fail, so reject the combination now rather than later.
+	if plan.hasNullspace() && options.Nullspace == NullspaceError {
+		return nil, ErrNullspace
 	}
 
 	realSize := 0
@@ -143,17 +163,26 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 	return p.solve(dst, rhs, workspace)
 }
 
+// SolveInPlace solves the system in-place, overwriting buf with the solution.
+func (p *Plan) SolveInPlace(buf []float64) error {
+	return p.Solve(buf, buf)
+}
+
+// WorkBytes returns the size of the workspace buffers one Solve call uses, in
+// bytes. Concurrent Solve calls each draw their own workspace, so the peak
+// memory use is WorkBytes times the peak number of concurrent calls.
+func (p *Plan) WorkBytes() int {
+	return p.realSize*8 + p.complexSize*16
+}
+
 // solve runs the transform pipeline using the given per-call workspace.
 func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	hasNullspace := p.hasNullspace()
-	if hasNullspace && p.opts.Nullspace == NullspaceError {
-		return ErrNullspace
-	}
 
 	offset := 0.0
 	if hasNullspace {
 		mean, maxAbs := meanAndMaxAbs(rhs)
-		if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs) {
+		if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, p.meanRelTol()) {
 			return ErrNonZeroMean
 		}
 
@@ -167,7 +196,7 @@ func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	}
 
 	shape := p.shape()
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		if err := p.tr[axis].Forward(workspace.Complex, shape, axis); err != nil {
 			return fmt.Errorf("forward axis %d: %w", axis, err)
 		}
@@ -195,28 +224,39 @@ func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	return nil
 }
 
-// SolveInPlace solves the system in-place, overwriting buf with the solution.
-func (p *Plan) SolveInPlace(buf []float64) error {
-	return p.Solve(buf, buf)
-}
-
-// WorkBytes returns the size of the workspace buffers one Solve call uses, in
-// bytes. Concurrent Solve calls each draw their own workspace, so the peak
-// memory use is WorkBytes times the peak number of concurrent calls.
-func (p *Plan) WorkBytes() int {
-	return p.realSize*8 + p.complexSize*16
-}
-
 func (p *Plan) shape() grid.Shape {
 	return grid.Shape{p.n[0], p.n[1], p.n[2]}
 }
 
 func (p *Plan) size() int {
 	size := 1
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		size *= p.n[axis]
 	}
 	return size
+}
+
+// meanRelTol returns the zero-mean consistency tolerance for this plan. A
+// Neumann axis samples the RHS at cell centers, whose midpoint quadrature
+// leaves an O(h^2) mean even for a compatible problem, so the gate widens to
+// O(1/n^2) on the coarsest Neumann axis. A pure-periodic problem (no Neumann
+// axis) is integrated spectrally, so its compatible mean sits at roundoff and
+// the gate stays tight — a real DC offset must still be rejected.
+func (p *Plan) meanRelTol() float64 {
+	minNeumann := 0
+	for axis := range p.dim {
+		if p.bc[axis] != Neumann {
+			continue
+		}
+		if minNeumann == 0 || p.n[axis] < minNeumann {
+			minNeumann = p.n[axis]
+		}
+	}
+
+	if minNeumann == 0 {
+		return meanRoundoffFloor
+	}
+	return discretizationMeanTol(minNeumann)
 }
 
 func (p *Plan) hasNullspace() bool {
@@ -224,7 +264,7 @@ func (p *Plan) hasNullspace() bool {
 		return false
 	}
 
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		if !p.bc[axis].HasNullspace() {
 			return false
 		}
@@ -247,15 +287,25 @@ func (p *Plan) applyEigenvalues(buf []complex128) error {
 			j := rem / strideZ
 			k := rem % strideZ
 
+			// scale is the sum of the magnitudes of the terms that build denom.
+			// For a well-conditioned mode denom == scale (all terms share sign),
+			// but when a negative alpha nearly cancels the positive eigenvalue
+			// sum, |denom| collapses far below scale. The ratio |denom|/scale is
+			// exactly the catastrophic-cancellation conditioning of the divide,
+			// so gating on it flags near-resonance before the ~1/|denom|
+			// amplification turns the mode into garbage.
 			denom := p.alpha + p.eig[0][i]
+			scale := math.Abs(p.alpha) + math.Abs(p.eig[0][i])
 			if p.dim > 1 {
 				denom += p.eig[1][j]
+				scale += math.Abs(p.eig[1][j])
 			}
 			if p.dim > 2 {
 				denom += p.eig[2][k]
+				scale += math.Abs(p.eig[2][k])
 			}
 
-			if denom == 0 {
+			if math.Abs(denom) <= resonanceRelTol*scale {
 				if allowZeroMode && i == 0 && (p.dim < 2 || j == 0) && (p.dim < 3 || k == 0) {
 					buf[idx] = 0
 					continue
@@ -267,14 +317,4 @@ func (p *Plan) applyEigenvalues(buf []complex128) error {
 		}
 		return nil
 	})
-}
-
-func isZeroMode(indices *[3]int, dim int) bool {
-	for axis := 0; axis < dim; axis++ {
-		idx := indices[axis]
-		if idx != 0 {
-			return false
-		}
-	}
-	return true
 }

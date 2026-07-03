@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	algofft "github.com/cwbudde/algo-fft"
 	"github.com/MeKo-Tech/algo-pde/grid"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // real2DWorkspace bundles a real FFT plan with its buffers for one Solve call.
@@ -41,12 +41,18 @@ func NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPerio
 		return nil, ErrInvalidSize
 	}
 
-	if hx <= 0 || hy <= 0 {
+	if !validSpacing(hx) || !validSpacing(hy) {
 		return nil, ErrInvalidSpacing
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
 	options.Workers = effectiveWorkers(options.Workers)
+
+	// A periodic problem always carries the constant nullspace, so
+	// NullspaceError can never yield a usable Solve. Reject it up front.
+	if options.Nullspace == NullspaceError {
+		return nil, ErrNullspace
+	}
 
 	plan := &Plan2DPeriodic{
 		nx:    nx,
@@ -102,12 +108,10 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 		return ErrSizeMismatch
 	}
 
-	if p.opts.Nullspace == NullspaceError {
-		return ErrNullspace
-	}
-
+	// Periodic quadrature is spectrally accurate, so a compatible RHS has a
+	// mean at roundoff level: gate tightly and keep rejecting real DC offsets.
 	mean, maxAbs := meanAndMaxAbs(rhs)
-	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs) {
+	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRoundoffFloor) {
 		return ErrNonZeroMean
 	}
 
@@ -139,7 +143,7 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			base := i * p.ny
-			for j := 0; j < p.ny; j++ {
+			for j := range p.ny {
 				denom := p.eigX[i] + p.eigY[j]
 				if denom == 0 {
 					workspace.Complex[base+j] = 0
@@ -176,6 +180,13 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 // SolveInPlace solves the system in-place, overwriting buf with the solution.
 func (p *Plan2DPeriodic) SolveInPlace(buf []float64) error {
 	return p.Solve(buf, buf)
+}
+
+// UsedRealFFT reports whether the plan runs the single-precision (float32)
+// real-FFT path. It is false when WithRealFFT/WithFloat32 was not set or when
+// the sizes did not qualify and the plan fell back to the float64 complex FFT.
+func (p *Plan2DPeriodic) UsedRealFFT() bool {
+	return p.useR
 }
 
 func (p *Plan2DPeriodic) newRealWorkspace() (*real2DWorkspace, error) {
@@ -238,7 +249,7 @@ func (p *Plan2DPeriodic) divideRealSpectrum(rspec []complex64) error {
 	return parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			base := i * p.rhalf
-			for j := 0; j < p.rhalf; j++ {
+			for j := range p.rhalf {
 				denom := p.eigX[i] + p.eigY[j]
 				if denom == 0 {
 					rspec[base+j] = 0

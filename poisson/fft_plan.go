@@ -3,8 +3,8 @@ package poisson
 import (
 	"fmt"
 
-	algofft "github.com/cwbudde/algo-fft"
 	"github.com/MeKo-Tech/algo-pde/grid"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // fftWorker bundles an FFT plan with the scratch buffers one goroutine needs

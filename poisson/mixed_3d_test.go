@@ -267,6 +267,7 @@ func BenchmarkPlan3DPeriodic_Solve_NewPlan_32(b *testing.B) {
 }
 
 func benchmarkPlan3DSolve(b *testing.B, n int, bc [3]poisson.BCType) {
+	b.Helper()
 	hx, fx := axisBasis(bc[0], n)
 	hy, fy := axisBasis(bc[1], n)
 	hz, fz := axisBasis(bc[2], n)
@@ -298,7 +299,7 @@ func benchmarkPlan3DSolve(b *testing.B, n int, bc [3]poisson.BCType) {
 	dst := make([]float64, len(u))
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := plan.Solve(dst, rhs); err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}

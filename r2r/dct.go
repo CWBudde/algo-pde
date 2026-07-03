@@ -192,8 +192,8 @@ func (p *DCT2Plan) Forward(dst, src []float64) error {
 		p.fftIn[i] = 0
 	}
 
-	// Even extension:
-	// x[0..n-1] -> [x[0], ..., x[n-1], x[n-1], ..., x[0]]
+	// Even extension (mirror the sequence, repeating both endpoints):
+	// x[0..n-1] -> [x[0], ..., x[n-1] | x[n-1], ..., x[0]]
 	for i := range p.n {
 		p.fftIn[i] = complex(src[i], 0)
 		p.fftIn[p.extendedN-1-i] = complex(src[i], 0)

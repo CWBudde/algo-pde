@@ -10,7 +10,10 @@ var (
 	ErrInvalidSize = errors.New("invalid grid size: dimensions must be positive")
 
 	// ErrInvalidSpacing is returned when grid spacing is invalid.
-	ErrInvalidSpacing = errors.New("invalid grid spacing: must be positive")
+	ErrInvalidSpacing = errors.New("invalid grid spacing: must be positive and finite")
+
+	// ErrInvalidAlpha is returned when a Helmholtz alpha is not finite.
+	ErrInvalidAlpha = errors.New("invalid Helmholtz alpha: must be finite")
 
 	// ErrSizeMismatch is returned when buffer sizes don't match the plan.
 	ErrSizeMismatch = errors.New("buffer size does not match plan dimensions")
@@ -30,6 +33,13 @@ var (
 
 	// ErrResonant is returned when the Helmholtz operator is singular.
 	ErrResonant = errors.New("helmholtz operator is singular: alpha cancels eigenvalue")
+)
+
+// Field and message strings reused across validation errors.
+const (
+	fieldType          = "Type"
+	fieldFace          = "Face"
+	msgLenMustMatchDim = "length must match dim"
 )
 
 // SizeError provides details about a size mismatch.

@@ -25,7 +25,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 	for _, data := range bc {
 		if data.Type != Dirichlet {
 			return &ValidationError{
-				Field:   "Type",
+				Field:   fieldType,
 				Message: "only Dirichlet boundary data is supported",
 			}
 		}
@@ -33,7 +33,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 		switch data.Face {
 		case XLow, XHigh:
 			if dim < 1 {
-				return &ValidationError{Field: "Face", Message: "X face not valid for this dimension"}
+				return &ValidationError{Field: fieldFace, Message: "X face not valid for this dimension"}
 			}
 			expectedFace := ny * nz
 			if len(data.Values) != expectedFace {
@@ -49,17 +49,17 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 			if data.Face == XHigh {
 				base = (nx - 1) * plane
 			}
-			for j := 0; j < ny; j++ {
+			for j := range ny {
 				row := base + j*nz
 				valRow := j * nz
-				for k := 0; k < nz; k++ {
+				for k := range nz {
 					rhs[row+k] += data.Values[valRow+k] * invHx2
 				}
 			}
 
 		case YLow, YHigh:
 			if dim < 2 {
-				return &ValidationError{Field: "Face", Message: "Y face not valid for this dimension"}
+				return &ValidationError{Field: fieldFace, Message: "Y face not valid for this dimension"}
 			}
 			expectedFace := nx * nz
 			if len(data.Values) != expectedFace {
@@ -75,17 +75,17 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 			if data.Face == YHigh {
 				j = ny - 1
 			}
-			for i := 0; i < nx; i++ {
+			for i := range nx {
 				base := i*plane + j*nz
 				valRow := i * nz
-				for k := 0; k < nz; k++ {
+				for k := range nz {
 					rhs[base+k] += data.Values[valRow+k] * invHy2
 				}
 			}
 
 		case ZLow, ZHigh:
 			if dim < 3 {
-				return &ValidationError{Field: "Face", Message: "Z face not valid for this dimension"}
+				return &ValidationError{Field: fieldFace, Message: "Z face not valid for this dimension"}
 			}
 			expectedFace := nx * ny
 			if len(data.Values) != expectedFace {
@@ -101,16 +101,16 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 			if data.Face == ZHigh {
 				k = nz - 1
 			}
-			for i := 0; i < nx; i++ {
+			for i := range nx {
 				base := i * plane
 				valRow := i * ny
-				for j := 0; j < ny; j++ {
+				for j := range ny {
 					rhs[base+j*nz+k] += data.Values[valRow+j] * invHz2
 				}
 			}
 
 		default:
-			return &ValidationError{Field: "Face", Message: "unknown boundary face"}
+			return &ValidationError{Field: fieldFace, Message: "unknown boundary face"}
 		}
 	}
 

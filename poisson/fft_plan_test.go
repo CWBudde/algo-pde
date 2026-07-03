@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	algofft "github.com/cwbudde/algo-fft"
 	"github.com/MeKo-Tech/algo-pde/grid"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 const fftTol = 1e-10

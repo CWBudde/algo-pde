@@ -28,8 +28,15 @@ type Options struct {
 	// When nil, the solver leaves the mean as computed (typically zero-mode).
 	SolutionMean *float64
 
-	// UseRealFFT enables real FFT plans when available (2D/3D periodic).
-	// This uses algo-fft's real FFT plans, which operate on float32 buffers.
+	// UseRealFFT enables real FFT plans on 2D/3D periodic plans when the sizes
+	// qualify (power-of-two extents, even last axis).
+	//
+	// WARNING: this is a single-vs-double precision trade, not just a layout
+	// change. algo-fft's real transforms operate on float32 buffers, so the
+	// whole solve runs in single precision and the result carries only ~1e-6
+	// relative accuracy instead of the ~1e-14 of the default complex128 path.
+	// Enable it only when that precision is acceptable (e.g. real-time visuals).
+	// See WithFloat32, whose name states the trade-off outright.
 	UseRealFFT bool
 
 	// Workers is the number of parallel workers for transforms.
@@ -84,11 +91,26 @@ func WithSolutionMean(mean float64) Option {
 	}
 }
 
-// WithRealFFT enables or disables real FFT plans when available.
+// WithRealFFT enables or disables the real (float32) FFT path when the plan
+// sizes qualify.
+//
+// IMPORTANT: enabling this runs the entire solve in single precision, dropping
+// accuracy from ~1e-14 to ~1e-6. WithFloat32 is the same switch under a name
+// that makes the precision trade-off explicit; prefer it in new code.
 func WithRealFFT(enabled bool) Option {
 	return func(o *Options) {
 		o.UseRealFFT = enabled
 	}
+}
+
+// WithFloat32 selects the single-precision (float32) real-FFT solve path on
+// 2D/3D periodic plans whose sizes qualify. It is an alias for WithRealFFT with
+// a name that states the cost up front: the solution is only ~1e-6 accurate
+// rather than the ~1e-14 of the default float64 path. When the sizes do not
+// qualify the plan silently falls back to the float64 complex FFT; check
+// UsedRealFFT to confirm which path a plan took.
+func WithFloat32(enabled bool) Option {
+	return WithRealFFT(enabled)
 }
 
 // WithInPlace allows the solver to modify the input RHS.

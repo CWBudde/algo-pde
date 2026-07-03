@@ -133,7 +133,7 @@ func applyPeriodicND(dst, src []float64, dims poisson.Shape, h []float64) {
 		u := src[idx]
 		sum := 0.0
 
-		for d := 0; d < nDims; d++ {
+		for d := range nDims {
 			left := indices[d] - 1
 			if left < 0 {
 				left = dims[d] - 1

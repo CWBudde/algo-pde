@@ -38,8 +38,8 @@ func TestPlan1DDirichlet_Solve_Fundamental(t *testing.T) {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > dirichlet1dTol {
-		t.Fatalf("max error %g exceeds tol %g", max, dirichlet1dTol)
+	if maxErr := maxAbsDiff(got, u); maxErr > dirichlet1dTol {
+		t.Fatalf("max error %g exceeds tol %g", maxErr, dirichlet1dTol)
 	}
 }
 
@@ -73,7 +73,7 @@ func TestPlan1DDirichlet_Solve_Combination(t *testing.T) {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > dirichlet1dTol {
-		t.Fatalf("max error %g exceeds tol %g", max, dirichlet1dTol)
+	if maxErr := maxAbsDiff(got, u); maxErr > dirichlet1dTol {
+		t.Fatalf("max error %g exceeds tol %g", maxErr, dirichlet1dTol)
 	}
 }

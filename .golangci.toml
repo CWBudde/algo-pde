@@ -20,6 +20,22 @@ disable = [
     'wrapcheck',
     'wsl',
     'wsl_v5',
+    # Style/metric linters that fight a numerical library: dense math kernels
+    # have high branch/complexity counts and short domain names (nx, hx, eig,
+    # dx) by design, and sentinel-error/test-fixture globals are idiomatic.
+    # Correctness linters below stay on.
+    'cyclop',
+    'funlen',
+    'gochecknoglobals',
+    'gocognit',
+    'lll',
+    'nestif',
+    'varnamelen',
+    # modernize would rewrite hot backward index loops (e.g. the per-element
+    # odometer in periodic_nd.go) into slices.Backward range-over-func
+    # iterators, adding call overhead in the solver's inner loops. Its useful
+    # range-over-int check is already covered by intrange.
+    'modernize',
 ]
 enable = [
     "revive",
@@ -37,15 +53,16 @@ name = "file-length-limit"
 max = 1500
 skip-comments = false
 skip-blank-lines = false
-[linters.settings.varnamelen]
-# Common math/grid variable names
-ignore-names = ['a', 'b', 'x', 'y', 'z', 'i', 'j', 'k', 'n', 'm', 'h', 'ok', 'bc', 'nx', 'ny', 'nz', 'hx', 'hy', 'hz', 'tt', 'h2', 'pi', 'it', 'w', 'k1', 'k2']
-ignore-decls = ['T any']
+
+# A bare default: case fully handles the remaining BCType values (returning an
+# error), so treat it as exhaustive rather than demanding every enum arm.
+[linters.settings.exhaustive]
+default-signifies-exhaustive = true
 
 [linters.exclusions]
 generated = 'lax'
 presets = ['comments', 'common-false-positives', 'legacy', 'std-error-handling']
-paths = ['third_party$', 'builtin$', 'examples$']
+paths = ['third_party$', 'builtin$', '(^|/)examples/']
 
 [[linters.exclusions.rules]]
 linters = ['mnd']
@@ -57,6 +74,19 @@ path = '.*_test\.go'
 
 [[linters.exclusions.rules]]
 linters = ['dupl']
+path = '.*_test\.go'
+
+# Test helpers legitimately take uniform-valued params (e.g. a fixed tolerance
+# constant), which unparam flags as always-same; not a concern in test scaffolding.
+[[linters.exclusions.rules]]
+linters = ['unparam']
+path = '.*_test\.go'
+
+# Test assertions routinely bind `max := maxAbsDiff(...)`; shadowing the min/max
+# builtins is harmless there and never reaches production. predeclared stays on
+# for non-test code, where a real shadow would matter.
+[[linters.exclusions.rules]]
+linters = ['predeclared']
 path = '.*_test\.go'
 
 [severity]
@@ -71,4 +101,4 @@ enable = ['gofumpt', 'goimports']
 
 [formatters.exclusions]
 generated = 'lax'
-paths = ['third_party$', 'builtin$', 'examples$']
+paths = ['third_party$', 'builtin$', '(^|/)examples/']

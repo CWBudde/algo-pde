@@ -45,8 +45,8 @@ func TestApplyDirichletRHS1D_NonZero(t *testing.T) {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > dirichletInhomTol {
-		t.Fatalf("max error %g exceeds tol %g", max, dirichletInhomTol)
+	if maxErr := maxAbsDiff(got, u); maxErr > dirichletInhomTol {
+		t.Fatalf("max error %g exceeds tol %g", maxErr, dirichletInhomTol)
 	}
 }
 
@@ -59,9 +59,9 @@ func TestApplyDirichletRHS2D_NonZero(t *testing.T) {
 	Ly := float64(ny+1) * hy
 
 	u := make([]float64, nx*ny)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
-		for j := 0; j < ny; j++ {
+		for j := range ny {
 			y := float64(j+1) * hy
 			u[i*ny+j] = math.Sin(math.Pi*x/Lx)*math.Sin(math.Pi*y/Ly) + 0.2*x + 0.3*y + 0.1
 		}
@@ -69,7 +69,7 @@ func TestApplyDirichletRHS2D_NonZero(t *testing.T) {
 
 	xLow := make([]float64, ny)
 	xHigh := make([]float64, ny)
-	for j := 0; j < ny; j++ {
+	for j := range ny {
 		y := float64(j+1) * hy
 		xLow[j] = 0.3*y + 0.1
 		xHigh[j] = 0.2*Lx + 0.3*y + 0.1
@@ -77,7 +77,7 @@ func TestApplyDirichletRHS2D_NonZero(t *testing.T) {
 
 	yLow := make([]float64, nx)
 	yHigh := make([]float64, nx)
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		x := float64(i+1) * hx
 		yLow[i] = 0.2*x + 0.1
 		yHigh[i] = 0.2*x + 0.3*Ly + 0.1
@@ -106,8 +106,8 @@ func TestApplyDirichletRHS2D_NonZero(t *testing.T) {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > dirichletInhomTol {
-		t.Fatalf("max error %g exceeds tol %g", max, dirichletInhomTol)
+	if maxErr := maxAbsDiff(got, u); maxErr > dirichletInhomTol {
+		t.Fatalf("max error %g exceeds tol %g", maxErr, dirichletInhomTol)
 	}
 }
 
@@ -133,9 +133,9 @@ func applyInhomDirichlet2D(dst, src []float64, shape grid.Shape, hx, hy float64,
 	invHx2 := 1.0 / (hx * hx)
 	invHy2 := 1.0 / (hy * hy)
 
-	for i := 0; i < nx; i++ {
+	for i := range nx {
 		row := i * ny
-		for j := 0; j < ny; j++ {
+		for j := range ny {
 			idx := row + j
 			u := src[idx]
 

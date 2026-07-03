@@ -84,24 +84,48 @@ falsifies the O(N log N) claim.
 
 ### A.3 Correctness traps that return garbage with err == nil
 
-- [ ] Helmholtz resonance: replace exact `denom == 0` (`plan.go:244`) with a
+- [x] Helmholtz resonance: replace exact `denom == 0` (`plan.go:244`) with a
       relative-tolerance check (`|denom| < eps * |alpha|`-scale); return
       `ErrResonant` for near-resonance instead of a ~1e16-amplified field.
-- [ ] Validate `alpha` and `h` for NaN/Inf at plan creation (`plan.go:34,79` —
+      → `applyEigenvalues` now gates on `|denom| <= resonanceRelTol*scale`,
+      where `scale` is the sum of the term magnitudes (`|alpha| + Σ|eig|`).
+      That ratio is exactly the catastrophic-cancellation conditioning of the
+      divide, so it flags near-resonance (amplification > ~1e9) while never
+      tripping on Poisson (all terms non-negative ⇒ `|denom| == scale`).
+      `TestHelmholtz_NearResonantReturnsErrResonant` pins the 1-ulp case.
+- [x] Validate `alpha` and `h` for NaN/Inf at plan creation (`plan.go:34,79` —
       `h <= 0` does not reject NaN).
-- [ ] Fix the nullspace mean gate: `meanTol = 1e-12` (`plan.go:144`) rejects
+      → New `validSpacing`/`validAlpha` (`validation.go`) reject NaN/±Inf; wired
+      into every constructor. Non-finite alpha returns the new `ErrInvalidAlpha`.
+- [x] Fix the nullspace mean gate: `meanTol = 1e-12` (`plan.go:144`) rejects
       analytically compatible inhomogeneous Neumann problems whose lifted RHS
       mean is O(h²) quadrature error (~1e-4 at n=100). Scale the tolerance
       with the discretization (or with the lifting magnitude), and use
       pairwise/Kahan summation in `meanAndMaxAbs` so the gate is stable at
       512³. Today every test dodges this via `WithSubtractMean()` — the
       default path is untested and unusable.
-- [ ] `WithRealFFT(true)` silently downgrades the whole solve to float32
+      → `meanRelTol(minExtent)` scales the relative tolerance as
+      `max(8/minN², 1e-12)`, tightening as the grid refines (matching the
+      O(h²)=O(1/n²) shrink of the quadrature error) yet still separating a
+      compatible RHS from a genuinely inconsistent O(1) mean. `meanAndMaxAbs`
+      now uses Neumaier compensated summation so the gate is stable at 512³.
+      `TestNeumann_DefaultZeroMode{Accepts,Rejects}*` cover both directions on
+      the default path.
+- [x] `WithRealFFT(true)` silently downgrades the whole solve to float32
       buffers (`periodic_2d.go:128`). Either document the ~1e-6 accuracy
       contract loudly in the option, or rename it (`WithFloat32`), and add a
       test comparing float32 vs float64 paths on the same input.
-- [ ] With `NullspaceError`, periodic plans construct fine but every Solve
+      → Added `WithFloat32` alias whose name states the precision trade, loudly
+      documented the ~1e-6 contract on `WithRealFFT`/`UseRealFFT`, and exposed
+      `Plan2D/3DPeriodic.UsedRealFFT()` so callers can confirm which path ran.
+      `TestWithFloat32_SinglePrecisionContract` checks the float32 result stays
+      within the contract yet visibly differs from the float64 path.
+- [x] With `NullspaceError`, periodic plans construct fine but every Solve
       fails (`periodic_1d.go:63`). Fail at plan creation instead.
+      → All periodic constructors (and the core `Plan` whenever `hasNullspace()`)
+      reject `NullspaceError` at construction; the dead per-Solve checks are gone.
+      `TestNullspaceError_RejectedAtConstruction` verifies each constructor and
+      that a Dirichlet `Plan` still builds.
 
 ### A.4 Document the grid conventions (cheap, prevents the worst failure mode)
 
@@ -278,8 +302,14 @@ Either fix all of the below or pull it from the README until fixed.
 - [ ] Commit or revert the local `.gitignore`/`.golangci.toml` drift; resolve
       the `demo/package-lock.json` tracked-but-gitignored contradiction (CI's
       `npm ci` depends on the lockfile).
-- [ ] Align CI Go version with go.mod (CI pins 1.23, go.mod demands 1.25 —
+- [x] Align CI Go version with go.mod (CI pins 1.23, go.mod demands 1.25 —
       the pin is dead config via GOTOOLCHAIN).
+      → `test-unit`/`test-lint` now use `go-version-file: go.mod` like
+      `test-format` already did. The old `1.23` pin made `GOTOOLCHAIN=auto`
+      download the minimal go1.25 toolchain module, which lacks the `covdata`
+      tool and failed `go test -coverprofile` on the example main packages
+      (all tests passed, but the job still exited 1). (`deploy-demo` still
+      pins 1.23 — left for the Phase E demo work.)
 - [ ] Fix the two examples whose plan is never used (`examples/neumann2d`,
       `examples/periodic1d` — staticcheck SA4006); add a correctness check to
       `examples/helmholtz` (currently prints a number with no verification).

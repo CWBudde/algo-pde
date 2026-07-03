@@ -42,7 +42,7 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 			neumann = append(neumann, data)
 		default:
 			return &ValidationError{
-				Field:   "Type",
+				Field:   fieldType,
 				Message: "unsupported boundary condition",
 			}
 		}
@@ -69,21 +69,21 @@ func (p *Plan) validateBoundaryConditions(bc BoundaryConditions) error {
 		axis, ok := faceAxis(data.Face)
 		if !ok || axis >= p.dim {
 			return &ValidationError{
-				Field:   "Face",
+				Field:   fieldFace,
 				Message: "boundary face not valid for plan dimension",
 			}
 		}
 
 		if p.bc[axis] == Periodic {
 			return &ValidationError{
-				Field:   "Face",
+				Field:   fieldFace,
 				Message: "boundary data not allowed for periodic axis",
 			}
 		}
 
 		if p.bc[axis] != data.Type {
 			return &ValidationError{
-				Field:   "Type",
+				Field:   fieldType,
 				Message: fmt.Sprintf("boundary type %s does not match plan axis %s", data.Type, p.bc[axis]),
 			}
 		}
