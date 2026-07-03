@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/MeKo-Tech/algo-pde/bc"
 	"github.com/MeKo-Tech/algo-pde/fd"
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
@@ -16,7 +17,7 @@ import (
 func TestHelmholtz_NearResonantReturnsErrResonant(t *testing.T) {
 	n := 64
 	h := 1.0 / float64(n+1)
-	eig0 := fd.EigenvaluesDirichlet(n, h)[0]
+	eig0 := bc.EigenvaluesDirichlet(n, h)[0]
 
 	// One ulp above exact resonance: denom at mode 0 is ~eig0*2^-52, far below
 	// the term magnitudes, so the divide is hopelessly ill-conditioned.
@@ -43,7 +44,7 @@ func TestHelmholtz_NegativeNonResonantSolves(t *testing.T) {
 	n := 64
 	h := 1.0 / float64(n+1)
 	L := float64(n+1) * h
-	eig0 := fd.EigenvaluesDirichlet(n, h)[0]
+	eig0 := bc.EigenvaluesDirichlet(n, h)[0]
 	alpha := -0.5 * eig0 // between -eig0 and 0: shifts, never cancels
 
 	plan, err := poisson.NewHelmholtzPlan(1, []int{n}, []float64{h}, []poisson.BCType{poisson.Dirichlet}, alpha)

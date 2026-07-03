@@ -59,11 +59,6 @@ func RowMajorStride(s Shape) Stride {
 	return Stride{s[1] * s[2], s[2], 1}
 }
 
-// Index1D returns the linear index for a 1D coordinate.
-func Index1D(i int) int {
-	return i
-}
-
 // Index2D returns the linear index for a 2D coordinate (row-major).
 func Index2D(i, j, ny int) int {
 	return i*ny + j
@@ -77,11 +72,6 @@ func Index3D(i, j, k int, s Shape) int {
 // Index returns the linear index for coordinates using strides.
 func Index(i, j, k int, stride Stride) int {
 	return i*stride[0] + j*stride[1] + k*stride[2]
-}
-
-// FromIndex1D converts a linear index to 1D coordinate.
-func FromIndex1D(idx int) int {
-	return idx
 }
 
 // FromIndex2D converts a linear index to 2D coordinates (row-major).

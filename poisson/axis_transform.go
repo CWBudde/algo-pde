@@ -1,6 +1,7 @@
 package poisson
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MeKo-Tech/algo-pde/grid"
@@ -153,7 +154,7 @@ func (t *realAxisTransform[P]) transformLines(
 	numLines := lineCount(shape, axis)
 	workers := clampWorkers(t.workers, numLines)
 
-	return parallelFor(workers, numLines, func(_ int, startLine, endLine int) error {
+	return parallelFor(workers, numLines, func(ctx context.Context, _ int, startLine, endLine int) error {
 		worker, err := t.getWorker()
 		if err != nil {
 			return err
@@ -161,6 +162,10 @@ func (t *realAxisTransform[P]) transformLines(
 		defer t.pool.put(worker)
 
 		for line := startLine; line < endLine; line++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
 			start := lineStartIndex(shape, axis, line)
 			if err := t.transformLine(worker, data, start, lineLen, lineStride, inverse); err != nil {
 				return err

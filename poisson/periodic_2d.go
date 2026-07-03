@@ -1,8 +1,10 @@
 package poisson
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/MeKo-Tech/algo-pde/bc"
 	"github.com/MeKo-Tech/algo-pde/grid"
 	algofft "github.com/cwbudde/algo-fft"
 )
@@ -58,8 +60,8 @@ func NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPerio
 		ny:    ny,
 		hx:    hx,
 		hy:    hy,
-		eigX:  eigenvaluesPeriodic(nx, hx),
-		eigY:  eigenvaluesPeriodic(ny, hy),
+		eigX:  bc.EigenvaluesPeriodic(nx, hx),
+		eigY:  bc.EigenvaluesPeriodic(ny, hy),
 		work:  newWorkspacePool(0, nx*ny),
 		opts:  options,
 		shape: grid.NewShape2D(nx, ny),
@@ -134,21 +136,7 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 		return fmt.Errorf("FFT forward axis 1: %w", err)
 	}
 
-	workers := clampWorkers(p.opts.Workers, p.nx)
-	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
-		for i := start; i < end; i++ {
-			base := i * p.ny
-			for j := range p.ny {
-				denom := p.eigX[i] + p.eigY[j]
-				if denom == 0 {
-					workspace.Complex[base+j] = 0
-					continue
-				}
-				workspace.Complex[base+j] /= complex(denom, 0)
-			}
-		}
-		return nil
-	}); err != nil {
+	if err := p.divideComplexSpectrum(workspace.Complex); err != nil {
 		return err
 	}
 
@@ -239,18 +227,99 @@ func (p *Plan2DPeriodic) solveReal(dst, rhs []float64, offset float64) error {
 	return nil
 }
 
-func (p *Plan2DPeriodic) divideRealSpectrum(rspec []complex64) error {
-	workers := clampWorkers(p.opts.Workers, p.nx)
-	return parallelFor(workers, p.nx, func(_ int, start, end int) error {
-		for i := start; i < end; i++ {
-			base := i * p.rhalf
-			for j := range p.rhalf {
-				denom := p.eigX[i] + p.eigY[j]
+// divideComplexSpectrum divides each coefficient of the full complex spectrum
+// by its eigenvalue sum eigX[i]+eigY[j], zeroing the constant nullspace mode.
+// It partitions over whichever grid axis is larger so that a strongly
+// anisotropic grid (nx << ny or ny << nx) still hands every worker a balanced
+// share of rows; because each coefficient is divided independently, the result
+// does not depend on which axis carries the split.
+func (p *Plan2DPeriodic) divideComplexSpectrum(spec []complex128) error {
+	if p.nx >= p.ny {
+		workers := clampWorkers(p.opts.Workers, p.nx)
+		return parallelFor(workers, p.nx, func(ctx context.Context, _ int, start, end int) error {
+			for i := start; i < end; i++ {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+
+				base := i * p.ny
+				eigX := p.eigX[i]
+				for j := range p.ny {
+					denom := eigX + p.eigY[j]
+					if denom == 0 {
+						spec[base+j] = 0
+						continue
+					}
+					spec[base+j] /= complex(denom, 0)
+				}
+			}
+			return nil
+		})
+	}
+
+	workers := clampWorkers(p.opts.Workers, p.ny)
+	return parallelFor(workers, p.ny, func(ctx context.Context, _ int, start, end int) error {
+		for j := start; j < end; j++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
+			eigY := p.eigY[j]
+			for i := range p.nx {
+				denom := p.eigX[i] + eigY
 				if denom == 0 {
-					rspec[base+j] = 0
+					spec[i*p.ny+j] = 0
 					continue
 				}
-				rspec[base+j] /= complex(float32(denom), 0)
+				spec[i*p.ny+j] /= complex(denom, 0)
+			}
+		}
+		return nil
+	})
+}
+
+// divideRealSpectrum divides the half-spectrum produced by the real FFT. Like
+// divideComplexSpectrum it partitions over the larger of the two spectral axes
+// (nx and rhalf = ny/2+1) to stay balanced on anisotropic grids.
+func (p *Plan2DPeriodic) divideRealSpectrum(rspec []complex64) error {
+	if p.nx >= p.rhalf {
+		workers := clampWorkers(p.opts.Workers, p.nx)
+		return parallelFor(workers, p.nx, func(ctx context.Context, _ int, start, end int) error {
+			for i := start; i < end; i++ {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+
+				base := i * p.rhalf
+				eigX := p.eigX[i]
+				for j := range p.rhalf {
+					denom := eigX + p.eigY[j]
+					if denom == 0 {
+						rspec[base+j] = 0
+						continue
+					}
+					rspec[base+j] /= complex(float32(denom), 0)
+				}
+			}
+			return nil
+		})
+	}
+
+	workers := clampWorkers(p.opts.Workers, p.rhalf)
+	return parallelFor(workers, p.rhalf, func(ctx context.Context, _ int, start, end int) error {
+		for j := start; j < end; j++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
+			eigY := p.eigY[j]
+			for i := range p.nx {
+				denom := p.eigX[i] + eigY
+				if denom == 0 {
+					rspec[i*p.rhalf+j] = 0
+					continue
+				}
+				rspec[i*p.rhalf+j] /= complex(float32(denom), 0)
 			}
 		}
 		return nil

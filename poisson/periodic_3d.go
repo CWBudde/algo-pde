@@ -1,8 +1,10 @@
 package poisson
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/MeKo-Tech/algo-pde/bc"
 	"github.com/MeKo-Tech/algo-pde/grid"
 	algofft "github.com/cwbudde/algo-fft"
 )
@@ -62,9 +64,9 @@ func NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option) (*Pla
 		hx:    hx,
 		hy:    hy,
 		hz:    hz,
-		eigX:  eigenvaluesPeriodic(nx, hx),
-		eigY:  eigenvaluesPeriodic(ny, hy),
-		eigZ:  eigenvaluesPeriodic(nz, hz),
+		eigX:  bc.EigenvaluesPeriodic(nx, hx),
+		eigY:  bc.EigenvaluesPeriodic(ny, hy),
+		eigZ:  bc.EigenvaluesPeriodic(nz, hz),
 		work:  newWorkspacePool(0, nx*ny*nz),
 		opts:  options,
 		shape: grid.NewShape3D(nx, ny, nz),
@@ -149,8 +151,12 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 	}
 
 	workers := clampWorkers(p.opts.Workers, p.nx)
-	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
+	if err := parallelFor(workers, p.nx, func(ctx context.Context, _ int, start, end int) error {
 		for i := start; i < end; i++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
 			baseXY := i * p.ny * p.nz
 			for j := range p.ny {
 				base := baseXY + j*p.nz
@@ -263,8 +269,12 @@ func (p *Plan3DPeriodic) solveReal(dst, rhs []float64, offset float64) error {
 
 func (p *Plan3DPeriodic) divideRealSpectrum(rspec []complex64) error {
 	workers := clampWorkers(p.opts.Workers, p.nx)
-	return parallelFor(workers, p.nx, func(_ int, start, end int) error {
+	return parallelFor(workers, p.nx, func(ctx context.Context, _ int, start, end int) error {
 		for i := start; i < end; i++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
 			baseXY := i * p.ny * p.rhalf
 			for j := range p.ny {
 				base := baseXY + j*p.rhalf
