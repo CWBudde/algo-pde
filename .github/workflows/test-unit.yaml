@@ -12,15 +12,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ["1.23"]
 
     steps:
       - uses: actions/checkout@v4
 
+      # Use the version from go.mod (1.25). Pinning an older version made
+      # GOTOOLCHAIN=auto download the minimal go1.25 toolchain module, which
+      # lacks the `covdata` tool and broke `go test -coverprofile` on the
+      # example main packages.
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version-file: go.mod
 
       - name: Build
         run: go build -v ./...

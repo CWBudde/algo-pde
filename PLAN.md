@@ -302,8 +302,14 @@ Either fix all of the below or pull it from the README until fixed.
 - [ ] Commit or revert the local `.gitignore`/`.golangci.toml` drift; resolve
       the `demo/package-lock.json` tracked-but-gitignored contradiction (CI's
       `npm ci` depends on the lockfile).
-- [ ] Align CI Go version with go.mod (CI pins 1.23, go.mod demands 1.25 —
+- [x] Align CI Go version with go.mod (CI pins 1.23, go.mod demands 1.25 —
       the pin is dead config via GOTOOLCHAIN).
+      → `test-unit`/`test-lint` now use `go-version-file: go.mod` like
+      `test-format` already did. The old `1.23` pin made `GOTOOLCHAIN=auto`
+      download the minimal go1.25 toolchain module, which lacks the `covdata`
+      tool and failed `go test -coverprofile` on the example main packages
+      (all tests passed, but the job still exited 1). (`deploy-demo` still
+      pins 1.23 — left for the Phase E demo work.)
 - [ ] Fix the two examples whose plan is never used (`examples/neumann2d`,
       `examples/periodic1d` — staticcheck SA4006); add a correctness check to
       `examples/helmholtz` (currently prints a number with no verification).
