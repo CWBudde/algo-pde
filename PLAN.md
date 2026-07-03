@@ -352,15 +352,23 @@ Either fix all of the below or pull it from the README until fixed.
 
 - [ ] **LICENSE file.** README says "TBD" while giving `go get` instructions;
       legally nobody may use the library today. Pick one (MIT/Apache-2.0).
-- [ ] `gofmt` the tree: 7 of 8 examples + the WASM main currently fail plain
+      → Deferred: a legal choice for the repo owner, out of scope for this PR.
+- [x] `gofmt` the tree: 7 of 8 examples + the WASM main currently fail plain
       gofmt despite a formatting CI job. Then figure out why CI didn't catch
       it (format workflow scope).
-- [ ] Remove root clutter: `check_fft.go` debug script, `coverage.out`,
+      → The whole tree is now clean under both `gofmt -l .` and `gofumpt -l .`
+      (empty output).
+- [x] Remove root clutter: `check_fft.go` debug script, `coverage.out`,
       `poisson_cov2.out`, `poisson_newtests.out`, empty `internal/` dir,
       `goal.md` (superseded by this file).
-- [ ] Commit or revert the local `.gitignore`/`.golangci.toml` drift; resolve
+      → Deleted `check_fft.go` and `goal.md`; the coverage `*.out` files and the
+      `internal/` dir were already gone.
+- [x] Commit or revert the local `.gitignore`/`.golangci.toml` drift; resolve
       the `demo/package-lock.json` tracked-but-gitignored contradiction (CI's
       `npm ci` depends on the lockfile).
+      → Removed the `demo/package-lock.json` line from `.gitignore` (the file is
+      tracked and CI's `npm ci` + cache-dependency-path need it); left all other
+      entries intact. `.golangci.toml` reviewed and found sound — no change.
 - [x] Align CI Go version with go.mod (CI pins 1.23, go.mod demands 1.25 —
       the pin is dead config via GOTOOLCHAIN).
       → `test-unit`/`test-lint` now use `go-version-file: go.mod` like
@@ -369,15 +377,28 @@ Either fix all of the below or pull it from the README until fixed.
       tool and failed `go test -coverprofile` on the example main packages
       (all tests passed, but the job still exited 1). (`deploy-demo` still
       pins 1.23 — left for the Phase E demo work.)
-- [ ] Fix the two examples whose plan is never used (`examples/neumann2d`,
+- [x] Fix the two examples whose plan is never used (`examples/neumann2d`,
       `examples/periodic1d` — staticcheck SA4006); add a correctness check to
       `examples/helmholtz` (currently prints a number with no verification).
-- [ ] Work through the substantive `golangci-lint` findings (exhaustive
+      → Removed the dead first `NewPlan`/`NewPlan1DPeriodic` from both examples,
+      keeping the single `WithSubtractMean` plan. `examples/helmholtz` now
+      reapplies the screened-Poisson operator (`alpha*u + fd.Apply2D(u) - rhs`,
+      since `fd.Apply2D` is the negative Laplacian) and prints the max relative
+      residual (~3.4e-14 measured).
+- [x] Work through the substantive `golangci-lint` findings (exhaustive
       switch in `plan_bc.go:38`, dupl, staticcheck); decide policy on the
       style ones (varnamelen etc.) and configure the linter accordingly.
-- [ ] BENCHMARKS.md with honest numbers per BC type (carried over; blocked on
+      → `golangci-lint run --timeout=5m` (v2.12.2) reports `0 issues` (only the
+      benign `gomodguard is deprecated` warning remains). Style-linter policy is
+      captured in `.golangci.toml`.
+- [x] BENCHMARKS.md with honest numbers per BC type (carried over; blocked on
       A.2 — current Neumann numbers would be embarrassing).
+      → Added `BENCHMARKS.md` with measured ns/op and allocs/op per BC type
+      (Periodic/Dirichlet/Neumann) at 256²/512²/1024², a single-machine caveat,
+      and notes on the now-linearithmic Neumann path and the Bluestein FFT-size
+      penalty on the Dirichlet path.
 - [ ] Convergence log-log plots in docs (carried over).
+      → Deferred: not part of this hygiene PR.
 
 ---
 
