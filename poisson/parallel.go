@@ -85,30 +85,36 @@ func parallelFor(workers, tasks int, fn func(ctx context.Context, worker, start,
 	return err
 }
 
+// lineCount returns the number of lines parallel to axis: the product of the
+// extents of every other declared axis. It iterates over shape.Dim() axes
+// rather than a hardcoded 3 so it cannot miscount a shape with fewer (or a
+// degenerate trailing) dimension.
 func lineCount(shape grid.Shape, axis int) int {
-	other0, other1 := otherAxes(axis)
-	return shape[other0] * shape[other1]
+	count := 1
+	for d := range shape.Dim() {
+		if d != axis {
+			count *= shape.N(d)
+		}
+	}
+	return count
 }
 
+// lineStartIndex returns the linear index of the first element of the given
+// line parallel to axis. The line number is decomposed across the non-axis
+// declared axes (lowest axis varying fastest), matching the row-major layout.
 func lineStartIndex(shape grid.Shape, axis, line int) int {
-	other0, other1 := otherAxes(axis)
-	max0 := shape[other0]
-	if max0 <= 0 {
-		return 0
-	}
-	pos0 := line % max0
-	pos1 := line / max0
 	stride := grid.RowMajorStride(shape)
-	return pos0*stride[other0] + pos1*stride[other1]
-}
-
-func otherAxes(axis int) (int, int) {
-	switch axis {
-	case 0:
-		return 1, 2
-	case 1:
-		return 0, 2
-	default:
-		return 0, 1
+	start := 0
+	for d := range shape.Dim() {
+		if d == axis {
+			continue
+		}
+		n := shape.N(d)
+		if n <= 0 {
+			return 0
+		}
+		start += (line % n) * stride[d]
+		line /= n
 	}
+	return start
 }

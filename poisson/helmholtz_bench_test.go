@@ -38,7 +38,7 @@ func BenchmarkHelmholtz2D_Spectral(b *testing.B) {
 	}
 
 	lap := make([]float64, nx*ny)
-	if err := fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+	if err := fd.Apply2D(lap, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
 		b.Fatal(err)
 	}
 
@@ -76,7 +76,7 @@ func BenchmarkHelmholtz2D_Jacobi(b *testing.B) {
 	}
 
 	lap := make([]float64, nx*ny)
-	if err := fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+	if err := fd.Apply2D(lap, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
 		b.Fatal(err)
 	}
 

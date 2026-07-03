@@ -141,8 +141,8 @@ func applyInhomNeumann1D(dst, src []float64, h, g0, gL float64) {
 }
 
 func applyInhomNeumann2D(dst, src []float64, shape grid.Shape, hx, hy float64, xLow, xHigh, yLow, yHigh []float64) {
-	nx := shape[0]
-	ny := shape[1]
+	nx := shape.N(0)
+	ny := shape.N(1)
 	invHx2 := 1.0 / (hx * hx)
 	invHy2 := 1.0 / (hy * hy)
 

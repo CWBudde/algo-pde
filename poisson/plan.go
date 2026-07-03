@@ -242,7 +242,14 @@ func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 }
 
 func (p *Plan) shape() grid.Shape {
-	return grid.Shape{p.n[0], p.n[1], p.n[2]}
+	switch p.dim {
+	case 1:
+		return grid.NewShape1D(p.n[0])
+	case 2:
+		return grid.NewShape2D(p.n[0], p.n[1])
+	default:
+		return grid.NewShape3D(p.n[0], p.n[1], p.n[2])
+	}
 }
 
 func (p *Plan) size() int {
