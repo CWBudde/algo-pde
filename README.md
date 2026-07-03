@@ -105,6 +105,7 @@ just demo-dev    # Build WASM and start dev server at http://localhost:5173
 ```
 
 The demo showcases:
+
 - Multi-frequency wave synthesis (16 modes, 80-600 Hz)
 - Neumann boundary conditions (rigid walls with reflections)
 - Real-time 60 FPS animation at 256×256 resolution

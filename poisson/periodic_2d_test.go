@@ -10,8 +10,10 @@ import (
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
 
-const periodic2dTol = 1e-10
-const periodic2dRealTol = 1e-6
+const (
+	periodic2dTol     = 1e-10
+	periodic2dRealTol = 1e-6
+)
 
 func TestNewPlan2DPeriodic_InvalidInputs(t *testing.T) {
 	if _, err := poisson.NewPlan2DPeriodic(0, 4, 1.0, 1.0); !errors.Is(err, poisson.ErrInvalidSize) {
