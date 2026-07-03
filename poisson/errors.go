@@ -35,6 +35,13 @@ var (
 	ErrResonant = errors.New("helmholtz operator is singular: alpha cancels eigenvalue")
 )
 
+// Field and message strings reused across validation errors.
+const (
+	fieldType          = "Type"
+	fieldFace          = "Face"
+	msgLenMustMatchDim = "length must match dim"
+)
+
 // SizeError provides details about a size mismatch.
 type SizeError struct {
 	Expected int

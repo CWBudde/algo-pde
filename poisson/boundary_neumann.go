@@ -26,7 +26,7 @@ func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryC
 	for _, data := range bc {
 		if data.Type != Neumann {
 			return &ValidationError{
-				Field:   "Type",
+				Field:   fieldType,
 				Message: "only Neumann boundary data is supported",
 			}
 		}
@@ -34,7 +34,7 @@ func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryC
 		switch data.Face {
 		case XLow, XHigh:
 			if dim < 1 {
-				return &ValidationError{Field: "Face", Message: "X face not valid for this dimension"}
+				return &ValidationError{Field: fieldFace, Message: "X face not valid for this dimension"}
 			}
 			expectedFace := ny * nz
 			if len(data.Values) != expectedFace {
@@ -65,7 +65,7 @@ func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryC
 
 		case YLow, YHigh:
 			if dim < 2 {
-				return &ValidationError{Field: "Face", Message: "Y face not valid for this dimension"}
+				return &ValidationError{Field: fieldFace, Message: "Y face not valid for this dimension"}
 			}
 			expectedFace := nx * nz
 			if len(data.Values) != expectedFace {
@@ -96,7 +96,7 @@ func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryC
 
 		case ZLow, ZHigh:
 			if dim < 3 {
-				return &ValidationError{Field: "Face", Message: "Z face not valid for this dimension"}
+				return &ValidationError{Field: fieldFace, Message: "Z face not valid for this dimension"}
 			}
 			expectedFace := nx * ny
 			if len(data.Values) != expectedFace {
@@ -126,7 +126,7 @@ func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryC
 			}
 
 		default:
-			return &ValidationError{Field: "Face", Message: "unknown boundary face"}
+			return &ValidationError{Field: fieldFace, Message: "unknown boundary face"}
 		}
 	}
 

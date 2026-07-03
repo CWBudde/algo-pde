@@ -53,21 +53,21 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	if len(n) != dim {
 		return nil, &ValidationError{
 			Field:   "n",
-			Message: "length must match dim",
+			Message: msgLenMustMatchDim,
 		}
 	}
 
 	if len(h) != dim {
 		return nil, &ValidationError{
 			Field:   "h",
-			Message: "length must match dim",
+			Message: msgLenMustMatchDim,
 		}
 	}
 
 	if len(bc) != dim {
 		return nil, &ValidationError{
 			Field:   "bc",
-			Message: "length must match dim",
+			Message: msgLenMustMatchDim,
 		}
 	}
 

@@ -31,6 +31,11 @@ disable = [
     'lll',
     'nestif',
     'varnamelen',
+    # modernize would rewrite hot backward index loops (e.g. the per-element
+    # odometer in periodic_nd.go) into slices.Backward range-over-func
+    # iterators, adding call overhead in the solver's inner loops. Its useful
+    # range-over-int check is already covered by intrange.
+    'modernize',
 ]
 enable = [
     "revive",
