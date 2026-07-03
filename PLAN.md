@@ -136,13 +136,27 @@ to the wrong answer. `bc.go:15` documents Neumann as outward-normal ∂u/∂n = 
 but the implementation uses the positive-axis derivative (sign-flipped at low
 faces).
 
-- [ ] Write the conventions section in `poisson/doc.go`: node placement per
+- [x] Write the conventions section in `poisson/doc.go`: node placement per
       BC, domain length per BC, Neumann sign convention, mixed-axis
       implications. Include an ASCII diagram.
-- [ ] Fix the `bc.go` Neumann sign doc to match the implementation (or flip
+      → New `# Grid Conventions` section documents the per-axis node rules
+      (Periodic x_i=i·h, L=n·h; Dirichlet x_i=(i+1)·h, L=(n+1)·h, DST-I;
+      Neumann x_i=(i+½)·h, L=n·h, DCT-II) with an ASCII diagram of all three
+      layouts, the "sample f/g at these nodes or converge to the wrong answer"
+      warning, and the mixed-axis length/offset implication.
+- [x] Fix the `bc.go` Neumann sign doc to match the implementation (or flip
       the implementation to outward-normal and migrate — decide once, now).
-- [ ] Document eigenvalue formulas and memory layout (carried over from the
+      → Decided: document the code as-is (positive-axis derivative). The
+      `Neumann` const comment and the doc.go conventions section now state that
+      the supplied g is ∂u/∂x_axis (g=−∂u/∂n at low faces, g=+∂u/∂n at high),
+      matching `boundary_neumann.go` and every existing test/example. No
+      behavior change.
+- [x] Document eigenvalue formulas and memory layout (carried over from the
       old plan; still open).
+      → New `# Eigenvalues and Memory Layout` section in `poisson/doc.go`
+      lists the three per-BC eigenvalue formulas, the sum rule
+      α + λ_x(i)+λ_y(j)+λ_z(k), and the row-major spectral layout
+      (idx = i·ny·nz + j·nz + k, axis 0 slowest).
 
 ---
 
