@@ -2,7 +2,7 @@
 
 Fast spectral Poisson and Helmholtz solvers for Go, built on top of `algo-fft`. The library uses plan-based APIs (like FFTW) to precompute eigenvalues and reuse transform plans for many solves on the same grid.
 
-🌊 **[Try the live demo!](https://cwbudde.github.io/algo-pde/)** - Interactive wave propagation simulation running in your browser via WebAssembly. Click anywhere to create waves!
+🌊 **Interactive WebAssembly demo** — a browser wave-propagation simulation lives in [`demo/`](demo/); build and run it locally with `just demo-dev` (see [demo/README.md](demo/README.md)). A hosted GitHub Pages build is a work in progress: the demo worker still loads its WASM assets with root-absolute paths, so it does not yet initialize under the Pages subpath.
 
 ## Motivation
 
