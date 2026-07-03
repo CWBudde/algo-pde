@@ -134,8 +134,10 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 		return ErrSizeMismatch
 	}
 
+	// Periodic quadrature is spectrally accurate, so a compatible RHS has a
+	// mean at roundoff level: gate tightly and keep rejecting real DC offsets.
 	mean, maxAbs := meanAndMaxAbs(rhs)
-	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRelTol(p.shape.minExtent())) {
+	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRoundoffFloor) {
 		return ErrNonZeroMean
 	}
 

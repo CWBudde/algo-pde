@@ -170,7 +170,7 @@ func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	offset := 0.0
 	if hasNullspace {
 		mean, maxAbs := meanAndMaxAbs(rhs)
-		if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRelTol(p.minExtent())) {
+		if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, p.meanRelTol()) {
 			return ErrNonZeroMean
 		}
 
@@ -236,16 +236,27 @@ func (p *Plan) size() int {
 	return size
 }
 
-// minExtent returns the smallest active per-axis extent. The coarsest axis
-// dominates the O(h^2) quadrature error that the zero-mean gate must tolerate.
-func (p *Plan) minExtent() int {
-	m := p.n[0]
-	for axis := 1; axis < p.dim; axis++ {
-		if p.n[axis] < m {
-			m = p.n[axis]
+// meanRelTol returns the zero-mean consistency tolerance for this plan. A
+// Neumann axis samples the RHS at cell centers, whose midpoint quadrature
+// leaves an O(h^2) mean even for a compatible problem, so the gate widens to
+// O(1/n^2) on the coarsest Neumann axis. A pure-periodic problem (no Neumann
+// axis) is integrated spectrally, so its compatible mean sits at roundoff and
+// the gate stays tight — a real DC offset must still be rejected.
+func (p *Plan) meanRelTol() float64 {
+	minNeumann := 0
+	for axis := 0; axis < p.dim; axis++ {
+		if p.bc[axis] != Neumann {
+			continue
+		}
+		if minNeumann == 0 || p.n[axis] < minNeumann {
+			minNeumann = p.n[axis]
 		}
 	}
-	return m
+
+	if minNeumann == 0 {
+		return meanRoundoffFloor
+	}
+	return discretizationMeanTol(minNeumann)
 }
 
 func (p *Plan) hasNullspace() bool {

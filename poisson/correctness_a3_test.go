@@ -157,6 +157,59 @@ func TestNeumann_DefaultZeroModeAcceptsQuadratureMean(t *testing.T) {
 	}
 }
 
+// Periodic quadrature is spectrally accurate, so the discretization allowance
+// must NOT apply to periodic plans: a compatible RHS with a small but real DC
+// offset (mean ~1e-3) must still be rejected, not silently accepted.
+func TestPeriodic_ZeroModeRejectsSmallDCOffset(t *testing.T) {
+	n := 64
+	h := 1.0 / float64(n)
+	L := float64(n) * h
+
+	base := make([]float64, n)
+	for i := range n {
+		x := float64(i) * h
+		base[i] = math.Sin(2.0 * math.Pi * x / L) // exactly zero-mean on the grid
+	}
+
+	// The zero-mean sine passes; the same field plus a 1e-3 DC offset must not.
+	withOffset := func(offset float64) []float64 {
+		rhs := make([]float64, n)
+		for i := range n {
+			rhs[i] = base[i] + offset
+		}
+		return rhs
+	}
+
+	assertTightGate := func(t *testing.T, plan zeroModeSolver) {
+		t.Helper()
+		dst := make([]float64, n)
+		if err := plan.Solve(dst, withOffset(0)); err != nil {
+			t.Fatalf("zero-mean RHS should solve, got %v", err)
+		}
+		if err := plan.Solve(dst, withOffset(1e-3)); !errors.Is(err, poisson.ErrNonZeroMean) {
+			t.Fatalf("periodic RHS with 1e-3 DC offset should be rejected, got %v", err)
+		}
+	}
+
+	p1d, err := poisson.NewPlan1DPeriodic(n, h)
+	if err != nil {
+		t.Fatalf("NewPlan1DPeriodic: %v", err)
+	}
+	assertTightGate(t, p1d)
+
+	// The core Plan with a periodic axis must gate just as tightly.
+	pCore, err := poisson.NewPlan(1, []int{n}, []float64{h}, []poisson.BCType{poisson.Periodic})
+	if err != nil {
+		t.Fatalf("NewPlan periodic: %v", err)
+	}
+	assertTightGate(t, pCore)
+}
+
+// zeroModeSolver is the minimal solver surface the mean-gate tests exercise.
+type zeroModeSolver interface {
+	Solve(dst, rhs []float64) error
+}
+
 // A genuinely inconsistent RHS (O(1) mean) must still be rejected.
 func TestNeumann_DefaultZeroModeRejectsInconsistentMean(t *testing.T) {
 	n := 64

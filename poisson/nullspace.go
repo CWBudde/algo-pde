@@ -9,21 +9,30 @@ const (
 	meanRoundoffFloor = 1e-12
 
 	// meanDiscretizationConst scales the O(h^2) allowance of the gate. The
-	// discrete mean of a compatible inhomogeneous Neumann problem is the RHS
-	// integral evaluated by a second-order quadrature, so it is zero only up to
-	// O((h/L)^2) = O(1/minN^2) truncation error. The gate must accept that or
-	// the analytically compatible default path is unusable (previously every
-	// test had to route around it via WithSubtractMean). The constant gives a
-	// generous multiple of the expected truncation while still separating it by
-	// many orders of magnitude from a genuinely inconsistent O(1) mean.
+	// discrete mean of a compatible Neumann problem is the RHS integral
+	// evaluated by a second-order, cell-centered midpoint quadrature, so it is
+	// zero only up to O((h/L)^2) = O(1/minN^2) truncation error. The gate must
+	// accept that or the analytically compatible default path is unusable
+	// (previously every test had to route around it via WithSubtractMean). The
+	// constant gives a generous multiple of the expected truncation while still
+	// separating it by many orders of magnitude from a genuinely inconsistent
+	// O(1) mean.
+	//
+	// This allowance applies ONLY to axes with Neumann boundaries. A periodic
+	// axis is integrated by the trapezoidal rule, which is spectrally accurate
+	// for the periodic functions it samples, so a compatible periodic RHS has a
+	// mean at roundoff level; those plans use meanRoundoffFloor directly and
+	// must keep rejecting a small but real DC offset.
 	meanDiscretizationConst = 8.0
 )
 
-// meanRelTol returns the relative tolerance for the zero-mean consistency gate
-// on a grid whose smallest extent is minExtent. It scales as 1/minExtent^2 so
-// the gate tightens as the grid is refined (matching the O(h^2) shrink of the
-// quadrature error) yet never drops below the roundoff floor.
-func meanRelTol(minExtent int) float64 {
+// discretizationMeanTol returns the zero-mean gate tolerance for a problem
+// whose coarsest Neumann (quadrature-error-bearing) axis has extent minExtent.
+// It scales as 1/minExtent^2 so the gate tightens as the grid is refined
+// (matching the O(h^2) shrink of the midpoint quadrature error) yet never drops
+// below the roundoff floor. Pure-periodic problems must not use this; they gate
+// at meanRoundoffFloor.
+func discretizationMeanTol(minExtent int) float64 {
 	if minExtent < 1 {
 		minExtent = 1
 	}
