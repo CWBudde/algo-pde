@@ -12,8 +12,12 @@ const (
 	// For homogeneous Dirichlet: u = 0 at boundaries.
 	Dirichlet
 
-	// Neumann boundary condition: ∂u/∂n = g on the boundary.
-	// For homogeneous Neumann: ∂u/∂n = 0 at boundaries.
+	// Neumann boundary condition: the derivative along the positive axis
+	// direction, ∂u/∂x_axis = g, is prescribed on the boundary. This is the
+	// positive-axis derivative, not the outward normal: at a low face the
+	// outward normal points in the −axis direction, so there g = −∂u/∂n, while
+	// at a high face g = +∂u/∂n. See package docs (Grid Conventions) and
+	// ApplyNeumannRHS. For homogeneous Neumann: g = 0 at all boundaries.
 	Neumann
 )
 
