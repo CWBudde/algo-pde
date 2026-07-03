@@ -8,10 +8,13 @@ import (
 )
 
 // ndWorkspace holds the per-solve buffers for PlanNDPeriodic: the complex
-// working grid. The eigenvalue and axis-transform loops derive their per-line
-// multi-indices locally so they can run across multiple workers.
+// working grid plus one reusable multi-index scratch buffer per worker. The
+// eigenvalue and axis-transform loops derive their per-line multi-indices into
+// idx[worker] so parallel workers never share state and Solve stays
+// allocation-free (the workspace itself is drawn from a pool per call).
 type ndWorkspace struct {
 	complexBuf []complex128
+	idx        [][]int
 }
 
 // PlanNDPeriodic is a reusable plan for solving N-dimensional periodic Poisson problems.
@@ -156,17 +159,17 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 	}
 
 	for axis := range p.fft {
-		if err := p.transformAxis(axis, false, workspace.complexBuf); err != nil {
+		if err := p.transformAxis(axis, false, workspace); err != nil {
 			return fmt.Errorf("FFT forward axis %d: %w", axis, err)
 		}
 	}
 
-	if err := p.applyEigenvalues(workspace.complexBuf); err != nil {
+	if err := p.applyEigenvalues(workspace); err != nil {
 		return err
 	}
 
 	for axis := len(p.fft) - 1; axis >= 0; axis-- {
-		if err := p.transformAxis(axis, true, workspace.complexBuf); err != nil {
+		if err := p.transformAxis(axis, true, workspace); err != nil {
 			return fmt.Errorf("FFT inverse axis %d: %w", axis, err)
 		}
 	}
@@ -202,8 +205,15 @@ func (p *PlanNDPeriodic) getWorkspace() *ndWorkspace {
 	if workspace := p.wsPool.get(); workspace != nil {
 		return workspace
 	}
+	// One index buffer per potential worker (opts.Workers is the clamp ceiling),
+	// each long enough for the full multi-index; the axis loops slice it down.
+	idx := make([][]int, p.opts.Workers)
+	for w := range idx {
+		idx[w] = make([]int, len(p.shape))
+	}
 	return &ndWorkspace{
 		complexBuf: make([]complex128, p.shape.Size()),
+		idx:        idx,
 	}
 }
 
@@ -227,16 +237,17 @@ func ndIncrement(indices, radices []int) {
 	}
 }
 
-func (p *PlanNDPeriodic) applyEigenvalues(data []complex128) error {
+func (p *PlanNDPeriodic) applyEigenvalues(ws *ndWorkspace) error {
+	data := ws.complexBuf
 	size := p.shape.Size()
 	workers := clampWorkers(p.opts.Workers, size)
 
-	return parallelFor(workers, size, func(ctx context.Context, _ int, start, end int) error {
+	return parallelFor(workers, size, func(ctx context.Context, worker, start, end int) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 
-		indices := make([]int, len(p.shape))
+		indices := ws.idx[worker][:len(p.shape)]
 		ndMultiIndex(indices, p.shape, start)
 
 		for i := start; i < end; i++ {
@@ -257,7 +268,8 @@ func (p *PlanNDPeriodic) applyEigenvalues(data []complex128) error {
 	})
 }
 
-func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, data []complex128) error {
+func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, ws *ndWorkspace) error {
+	data := ws.complexBuf
 	lineLen := p.shape[axis]
 	lineStride := p.stride[axis]
 	totalLines := p.shape.Size() / lineLen
@@ -266,14 +278,14 @@ func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, data []complex128
 	otherAxes := p.axisOther[axis]
 	workers := clampWorkers(p.opts.Workers, totalLines)
 
-	return parallelFor(workers, totalLines, func(ctx context.Context, _ int, startLine, endLine int) error {
+	return parallelFor(workers, totalLines, func(ctx context.Context, workerIdx, startLine, endLine int) error {
 		worker, err := p.fft[axis].get()
 		if err != nil {
 			return err
 		}
 		defer p.fft[axis].put(worker)
 
-		indices := make([]int, len(reducedDims))
+		indices := ws.idx[workerIdx][:len(reducedDims)]
 		ndMultiIndex(indices, reducedDims, startLine)
 
 		for line := startLine; line < endLine; line++ {
