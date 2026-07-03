@@ -2,11 +2,15 @@ package bc
 
 import (
 	"errors"
+	"fmt"
 	"math"
 )
 
 // ErrInvalidBC is returned when an unknown boundary condition type is passed.
 var ErrInvalidBC = errors.New("bc: invalid boundary condition type")
+
+// ErrInvalidSize is returned when the number of grid points is negative.
+var ErrInvalidSize = errors.New("bc: number of grid points must be non-negative")
 
 // Eigenvalues computes the 1D eigenvalues of the discrete negative Laplacian
 // for the given boundary condition type.
@@ -23,6 +27,10 @@ var ErrInvalidBC = errors.New("bc: invalid boundary condition type")
 //
 // It returns ErrInvalidBC if b is not a supported boundary condition.
 func Eigenvalues(n int, h float64, b BCType) ([]float64, error) {
+	if n < 0 {
+		// Guard before any make() so an error-returning API never panics.
+		return nil, ErrInvalidSize
+	}
 	switch b {
 	case Periodic:
 		return EigenvaluesPeriodic(n, h), nil
@@ -31,7 +39,9 @@ func Eigenvalues(n int, h float64, b BCType) ([]float64, error) {
 	case Neumann:
 		return EigenvaluesNeumann(n, h), nil
 	default:
-		return nil, ErrInvalidBC
+		// Wrap so the offending value survives for debugging (common when a
+		// caller passes an int cast) while errors.Is(err, ErrInvalidBC) holds.
+		return nil, fmt.Errorf("%w: %d", ErrInvalidBC, int(b))
 	}
 }
 
