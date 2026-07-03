@@ -55,10 +55,10 @@ func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryC
 			if data.Face == XHigh {
 				base = (nx - 1) * plane
 			}
-			for j := 0; j < ny; j++ {
+			for j := range ny {
 				row := base + j*nz
 				valRow := j * nz
-				for k := 0; k < nz; k++ {
+				for k := range nz {
 					rhs[row+k] += data.Values[valRow+k] * scale
 				}
 			}
@@ -86,10 +86,10 @@ func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryC
 			if data.Face == YHigh {
 				j = ny - 1
 			}
-			for i := 0; i < nx; i++ {
+			for i := range nx {
 				base := i*plane + j*nz
 				valRow := i * nz
-				for k := 0; k < nz; k++ {
+				for k := range nz {
 					rhs[base+k] += data.Values[valRow+k] * scale
 				}
 			}
@@ -117,10 +117,10 @@ func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryC
 			if data.Face == ZHigh {
 				k = nz - 1
 			}
-			for i := 0; i < nx; i++ {
+			for i := range nx {
 				base := i * plane
 				valRow := i * ny
-				for j := 0; j < ny; j++ {
+				for j := range ny {
 					rhs[base+j*nz+k] += data.Values[valRow+j] * scale
 				}
 			}

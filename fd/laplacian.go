@@ -47,15 +47,15 @@ func Apply1D(dst, src []float64, h float64, bc poisson.BCType) {
 	case poisson.Neumann:
 		for i := range n {
 			var left, right float64
-			switch {
-			case i == 0:
+			switch i {
+			case 0:
 				left = src[0]
 				if n == 1 {
 					right = src[0]
 				} else {
 					right = src[1]
 				}
-			case i == n-1:
+			case n - 1:
 				left = src[n-2]
 				right = src[n-1]
 			default:

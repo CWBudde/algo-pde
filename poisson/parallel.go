@@ -43,7 +43,7 @@ func parallelFor(workers, tasks int, fn func(worker, start, end int) error) erro
 	var errOnce sync.Once
 	var err error
 
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		start := w * chunk
 		if start >= tasks {
 			break

@@ -173,7 +173,7 @@ func BenchmarkPlan1DPeriodic_Solve(b *testing.B) {
 	dst := make([]float64, n)
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := plan.Solve(dst, rhs); err != nil {
 			b.Fatalf("Solve failed: %v", err)
 		}

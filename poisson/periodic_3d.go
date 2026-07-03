@@ -157,10 +157,10 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			baseXY := i * p.ny * p.nz
-			for j := 0; j < p.ny; j++ {
+			for j := range p.ny {
 				base := baseXY + j*p.nz
 				xy := p.eigX[i] + p.eigY[j]
-				for k := 0; k < p.nz; k++ {
+				for k := range p.nz {
 					denom := xy + p.eigZ[k]
 					if denom == 0 {
 						workspace.Complex[base+k] = 0
@@ -271,10 +271,10 @@ func (p *Plan3DPeriodic) divideRealSpectrum(rspec []complex64) error {
 	return parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			baseXY := i * p.ny * p.rhalf
-			for j := 0; j < p.ny; j++ {
+			for j := range p.ny {
 				base := baseXY + j*p.rhalf
 				xy := p.eigX[i] + p.eigY[j]
-				for k := 0; k < p.rhalf; k++ {
+				for k := range p.rhalf {
 					denom := xy + p.eigZ[k]
 					if denom == 0 {
 						rspec[base+k] = 0

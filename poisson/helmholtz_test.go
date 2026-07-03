@@ -46,8 +46,8 @@ func TestHelmholtzPlan1D_PositiveAlpha(t *testing.T) {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > helmholtz1dTol {
-		t.Fatalf("max error %g exceeds tol %g", max, helmholtz1dTol)
+	if maxErr := maxAbsDiff(got, u); maxErr > helmholtz1dTol {
+		t.Fatalf("max error %g exceeds tol %g", maxErr, helmholtz1dTol)
 	}
 }
 
@@ -104,8 +104,8 @@ func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > helmholtz2dTol {
-		t.Fatalf("max error %g exceeds tol %g", max, helmholtz2dTol)
+	if maxErr := maxAbsDiff(got, u); maxErr > helmholtz2dTol {
+		t.Fatalf("max error %g exceeds tol %g", maxErr, helmholtz2dTol)
 	}
 }
 
@@ -151,7 +151,7 @@ func TestHelmholtzPlan3D_PositiveAlpha(t *testing.T) {
 		t.Fatalf("Solve failed: %v", err)
 	}
 
-	if max := maxAbsDiff(got, u); max > helmholtz3dTol {
-		t.Fatalf("max error %g exceeds tol %g", max, helmholtz3dTol)
+	if maxErr := maxAbsDiff(got, u); maxErr > helmholtz3dTol {
+		t.Fatalf("max error %g exceeds tol %g", maxErr, helmholtz3dTol)
 	}
 }

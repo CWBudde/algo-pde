@@ -87,7 +87,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	}
 
 	size := 1
-	for axis := 0; axis < dim; axis++ {
+	for axis := range dim {
 		if n[axis] < 1 {
 			return nil, ErrInvalidSize
 		}
@@ -110,7 +110,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		size *= n[axis]
 	}
 
-	for axis := 0; axis < dim; axis++ {
+	for axis := range dim {
 		var err error
 		switch plan.bc[axis] {
 		case Periodic:
@@ -163,6 +163,18 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 	return p.solve(dst, rhs, workspace)
 }
 
+// SolveInPlace solves the system in-place, overwriting buf with the solution.
+func (p *Plan) SolveInPlace(buf []float64) error {
+	return p.Solve(buf, buf)
+}
+
+// WorkBytes returns the size of the workspace buffers one Solve call uses, in
+// bytes. Concurrent Solve calls each draw their own workspace, so the peak
+// memory use is WorkBytes times the peak number of concurrent calls.
+func (p *Plan) WorkBytes() int {
+	return p.realSize*8 + p.complexSize*16
+}
+
 // solve runs the transform pipeline using the given per-call workspace.
 func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	hasNullspace := p.hasNullspace()
@@ -184,7 +196,7 @@ func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	}
 
 	shape := p.shape()
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		if err := p.tr[axis].Forward(workspace.Complex, shape, axis); err != nil {
 			return fmt.Errorf("forward axis %d: %w", axis, err)
 		}
@@ -212,25 +224,13 @@ func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	return nil
 }
 
-// SolveInPlace solves the system in-place, overwriting buf with the solution.
-func (p *Plan) SolveInPlace(buf []float64) error {
-	return p.Solve(buf, buf)
-}
-
-// WorkBytes returns the size of the workspace buffers one Solve call uses, in
-// bytes. Concurrent Solve calls each draw their own workspace, so the peak
-// memory use is WorkBytes times the peak number of concurrent calls.
-func (p *Plan) WorkBytes() int {
-	return p.realSize*8 + p.complexSize*16
-}
-
 func (p *Plan) shape() grid.Shape {
 	return grid.Shape{p.n[0], p.n[1], p.n[2]}
 }
 
 func (p *Plan) size() int {
 	size := 1
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		size *= p.n[axis]
 	}
 	return size
@@ -244,7 +244,7 @@ func (p *Plan) size() int {
 // the gate stays tight — a real DC offset must still be rejected.
 func (p *Plan) meanRelTol() float64 {
 	minNeumann := 0
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		if p.bc[axis] != Neumann {
 			continue
 		}
@@ -264,7 +264,7 @@ func (p *Plan) hasNullspace() bool {
 		return false
 	}
 
-	for axis := 0; axis < p.dim; axis++ {
+	for axis := range p.dim {
 		if !p.bc[axis].HasNullspace() {
 			return false
 		}
@@ -317,14 +317,4 @@ func (p *Plan) applyEigenvalues(buf []complex128) error {
 		}
 		return nil
 	})
-}
-
-func isZeroMode(indices *[3]int, dim int) bool {
-	for axis := 0; axis < dim; axis++ {
-		idx := indices[axis]
-		if idx != 0 {
-			return false
-		}
-	}
-	return true
 }

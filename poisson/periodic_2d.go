@@ -143,7 +143,7 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 	if err := parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			base := i * p.ny
-			for j := 0; j < p.ny; j++ {
+			for j := range p.ny {
 				denom := p.eigX[i] + p.eigY[j]
 				if denom == 0 {
 					workspace.Complex[base+j] = 0
@@ -249,7 +249,7 @@ func (p *Plan2DPeriodic) divideRealSpectrum(rspec []complex64) error {
 	return parallelFor(workers, p.nx, func(_ int, start, end int) error {
 		for i := start; i < end; i++ {
 			base := i * p.rhalf
-			for j := 0; j < p.rhalf; j++ {
+			for j := range p.rhalf {
 				denom := p.eigX[i] + p.eigY[j]
 				if denom == 0 {
 					rspec[base+j] = 0

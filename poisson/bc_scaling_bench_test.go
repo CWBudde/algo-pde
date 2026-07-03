@@ -15,6 +15,7 @@ import (
 // `just bench-pkg pkg=poisson` confirm the three BC types now scale
 // comparably (all O(N^2 log N) per solve).
 func benchmarkSolve2DBC(b *testing.B, n int, bc poisson.BCType) {
+	b.Helper()
 	var h float64
 	switch bc {
 	case poisson.Dirichlet:
