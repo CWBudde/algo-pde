@@ -52,7 +52,9 @@ func TestPlan2DPeriodic_Solve_Manufactured_SineSine(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -87,7 +89,9 @@ func TestPlan2DPeriodic_Solve_Manufactured_CosCos(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -122,9 +126,11 @@ func TestPlan2DPeriodic_Solve_RealFFT(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Periodic, poisson.Periodic,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -191,9 +197,11 @@ func TestPlan2DPeriodic_RealFFT_NyquistBin(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Periodic, poisson.Periodic,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	complexPlan, err := poisson.NewPlan2DPeriodic(nx, ny, hx, hy)
 	if err != nil {
@@ -323,7 +331,9 @@ func benchmarkPlan2DPeriodicSolve(b *testing.B, n int) {
 
 	rhs := make([]float64, n*n)
 	u := make([]float64, n*n)
-	fd.Apply2D(rhs, u, grid.NewShape2D(n, n), [2]float64{h, h}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(n, n), [2]float64{h, h}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic}); err != nil {
+		b.Fatal(err)
+	}
 
 	dst := make([]float64, n*n)
 	b.ReportAllocs()

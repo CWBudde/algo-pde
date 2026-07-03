@@ -6,7 +6,7 @@ import (
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
 
-// Eigenvalues computes the 1D eigenvalues of the discrete Laplacian
+// Eigenvalues computes the 1D eigenvalues of the discrete negative Laplacian
 // for the given boundary condition type.
 //
 // Parameters:
@@ -18,7 +18,9 @@ import (
 //   - Periodic: n eigenvalues (m = 0..n-1)
 //   - Dirichlet: n eigenvalues (m = 1..n, but stored 0..n-1)
 //   - Neumann: n eigenvalues (m = 0..n-1)
-func Eigenvalues(n int, h float64, bc poisson.BCType) []float64 {
+//
+// It returns ErrInvalidBC if bc is not a supported boundary condition.
+func Eigenvalues(n int, h float64, bc poisson.BCType) ([]float64, error) {
 	eig := make([]float64, n)
 	h2 := h * h
 
@@ -41,27 +43,33 @@ func Eigenvalues(n int, h float64, bc poisson.BCType) []float64 {
 		for m := range n {
 			eig[m] = (2.0 - 2.0*math.Cos(math.Pi*float64(m)/float64(n))) / h2
 		}
+
+	default:
+		return nil, ErrInvalidBC
 	}
 
-	return eig
+	return eig, nil
 }
 
 // EigenvaluesPeriodic computes eigenvalues for periodic BC.
 // λ_m = (2 - 2*cos(2πm/N)) / h².
 func EigenvaluesPeriodic(n int, h float64) []float64 {
-	return Eigenvalues(n, h, poisson.Periodic)
+	eig, _ := Eigenvalues(n, h, poisson.Periodic)
+	return eig
 }
 
 // EigenvaluesDirichlet computes eigenvalues for Dirichlet BC.
 // λ_m = (2 - 2*cos(πm/(N+1))) / h² for m = 1..N.
 func EigenvaluesDirichlet(n int, h float64) []float64 {
-	return Eigenvalues(n, h, poisson.Dirichlet)
+	eig, _ := Eigenvalues(n, h, poisson.Dirichlet)
+	return eig
 }
 
 // EigenvaluesNeumann computes eigenvalues for Neumann BC.
 // λ_m = (2 - 2*cos(πm/N)) / h².
 func EigenvaluesNeumann(n int, h float64) []float64 {
-	return Eigenvalues(n, h, poisson.Neumann)
+	eig, _ := Eigenvalues(n, h, poisson.Neumann)
+	return eig
 }
 
 // HasZeroEigenvalue returns true if the given BC has a zero eigenvalue

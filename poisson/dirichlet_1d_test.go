@@ -27,7 +27,9 @@ func TestPlan1DDirichlet_Solve_Fundamental(t *testing.T) {
 	}
 
 	rhs := make([]float64, n)
-	fd.Apply1D(rhs, u, h, poisson.Dirichlet)
+	if err := fd.Apply1D(rhs, u, h, poisson.Dirichlet); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, n)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -58,7 +60,9 @@ func TestPlan1DDirichlet_Solve_Combination(t *testing.T) {
 	}
 
 	rhs := make([]float64, n)
-	fd.Apply1D(rhs, u, h, poisson.Dirichlet)
+	if err := fd.Apply1D(rhs, u, h, poisson.Dirichlet); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, n)
 	if err := plan.Solve(got, rhs); err != nil {

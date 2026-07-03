@@ -29,7 +29,9 @@ func TestReferenceSolve2D_Dirichlet(t *testing.T) {
 		}
 
 		rhs := make([]float64, n*n)
-		fd.Apply2D(rhs, u, grid.NewShape2D(n, n), [2]float64{h, h}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet})
+		if err := fd.Apply2D(rhs, u, grid.NewShape2D(n, n), [2]float64{h, h}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+			t.Fatal(err)
+		}
 
 		plan, err := poisson.NewPlan(
 			2,
@@ -180,7 +182,9 @@ func buildDenseOperator2D(nx, ny int, hx, hy float64, bc [2]poisson.BCType, alph
 		}
 		e[c] = 1
 
-		fd.Apply2D(col, e, shape, [2]float64{hx, hy}, bc)
+		if err := fd.Apply2D(col, e, shape, [2]float64{hx, hy}, bc); err != nil {
+			panic(err)
+		}
 		for r := range N {
 			a[r*N+c] = col[r]
 		}

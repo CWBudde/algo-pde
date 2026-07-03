@@ -128,7 +128,9 @@ func TestRandomRHSResidual1D(t *testing.T) {
 			}
 
 			residual := make([]float64, n)
-			fd.Apply1D(residual, sol, h, bc)
+			if err := fd.Apply1D(residual, sol, h, bc); err != nil {
+				t.Fatal(err)
+			}
 
 			if e := relResidualError(residual, wantRHS); e > randomResidualRelTol {
 				t.Fatalf("relative residual error %g exceeds tol %g", e, randomResidualRelTol)
@@ -170,13 +172,16 @@ func TestRandomRHSResidual2D(t *testing.T) {
 				}
 
 				residual := make([]float64, nx*ny)
-				fd.Apply2D(
+				if err := fd.Apply2D(
+
 					residual,
 					sol,
 					grid.NewShape2D(nx, ny),
 					[2]float64{hx, hy},
 					[2]poisson.BCType{bcx, bcy},
-				)
+				); err != nil {
+					t.Fatal(err)
+				}
 
 				if e := relResidualError(residual, wantRHS); e > randomResidualRelTol {
 					t.Fatalf("relative residual error %g exceeds tol %g", e, randomResidualRelTol)
@@ -218,13 +223,16 @@ func TestRandomRHSResidual3D(t *testing.T) {
 					}
 
 					residual := make([]float64, nx*ny*nz)
-					fd.Apply3D(
+					if err := fd.Apply3D(
+
 						residual,
 						sol,
 						grid.NewShape3D(nx, ny, nz),
 						[3]float64{hx, hy, hz},
 						[3]poisson.BCType{bcx, bcy, bcz},
-					)
+					); err != nil {
+						t.Fatal(err)
+					}
 
 					if e := relResidualError(residual, wantRHS); e > randomResidualRelTol {
 						t.Fatalf("relative residual error %g exceeds tol %g", e, randomResidualRelTol)

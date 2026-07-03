@@ -62,9 +62,11 @@ func TestPlan3DPeriodic_Solve_Manufactured(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny*nz)
-	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 		poisson.Periodic, poisson.Periodic, poisson.Periodic,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny*nz)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -105,9 +107,11 @@ func TestPlan3DPeriodic_Solve_RealFFT(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny*nz)
-	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 		poisson.Periodic, poisson.Periodic, poisson.Periodic,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny*nz)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -192,9 +196,11 @@ func TestPlan3DPeriodic_SetSolutionMean(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny*nz)
-	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 		poisson.Periodic, poisson.Periodic, poisson.Periodic,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	dst := make([]float64, nx*ny*nz)
 	if err := plan.Solve(dst, rhs); err != nil {
@@ -220,9 +226,11 @@ func benchmarkPlan3DPeriodicSolve(b *testing.B, n int) {
 
 	u := make([]float64, n*n*n)
 	rhs := make([]float64, n*n*n)
-	fd.Apply3D(rhs, u, grid.NewShape3D(n, n, n), [3]float64{h, h, h}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(n, n, n), [3]float64{h, h, h}, [3]poisson.BCType{
 		poisson.Periodic, poisson.Periodic, poisson.Periodic,
-	})
+	}); err != nil {
+		b.Fatal(err)
+	}
 
 	dst := make([]float64, n*n*n)
 	b.ReportAllocs()

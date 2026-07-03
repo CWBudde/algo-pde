@@ -41,7 +41,9 @@ func benchmarkSolve2DBC(b *testing.B, n int, bc poisson.BCType) {
 	}
 
 	rhs := make([]float64, n*n)
-	fd.Apply2D(rhs, u, shape, [2]float64{h, h}, [2]poisson.BCType{bc, bc})
+	if err := fd.Apply2D(rhs, u, shape, [2]float64{h, h}, [2]poisson.BCType{bc, bc}); err != nil {
+		b.Fatal(err)
+	}
 
 	dst := make([]float64, n*n)
 

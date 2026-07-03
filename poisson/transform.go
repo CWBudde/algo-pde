@@ -17,10 +17,6 @@ type AxisTransform interface {
 
 	// Length returns the transform size along the axis.
 	Length() int
-
-	// NormalizationFactor returns the normalization factor for the round-trip.
-	// After Forward then Inverse, values are scaled by this factor.
-	NormalizationFactor() float64
 }
 
 // Workspace holds pre-allocated buffers for solver operations.

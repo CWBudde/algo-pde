@@ -53,7 +53,10 @@ func TestEigenvaluesMatchStencil(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			eig := Eigenvalues(n, h, tc.bc)
+			eig, err := Eigenvalues(n, h, tc.bc)
+			if err != nil {
+				t.Fatalf("Eigenvalues failed: %v", err)
+			}
 			if len(eig) != n {
 				t.Fatalf("expected %d eigenvalues, got %d", n, len(eig))
 			}
@@ -65,7 +68,9 @@ func TestEigenvaluesMatchStencil(t *testing.T) {
 				}
 
 				got := make([]float64, n)
-				Apply1D(got, v, h, tc.bc)
+				if err := Apply1D(got, v, h, tc.bc); err != nil {
+					t.Fatalf("Apply1D failed: %v", err)
+				}
 
 				scale := 0.0
 				for i := range n {

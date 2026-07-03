@@ -19,7 +19,9 @@ func TestApply1DPeriodicModes(t *testing.T) {
 		src[i] = math.Cos(2.0 * math.Pi * float64(k) * float64(i) / float64(n))
 	}
 
-	Apply1D(dst, src, h, poisson.Periodic)
+	if err := Apply1D(dst, src, h, poisson.Periodic); err != nil {
+		t.Fatal(err)
+	}
 	eig := EigenvaluesPeriodic(n, h)
 
 	for i := range n {
@@ -32,7 +34,9 @@ func TestApply1DPeriodicModes(t *testing.T) {
 	for i := range n {
 		src[i] = 1.0
 	}
-	Apply1D(dst, src, h, poisson.Periodic)
+	if err := Apply1D(dst, src, h, poisson.Periodic); err != nil {
+		t.Fatal(err)
+	}
 	for i := range n {
 		if math.Abs(dst[i]) > 1e-12 {
 			t.Fatalf("periodic constant mode i=%d: got %v want 0", i, dst[i])
@@ -52,7 +56,9 @@ func TestApply1DDirichletModes(t *testing.T) {
 		src[i] = math.Sin(math.Pi * float64(m) * x)
 	}
 
-	Apply1D(dst, src, h, poisson.Dirichlet)
+	if err := Apply1D(dst, src, h, poisson.Dirichlet); err != nil {
+		t.Fatal(err)
+	}
 	eig := EigenvaluesDirichlet(n, h)
 
 	for i := range n {
@@ -75,7 +81,9 @@ func TestApply1DNeumannModes(t *testing.T) {
 		src[i] = math.Cos(math.Pi * float64(m) * x)
 	}
 
-	Apply1D(dst, src, h, poisson.Neumann)
+	if err := Apply1D(dst, src, h, poisson.Neumann); err != nil {
+		t.Fatal(err)
+	}
 	eig := EigenvaluesNeumann(n, h)
 
 	for i := range n {
@@ -96,8 +104,12 @@ func TestApply1DInPlace(t *testing.T) {
 	}
 
 	want := make([]float64, n)
-	Apply1D(want, src, h, poisson.Periodic)
-	Apply1D(src, src, h, poisson.Periodic)
+	if err := Apply1D(want, src, h, poisson.Periodic); err != nil {
+		t.Fatal(err)
+	}
+	if err := Apply1D(src, src, h, poisson.Periodic); err != nil {
+		t.Fatal(err)
+	}
 
 	for i := range n {
 		if math.Abs(src[i]-want[i]) > 1e-12 {
@@ -123,7 +135,9 @@ func TestApply2DPeriodicModes(t *testing.T) {
 		}
 	}
 
-	Apply2D(dst, src, shape, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
+	if err := Apply2D(dst, src, shape, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic}); err != nil {
+		t.Fatal(err)
+	}
 	eigx := EigenvaluesPeriodic(nx, hx)
 	eigy := EigenvaluesPeriodic(ny, hy)
 	lambda := eigx[kx] + eigy[ky]
@@ -156,7 +170,9 @@ func TestApply2DDirichletModes(t *testing.T) {
 		}
 	}
 
-	Apply2D(dst, src, shape, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet})
+	if err := Apply2D(dst, src, shape, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+		t.Fatal(err)
+	}
 	eigx := EigenvaluesDirichlet(nx, hx)
 	eigy := EigenvaluesDirichlet(ny, hy)
 	lambda := eigx[mx-1] + eigy[my-1]
@@ -189,7 +205,9 @@ func TestApply2DNeumannModes(t *testing.T) {
 		}
 	}
 
-	Apply2D(dst, src, shape, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Neumann, poisson.Neumann})
+	if err := Apply2D(dst, src, shape, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Neumann, poisson.Neumann}); err != nil {
+		t.Fatal(err)
+	}
 	eigx := EigenvaluesNeumann(nx, hx)
 	eigy := EigenvaluesNeumann(ny, hy)
 	lambda := eigx[mx] + eigy[my]
@@ -229,7 +247,9 @@ func TestApply3DPeriodicModes(t *testing.T) {
 		}
 	}
 
-	Apply3D(dst, src, shape, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Periodic, poisson.Periodic, poisson.Periodic})
+	if err := Apply3D(dst, src, shape, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Periodic, poisson.Periodic, poisson.Periodic}); err != nil {
+		t.Fatal(err)
+	}
 	eigx := EigenvaluesPeriodic(nx, hx)
 	eigy := EigenvaluesPeriodic(ny, hy)
 	eigz := EigenvaluesPeriodic(nz, hz)
@@ -272,7 +292,9 @@ func TestApply3DDirichletModes(t *testing.T) {
 		}
 	}
 
-	Apply3D(dst, src, shape, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet})
+	if err := Apply3D(dst, src, shape, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+		t.Fatal(err)
+	}
 	eigx := EigenvaluesDirichlet(nx, hx)
 	eigy := EigenvaluesDirichlet(ny, hy)
 	eigz := EigenvaluesDirichlet(nz, hz)
@@ -315,7 +337,9 @@ func TestApply3DNeumannModes(t *testing.T) {
 		}
 	}
 
-	Apply3D(dst, src, shape, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Neumann, poisson.Neumann, poisson.Neumann})
+	if err := Apply3D(dst, src, shape, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Neumann, poisson.Neumann, poisson.Neumann}); err != nil {
+		t.Fatal(err)
+	}
 	eigx := EigenvaluesNeumann(nx, hx)
 	eigy := EigenvaluesNeumann(ny, hy)
 	eigz := EigenvaluesNeumann(nz, hz)

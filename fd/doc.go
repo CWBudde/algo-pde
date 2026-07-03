@@ -1,13 +1,14 @@
 // Package fd provides finite difference operators and eigenvalue computations.
 //
 // This package implements the mathematical foundations for the spectral Poisson solver:
-//   - Eigenvalue formulas for the discrete Laplacian
-//   - Laplacian stencil application (for testing and validation)
+//   - Eigenvalue formulas for the discrete negative Laplacian
+//   - Negative Laplacian stencil application (for testing and validation)
 //
 // # Eigenvalues
 //
-// For a standard second-order finite difference Laplacian on a uniform grid,
-// the eigenvalues depend on the boundary condition:
+// For a standard second-order finite difference negative Laplacian (−Δ,
+// positive-definite) on a uniform grid, the eigenvalues depend on the boundary
+// condition:
 //
 // Periodic (m = 0..N-1):
 //

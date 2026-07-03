@@ -5,6 +5,30 @@ import "github.com/MeKo-Tech/algo-pde/grid"
 // transformFunc is a function that transforms a line of data in-place.
 type transformFunc func(dst, src []float64) error
 
+// validateLineArgs checks the arguments common to every ForwardLines/InverseLines
+// method before any data is touched. It rejects out-of-range axes, zero-extent
+// shapes, plan/axis size mismatches, and buffers that are too short, so that no
+// bad input reaches the (panicking) iterator or transform kernels.
+func validateLineArgs(data []float64, shape grid.Shape, axis, n int) error {
+	if axis < 0 || axis >= len(shape) {
+		return ErrInvalidAxis
+	}
+
+	if shape.Size() == 0 {
+		return ErrInvalidSize
+	}
+
+	if shape.N(axis) != n {
+		return ErrSizeMismatch
+	}
+
+	if len(data) < shape.Size() {
+		return ErrSizeMismatch
+	}
+
+	return nil
+}
+
 // ForwardLines applies the forward DST-I transform along all lines of data
 // parallel to the given axis. The plan's size must match shape[axis].
 //
@@ -14,8 +38,8 @@ type transformFunc func(dst, src []float64) error
 //
 // The operation is performed in-place on the data slice.
 func (p *DSTPlan) ForwardLines(data []float64, shape grid.Shape, axis int) error {
-	if shape.N(axis) != p.n {
-		return ErrSizeMismatch
+	if err := validateLineArgs(data, shape, axis, p.n); err != nil {
+		return err
 	}
 
 	return transformAllLines(data, shape, axis, p.Forward)
@@ -24,8 +48,8 @@ func (p *DSTPlan) ForwardLines(data []float64, shape grid.Shape, axis int) error
 // InverseLines applies the inverse DST-I transform along all lines of data
 // parallel to the given axis. The plan's size must match shape[axis].
 func (p *DSTPlan) InverseLines(data []float64, shape grid.Shape, axis int) error {
-	if shape.N(axis) != p.n {
-		return ErrSizeMismatch
+	if err := validateLineArgs(data, shape, axis, p.n); err != nil {
+		return err
 	}
 
 	return transformAllLines(data, shape, axis, p.Inverse)
@@ -40,8 +64,8 @@ func (p *DSTPlan) InverseLines(data []float64, shape grid.Shape, axis int) error
 //
 // The operation is performed in-place on the data slice.
 func (p *DCTPlan) ForwardLines(data []float64, shape grid.Shape, axis int) error {
-	if shape.N(axis) != p.n {
-		return ErrSizeMismatch
+	if err := validateLineArgs(data, shape, axis, p.n); err != nil {
+		return err
 	}
 
 	return transformAllLines(data, shape, axis, p.Forward)
@@ -50,8 +74,8 @@ func (p *DCTPlan) ForwardLines(data []float64, shape grid.Shape, axis int) error
 // InverseLines applies the inverse DCT-I transform along all lines of data
 // parallel to the given axis. The plan's size must match shape[axis].
 func (p *DCTPlan) InverseLines(data []float64, shape grid.Shape, axis int) error {
-	if shape.N(axis) != p.n {
-		return ErrSizeMismatch
+	if err := validateLineArgs(data, shape, axis, p.n); err != nil {
+		return err
 	}
 
 	return transformAllLines(data, shape, axis, p.Inverse)
@@ -61,8 +85,8 @@ func (p *DCTPlan) InverseLines(data []float64, shape grid.Shape, axis int) error
 // parallel to the given axis. The plan's size must match shape[axis].
 // The operation is performed in-place on the data slice.
 func (p *DST2Plan) ForwardLines(data []float64, shape grid.Shape, axis int) error {
-	if shape.N(axis) != p.n {
-		return ErrSizeMismatch
+	if err := validateLineArgs(data, shape, axis, p.n); err != nil {
+		return err
 	}
 
 	return transformAllLines(data, shape, axis, p.Forward)
@@ -71,8 +95,8 @@ func (p *DST2Plan) ForwardLines(data []float64, shape grid.Shape, axis int) erro
 // InverseLines applies the inverse DST-II transform along all lines of data
 // parallel to the given axis. The plan's size must match shape[axis].
 func (p *DST2Plan) InverseLines(data []float64, shape grid.Shape, axis int) error {
-	if shape.N(axis) != p.n {
-		return ErrSizeMismatch
+	if err := validateLineArgs(data, shape, axis, p.n); err != nil {
+		return err
 	}
 
 	return transformAllLines(data, shape, axis, p.Inverse)
@@ -82,8 +106,8 @@ func (p *DST2Plan) InverseLines(data []float64, shape grid.Shape, axis int) erro
 // parallel to the given axis. The plan's size must match shape[axis].
 // The operation is performed in-place on the data slice.
 func (p *DCT2Plan) ForwardLines(data []float64, shape grid.Shape, axis int) error {
-	if shape.N(axis) != p.n {
-		return ErrSizeMismatch
+	if err := validateLineArgs(data, shape, axis, p.n); err != nil {
+		return err
 	}
 
 	return transformAllLines(data, shape, axis, p.Forward)
@@ -92,8 +116,8 @@ func (p *DCT2Plan) ForwardLines(data []float64, shape grid.Shape, axis int) erro
 // InverseLines applies the inverse DCT-II transform along all lines of data
 // parallel to the given axis. The plan's size must match shape[axis].
 func (p *DCT2Plan) InverseLines(data []float64, shape grid.Shape, axis int) error {
-	if shape.N(axis) != p.n {
-		return ErrSizeMismatch
+	if err := validateLineArgs(data, shape, axis, p.n); err != nil {
+		return err
 	}
 
 	return transformAllLines(data, shape, axis, p.Inverse)
@@ -104,6 +128,10 @@ func transformAllLines(
 	data []float64, shape grid.Shape, axis int, transform transformFunc,
 ) error {
 	it := grid.NewLineIterator(shape, axis)
+	if it.NumLines() == 0 {
+		return nil
+	}
+
 	lineLen := it.LineLength()
 	lineStride := it.LineStride()
 

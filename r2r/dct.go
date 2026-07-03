@@ -135,12 +135,17 @@ func (p *DCT2Plan) Len() int {
 // Forward computes the forward DCT-I transform.
 // dst and src must have length n. They may be the same slice for in-place operation.
 //
-// Output normalization: The output is NOT normalized.
-// For orthogonal normalization, divide by sqrt(2*(N-1)).
+// Output normalization: With NormNone the output is unnormalized. With NormOrtho
+// the transform is a true orthonormal DCT-I: the endpoint samples (k, n = 0 and
+// N-1) carry the extra 1/sqrt(2) weight on both the analysis input and the output
+// coefficient, making the transform matrix symmetric, orthogonal and hence its
+// own inverse.
 func (p *DCTPlan) Forward(dst, src []float64) error {
 	if len(dst) != p.n || len(src) != p.n {
 		return ErrSizeMismatch
 	}
+
+	ortho := p.opts.Normalization == NormOrtho
 
 	// Clear input buffer
 	for i := range p.extendedN {
@@ -158,6 +163,14 @@ func (p *DCTPlan) Forward(dst, src []float64) error {
 		p.fftIn[p.extendedN-i] = complex(src[i], 0)
 	}
 
+	// Orthonormal analysis weights the endpoint samples by 1/sqrt(2). The even
+	// extension samples the endpoints once (interior points twice), so pre-scaling
+	// them by sqrt(2) here turns their effective weight into 1/sqrt(2).
+	if ortho {
+		p.fftIn[0] *= complex(math.Sqrt2, 0)
+		p.fftIn[p.n-1] *= complex(math.Sqrt2, 0)
+	}
+
 	// FFT with separate input/output buffers (avoids in-place FFT issues)
 	err := p.fftPlan.Forward(p.fftOut, p.fftIn)
 	if err != nil {
@@ -167,12 +180,16 @@ func (p *DCTPlan) Forward(dst, src []float64) error {
 	// Extract DCT coefficients from real parts
 	// The DCT-I coefficients are in the real part of FFT output at positions 0..n-1
 	scale := 1.0
-	if p.opts.Normalization == NormOrtho {
+	if ortho {
 		scale = 1.0 / math.Sqrt(2.0*float64(p.n-1))
 	}
 
 	for k := range p.n {
-		dst[k] = real(p.fftOut[k]) * scale
+		v := real(p.fftOut[k]) * scale
+		if ortho && (k == 0 || k == p.n-1) {
+			v /= math.Sqrt2
+		}
+		dst[k] = v
 	}
 
 	return nil
@@ -314,24 +331,6 @@ func (p *DCT2Plan) Inverse(dst, src []float64) error {
 	}
 
 	return nil
-}
-
-// NormalizationFactor returns the factor by which values are scaled
-// after a Forward followed by Inverse transform.
-// For DCT-I: Forward * Inverse = 2*(N-1) * I.
-func (p *DCTPlan) NormalizationFactor() float64 {
-	if p.opts.Normalization == NormOrtho {
-		return 1.0
-	}
-
-	return float64(p.extendedN)
-}
-
-// NormalizationFactor returns the factor by which values are scaled
-// after a Forward followed by Inverse transform.
-// For DCT-II: Forward followed by Inverse returns the original signal.
-func (p *DCT2Plan) NormalizationFactor() float64 {
-	return 1.0
 }
 
 // Bytes returns the memory used by the plan in bytes.

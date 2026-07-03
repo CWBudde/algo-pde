@@ -2,7 +2,6 @@ package poisson
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/MeKo-Tech/algo-pde/grid"
 	algofft "github.com/cwbudde/algo-fft"
@@ -71,19 +70,15 @@ func NewPlan3DPeriodic(nx, ny, nz int, hx, hy, hz float64, opts ...Option) (*Pla
 		shape: grid.NewShape3D(nx, ny, nz),
 	}
 
-	if options.UseRealFFT {
-		if nz%2 != 0 || nz < 2 || !isPowerOfTwo(nx) || !isPowerOfTwo(ny) || !isPowerOfTwo(nz) {
-			log.Printf("poisson: real FFT disabled for 3D plan (nx=%d, ny=%d, nz=%d): requires even nz and power-of-two sizes", nx, ny, nz)
-		} else {
-			plan.rhalf = nz/2 + 1
-			rws, err := plan.newRealWorkspace()
-			if err != nil {
-				log.Printf("poisson: real FFT disabled for 3D plan (nx=%d, ny=%d, nz=%d): %v", nx, ny, nz, err)
-			} else {
-				plan.rpool = newResidentPool[real3DWorkspace](1)
-				plan.rpool.put(rws)
-				plan.useR = true
-			}
+	// Real-FFT is a best-effort acceleration: when the sizes do not qualify (or
+	// the plan fails to build) the plan silently falls back to the float64
+	// complex FFT. Callers inspect UsedRealFFT to learn which path was taken.
+	if options.UseRealFFT && nz%2 == 0 && nz >= 2 && isPowerOfTwo(nx) && isPowerOfTwo(ny) && isPowerOfTwo(nz) {
+		plan.rhalf = nz/2 + 1
+		if rws, err := plan.newRealWorkspace(); err == nil {
+			plan.rpool = newResidentPool[real3DWorkspace](1)
+			plan.rpool.put(rws)
+			plan.useR = true
 		}
 	}
 

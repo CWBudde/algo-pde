@@ -393,3 +393,55 @@ func TestCopyContiguousToStrided(t *testing.T) {
 		}
 	}
 }
+
+func TestLineIteratorZeroExtentYieldsNoLines(t *testing.T) {
+	// A shape with a zero extent must yield zero lines on every axis, with no
+	// phantom line from the collapsed dimension.
+	shapes := []Shape{
+		{0, 3, 1},
+		{4, 0, 1},
+		{4, 3, 0},
+	}
+
+	for _, shape := range shapes {
+		for axis := range 3 {
+			it := NewLineIterator(shape, axis)
+			if got := it.NumLines(); got != 0 {
+				t.Errorf("shape %v axis %d: NumLines() = %d, want 0", shape, axis, got)
+			}
+
+			count := 0
+			for it.Next() {
+				count++
+			}
+			if count != 0 {
+				t.Errorf("shape %v axis %d: iterated %d extra lines, want 0", shape, axis, count)
+			}
+		}
+	}
+}
+
+func TestPlaneIteratorZeroExtentYieldsNoPlanes(t *testing.T) {
+	shapes := []Shape{
+		{0, 3, 2},
+		{4, 0, 2},
+		{4, 3, 0},
+	}
+
+	for _, shape := range shapes {
+		for axis := range 3 {
+			it := NewPlaneIterator(shape, axis)
+			if got := it.NumPlanes(); got != 0 {
+				t.Errorf("shape %v axis %d: NumPlanes() = %d, want 0", shape, axis, got)
+			}
+
+			count := 0
+			for it.Next() {
+				count++
+			}
+			if count != 0 {
+				t.Errorf("shape %v axis %d: iterated %d extra planes, want 0", shape, axis, count)
+			}
+		}
+	}
+}

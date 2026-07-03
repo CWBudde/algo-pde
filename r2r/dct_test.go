@@ -76,6 +76,66 @@ func TestDCTPlan_RoundTripOrtho(t *testing.T) {
 	}
 }
 
+func TestDCTPlan_OrthonormalTransform(t *testing.T) {
+	// The NormOrtho DCT-I must be a true orthonormal transform: its matrix M
+	// (whose column j is Forward(e_j)) satisfies MᵀM = I, so every column is a
+	// unit vector and distinct columns are orthogonal. Because M is also
+	// symmetric it is its own inverse, so Forward composed with Inverse (and
+	// Forward with itself) is the identity.
+	for _, n := range []int{2, 3, 4, 8, 9} {
+		plan, err := NewDCTPlan(n, WithNormalization(NormOrtho))
+		if err != nil {
+			t.Fatalf("n=%d: NewDCTPlan failed: %v", n, err)
+		}
+
+		cols := make([][]float64, n)
+		for j := range n {
+			e := make([]float64, n)
+			e[j] = 1
+			col := make([]float64, n)
+			if err := plan.Forward(col, e); err != nil {
+				t.Fatalf("n=%d: Forward failed: %v", n, err)
+			}
+			cols[j] = col
+		}
+
+		for a := range n {
+			for b := range n {
+				dot := 0.0
+				for i := range n {
+					dot += cols[a][i] * cols[b][i]
+				}
+				want := 0.0
+				if a == b {
+					want = 1.0
+				}
+				if math.Abs(dot-want) > tolerance {
+					t.Errorf("n=%d: <col %d, col %d> = %v, want %v", n, a, b, dot, want)
+				}
+			}
+		}
+
+		// Self-inverse: applying Forward twice returns the input.
+		src := make([]float64, n)
+		for i := range n {
+			src[i] = math.Sin(0.7*float64(i)) + 0.3*float64(i)
+		}
+		mid := make([]float64, n)
+		if err := plan.Forward(mid, src); err != nil {
+			t.Fatalf("n=%d: Forward failed: %v", n, err)
+		}
+		out := make([]float64, n)
+		if err := plan.Forward(out, mid); err != nil {
+			t.Fatalf("n=%d: Forward^2 failed: %v", n, err)
+		}
+		for i := range n {
+			if math.Abs(out[i]-src[i]) > tolerance {
+				t.Errorf("n=%d: self-inverse mismatch at %d: got %v, want %v", n, i, out[i], src[i])
+			}
+		}
+	}
+}
+
 func TestDCTPlan_Orthogonality(t *testing.T) {
 	// DCT-I basis functions should be orthogonal (with endpoint weights)
 	n := 8

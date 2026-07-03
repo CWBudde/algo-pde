@@ -251,11 +251,11 @@ ship green today.
 House style today: bad input → silent no-op, silent garbage, or panic. Pick
 one contract (errors) and enforce it.
 
-- [ ] `fd.Apply1D/2D/3D`: size mismatch is a silent no-op leaving stale data
+- [x] `fd.Apply1D/2D/3D`: size mismatch is a silent no-op leaving stale data
       in dst (`fd/laplacian.go:13,82,165`) — return an error. Unknown BCType
       silently becomes zeros in `Eigenvalues` and Dirichlet in `Apply2D/3D` —
       error in both.
-- [ ] `r2r` lines API: panics on short buffers, bad axis, zero-extent shapes
+- [x] `r2r` lines API: panics on short buffers, bad axis, zero-extent shapes
       (`r2r/lines.go:61-87`) — validate and return `ErrSizeMismatch` /
       `ErrInvalidAxis`.
 - [ ] `grid`: `LineIterator`/`PlaneIterator` yield phantom lines for shapes
@@ -264,22 +264,22 @@ one contract (errors) and enforce it.
 - [ ] `grid.Shape.Dim()` infers dimension from trailing extents, so 64×64×1
       reports 2D and `SolveWithBC` rejects its Y faces — store the declared
       dimension instead of guessing.
-- [ ] Options that silently no-op — make each either work or error:
+- [x] Options that silently no-op — make each either work or error:
       `WithWorkers` on `PlanNDPeriodic` (ignored entirely),
       `WithSolutionMean` on plans without nullspace (`plan.go:174`),
       `WithRealFFT` on the BC-plan path, `WithInPlace` on periodic plans.
-- [ ] `SolveWithBC`: reject duplicate faces (two `XLow` entries silently
+- [x] `SolveWithBC`: reject duplicate faces (two `XLow` entries silently
       double the contribution); don't corrupt the caller's rhs on a mid-loop
       error in the `InPlace` path (`plan_bc.go:36-62`).
-- [ ] `NormOrtho` DCT-I is not orthonormal (missing √2 endpoint weights) —
+- [x] `NormOrtho` DCT-I is not orthonormal (missing √2 endpoint weights) —
       fix or document; Parseval-based uses are silently wrong today.
-- [ ] `NormalizationFactor` is a dead API whose documented semantics are
+- [x] `NormalizationFactor` is a dead API whose documented semantics are
       wrong by O(N) (`r2r/dct.go:293`, `transform.go:21`) — delete it or fix
       doc + implementation to agree.
-- [ ] Replace `log` calls on the real-FFT fallback (`periodic_2d.go:54`) with
+- [x] Replace `log` calls on the real-FFT fallback (`periodic_2d.go:54`) with
       an inspectable plan property (`p.UsedRealFFT() bool`) or an option-level
       error.
-- [ ] Fix misleading fd docs: formulas are for the **negative** Laplacian;
+- [x] Fix misleading fd docs: formulas are for the **negative** Laplacian;
       `fd/doc.go` says "Laplacian".
 
 ---
