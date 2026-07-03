@@ -251,40 +251,66 @@ func (p *DCTPlan) Inverse(dst, src []float64) error {
 	return nil
 }
 
-// Inverse computes the inverse DCT-II transform.
+// Inverse computes the inverse DCT-II transform (a DCT-III up to scaling).
 // dst and src must have length n. They may be the same slice for in-place operation.
 //
-// Note: DCT-II is inverted by a weighted transpose of the DCT-II kernel.
+// It evaluates x[n] = Σ_k w[k]·X[k]·cos(π(n+½)k/N) — the weighted transpose of
+// the DCT-II kernel — in O(N log N) via a single 2N-point FFT rather than the
+// naive O(N²) double loop. The weighted coefficients w[k]·X[k] are packed with
+// the plan's phase factors so that Re(FFT(·)) yields the DCT-III result
+// directly. src is fully consumed into the plan's FFT buffer before dst is
+// written, so aliasing (Inverse(buf, buf)) is safe without an extra copy.
 func (p *DCT2Plan) Inverse(dst, src []float64) error {
 	if len(dst) != p.n || len(src) != p.n {
 		return ErrSizeMismatch
 	}
 
-	srcData := src
-	if len(src) > 0 && len(dst) > 0 && &src[0] == &dst[0] {
-		srcData = make([]float64, p.n)
-		copy(srcData, src)
+	n := p.n
+	ortho := p.opts.Normalization == NormOrtho
+
+	// The FFT input is kept purely real: the cosine component is packed with
+	// even symmetry and the sine component with odd symmetry around the 2N
+	// midpoint, so that Re(FFT)+Im(FFT) reconstructs the DCT-III. Feeding real
+	// input also sidesteps an upstream complex-input FFT defect at some
+	// composite sizes (e.g. 2*100), which the real-only forward never triggers.
+	for i := range p.extendedN {
+		p.fftIn[i] = 0
 	}
 
-	for n := range p.n {
-		sum := 0.0
-		for k := range p.n {
-			weight := 2.0 / float64(p.n)
-			if k == 0 {
-				weight = 1.0 / float64(p.n)
-			}
-
-			if p.opts.Normalization == NormOrtho {
-				weight = math.Sqrt(2.0 / float64(p.n))
-				if k == 0 {
-					weight = 1.0 / math.Sqrt(float64(p.n))
-				}
-			}
-
-			sum += (srcData[k] * weight) * DCT2Coefficient(n, k, p.n)
+	for k := range n {
+		weight := 2.0 / float64(n)
+		if k == 0 {
+			weight = 1.0 / float64(n)
 		}
 
-		dst[n] = sum
+		if ortho {
+			weight = math.Sqrt(2.0 / float64(n))
+			if k == 0 {
+				weight = 1.0 / math.Sqrt(float64(n))
+			}
+		}
+
+		a := src[k] * weight
+		// cos(πk/2N), sin(πk/2N) recovered from the stored phase factor
+		// phase[k] = exp(-iπk/2N).
+		cosPart := a * real(p.phase[k])
+		sinPart := a * -imag(p.phase[k])
+
+		if k == 0 {
+			p.fftIn[0] = complex(cosPart, 0)
+			continue
+		}
+
+		p.fftIn[k] = complex((cosPart+sinPart)/2, 0)
+		p.fftIn[p.extendedN-k] = complex((cosPart-sinPart)/2, 0)
+	}
+
+	if err := p.fftPlan.Forward(p.fftOut, p.fftIn); err != nil {
+		return fmt.Errorf("FFT forward: %w", err)
+	}
+
+	for i := range n {
+		dst[i] = real(p.fftOut[i]) + imag(p.fftOut[i])
 	}
 
 	return nil
