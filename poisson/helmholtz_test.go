@@ -95,7 +95,7 @@ func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny)
-	if err := fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+	if err := fd.Apply2D(lap, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -214,7 +214,7 @@ func TestHelmholtzPlan2D_Neumann_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny)
-	if err := fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Neumann, poisson.Neumann}); err != nil {
+	if err := fd.Apply2D(lap, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Neumann, poisson.Neumann}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -257,7 +257,7 @@ func TestHelmholtzPlan2D_Periodic_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny)
-	if err := fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic}); err != nil {
+	if err := fd.Apply2D(lap, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -306,7 +306,7 @@ func TestHelmholtzPlan3D_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny*nz)
-	if err := fd.Apply3D(lap, u, grid.Shape{nx, ny, nz}, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+	if err := fd.Apply3D(lap, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet}); err != nil {
 		t.Fatal(err)
 	}
 

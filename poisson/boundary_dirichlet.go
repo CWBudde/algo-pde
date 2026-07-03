@@ -19,7 +19,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 	}
 
 	dim := shape.Dim()
-	nx, ny, nz := shape[0], shape[1], shape[2]
+	nx, ny, nz := shape.N(0), shape.N(1), shape.N(2)
 	plane := ny * nz
 
 	for _, data := range bc {

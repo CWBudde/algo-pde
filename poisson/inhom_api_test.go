@@ -232,9 +232,38 @@ func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	}
 }
 
+// TestSolveWithBC3DSmallNzAcceptsZFaces guards the interaction between the
+// declared-dimension fix and SolveWithBC: a 3D plan whose z extent is small
+// (here nz=1, so the grid is 4x4x1) must still accept Z boundary faces rather
+// than treating the grid as 2D and rejecting them.
+func TestSolveWithBC3DSmallNzAcceptsZFaces(t *testing.T) {
+	nx, ny, nz := 4, 4, 1
+	plan, err := poisson.NewPlan(
+		3,
+		[]int{nx, ny, nz},
+		[]float64{1.0 / float64(nx), 1.0 / float64(ny), 1.0},
+		[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet},
+	)
+	if err != nil {
+		t.Fatalf("NewPlan failed: %v", err)
+	}
+
+	size := nx * ny * nz
+	bc := poisson.BoundaryConditions{
+		{Face: poisson.ZLow, Type: poisson.Dirichlet, Values: make([]float64, nx*ny)},
+		{Face: poisson.ZHigh, Type: poisson.Dirichlet, Values: make([]float64, nx*ny)},
+	}
+
+	got := make([]float64, size)
+	rhs := make([]float64, size)
+	if err := plan.SolveWithBC(got, rhs, bc); err != nil {
+		t.Fatalf("SolveWithBC rejected Z faces on a small-nz 3D plan: %v", err)
+	}
+}
+
 func applyInhomDirichletNeumann2D(dst, src []float64, shape grid.Shape, hx, hy float64, xLow, xHigh, yLow, yHigh []float64) {
-	nx := shape[0]
-	ny := shape[1]
+	nx := shape.N(0)
+	ny := shape.N(1)
 	invHx2 := 1.0 / (hx * hx)
 	invHy2 := 1.0 / (hy * hy)
 
@@ -270,9 +299,9 @@ func applyInhomDirichletNeumann2D(dst, src []float64, shape grid.Shape, hx, hy f
 }
 
 func applyInhomDirichletNeumann3D(dst, src []float64, shape grid.Shape, hx, hy, hz float64, xLow, xHigh, yLow, yHigh, zLow, zHigh []float64) {
-	nx := shape[0]
-	ny := shape[1]
-	nz := shape[2]
+	nx := shape.N(0)
+	ny := shape.N(1)
+	nz := shape.N(2)
 	invHx2 := 1.0 / (hx * hx)
 	invHy2 := 1.0 / (hy * hy)
 	invHz2 := 1.0 / (hz * hz)

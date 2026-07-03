@@ -11,7 +11,7 @@ func TestShape_Dim(t *testing.T) {
 		{"1D", NewShape1D(10), 1},
 		{"2D", NewShape2D(10, 20), 2},
 		{"3D", NewShape3D(10, 20, 30), 3},
-		{"2D with nz=1", Shape{10, 20, 1}, 2},
+		{"3D with nz=1 reports declared 3D", NewShape3D(10, 20, 1), 3},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -20,6 +20,42 @@ func TestShape_Dim(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestShape_DimDeclared(t *testing.T) {
+	// A declared-3D shape whose trailing extent is 1 must still report Dim() == 3
+	// (regression: Dim() used to infer the dimension from the trailing extents).
+	if got := NewShape3D(64, 64, 1).Dim(); got != 3 {
+		t.Errorf("NewShape3D(64, 64, 1).Dim() = %d, want 3", got)
+	}
+	if got := NewShape2D(64, 1).Dim(); got != 2 {
+		t.Errorf("NewShape2D(64, 1).Dim() = %d, want 2", got)
+	}
+}
+
+func TestNewShapeRejectsNegativeExtent(t *testing.T) {
+	cases := []struct {
+		name string
+		fn   func()
+	}{
+		{"1D", func() { NewShape1D(-1) }},
+		{"2D nx", func() { NewShape2D(-1, 4) }},
+		{"2D ny", func() { NewShape2D(4, -1) }},
+		{"3D nz", func() { NewShape3D(4, 4, -1) }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("expected panic on negative extent, got none")
+				}
+			}()
+			tc.fn()
+		})
+	}
+
+	// Zero extents are allowed (they denote an empty grid) and must not panic.
+	_ = NewShape3D(4, 0, 1)
 }
 
 func TestShape_Size(t *testing.T) {
@@ -337,9 +373,9 @@ func TestIndexRoundTrip2D(t *testing.T) {
 
 func TestIndexRoundTrip3D(t *testing.T) {
 	shape := NewShape3D(5, 7, 11)
-	for i := range shape[0] {
-		for j := range shape[1] {
-			for k := range shape[2] {
+	for i := range shape.N(0) {
+		for j := range shape.N(1) {
+			for k := range shape.N(2) {
 				idx := Index3D(i, j, k, shape)
 
 				gotI, gotJ, gotK := FromIndex3D(idx, shape)
@@ -398,9 +434,9 @@ func TestLineIteratorZeroExtentYieldsNoLines(t *testing.T) {
 	// A shape with a zero extent must yield zero lines on every axis, with no
 	// phantom line from the collapsed dimension.
 	shapes := []Shape{
-		{0, 3, 1},
-		{4, 0, 1},
-		{4, 3, 0},
+		NewShape3D(0, 3, 1),
+		NewShape3D(4, 0, 1),
+		NewShape3D(4, 3, 0),
 	}
 
 	for _, shape := range shapes {
@@ -423,9 +459,9 @@ func TestLineIteratorZeroExtentYieldsNoLines(t *testing.T) {
 
 func TestPlaneIteratorZeroExtentYieldsNoPlanes(t *testing.T) {
 	shapes := []Shape{
-		{0, 3, 2},
-		{4, 0, 2},
-		{4, 3, 0},
+		NewShape3D(0, 3, 2),
+		NewShape3D(4, 0, 2),
+		NewShape3D(4, 3, 0),
 	}
 
 	for _, shape := range shapes {

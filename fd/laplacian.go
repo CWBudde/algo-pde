@@ -94,8 +94,8 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bcs [2]bc.BCTyp
 		}
 	}
 
-	nx := shape[0]
-	ny := shape[1]
+	nx := shape.N(0)
+	ny := shape.N(1)
 	total := nx * ny
 	if nx == 0 || ny == 0 || len(src) != total || len(dst) != total {
 		return fmt.Errorf("%w: expected %d, len(src)=%d len(dst)=%d",
@@ -184,9 +184,9 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bcs [3]bc.BCTyp
 		}
 	}
 
-	nx := shape[0]
-	ny := shape[1]
-	nz := shape[2]
+	nx := shape.N(0)
+	ny := shape.N(1)
+	nz := shape.N(2)
 	total := nx * ny * nz
 	if nx == 0 || ny == 0 || nz == 0 || len(src) != total || len(dst) != total {
 		return fmt.Errorf("%w: expected %d, len(src)=%d len(dst)=%d",

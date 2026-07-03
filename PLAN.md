@@ -258,12 +258,21 @@ one contract (errors) and enforce it.
 - [x] `r2r` lines API: panics on short buffers, bad axis, zero-extent shapes
       (`r2r/lines.go:61-87`) — validate and return `ErrSizeMismatch` /
       `ErrInvalidAxis`.
-- [ ] `grid`: `LineIterator`/`PlaneIterator` yield phantom lines for shapes
+- [x] `grid`: `LineIterator`/`PlaneIterator` yield phantom lines for shapes
       with a zero extent (`grid/grid.go:149-206`); validate shape and axis at
-      construction. Reject negative extents in `NewShape*`.
-- [ ] `grid.Shape.Dim()` infers dimension from trailing extents, so 64×64×1
+      construction. Reject negative extents in `NewShape*`. (Zero-extent
+      iterators return no phantom lines/planes — covered by
+      `TestLineIteratorZeroExtentYieldsNoLines` /
+      `TestPlaneIteratorZeroExtentYieldsNoPlanes`. `NewShape1D/2D/3D` now panic
+      on a negative extent via `mustNonNegative`; zero remains allowed — see
+      `TestNewShapeRejectsNegativeExtent`.)
+- [x] `grid.Shape.Dim()` infers dimension from trailing extents, so 64×64×1
       reports 2D and `SolveWithBC` rejects its Y faces — store the declared
-      dimension instead of guessing.
+      dimension instead of guessing. (`grid.Shape` is now a value-semantics
+      struct `{dims [3]int; ndim int}`; `Dim()` returns the declared `ndim`, so
+      `NewShape3D(64, 64, 1).Dim() == 3`. `SolveWithBC` already gated on the
+      plan's `p.dim`, so its Z/Y faces were never actually rejected; regression
+      locked by `TestSolveWithBC3DSmallNzAcceptsZFaces` and `TestShape_Dim*`.)
 - [x] Options that silently no-op — make each either work or error:
       `WithWorkers` on `PlanNDPeriodic` (ignored entirely),
       `WithSolutionMean` on plans without nullspace (`plan.go:174`),
@@ -295,6 +304,19 @@ one contract (errors) and enforce it.
 - [ ] One `Shape` type. `grid.Shape` (fixed `[3]int`) and `poisson`'s
       `Shape []int` (`shape_nd.go`) coexist; `parallel.go`'s helpers hardcode
       3 axes and would silently miscount for >3D.
+      (PARTIAL — `parallel.go` fixed: `lineCount`/`lineStartIndex` now iterate
+      over `shape.Dim()` axes instead of a hardcoded 3, and `otherAxes` was
+      removed. `grid.Shape` was converted to a declared-dimension value struct
+      (see Phase C items above). The full type MERGE is DESCOPED: `NewPlanNDPeriodic`
+      genuinely supports and is tested with >3D shapes (4D: `{4,5,6,7}`,
+      `{4,4,4,4}`, `{4,6,3,2}`) and uses `poisson.Shape` with `[]int` slice
+      semantics (passed directly as `radices []int` to `ndMultiIndex`/`ndIncrement`).
+      Unifying into the ≤3D value struct would cap ND at 3D; unifying into a
+      slice-backed type would force per-Solve heap allocation on the 2D/3D hot
+      path (`Plan.shape()`) and pervasive dimension-generic rewrites of the
+      fixed-3-slot code (fd, boundary\_\*, iterators, `applyEigenvalues`). Both
+      violate the "no new per-Solve allocs / no risky churn" constraint, so
+      `poisson.Shape` is intentionally kept as the ND representation.)
 - [ ] Deduplicate the pow2/non-pow2 strided-transform logic copy-pasted
       between `periodic_nd.go:263` and `fft_plan.go:120-157`.
 - [ ] Delete dead code: `isZeroMode` (`plan.go:258`), the unreachable

@@ -1,52 +1,70 @@
 // Package grid provides shape, stride, and indexing utilities for N-dimensional grids.
 package grid
 
-// Shape represents the dimensions of an N-dimensional grid.
-// For 1D: [nx, 1, 1], 2D: [nx, ny, 1], 3D: [nx, ny, nz].
-type Shape [3]int
+// Shape represents the dimensions of an N-dimensional grid (1, 2, or 3D).
+//
+// The extents are stored in a fixed array (trailing axes are 1) alongside the
+// DECLARED dimensionality, so a grid whose last extent happens to be 1 (e.g.
+// 64x64x1) still reports Dim() == 3. Storing the declared dimension avoids the
+// ambiguity of inferring it from the trailing extents.
+//
+// Shape has value semantics: it is comparable and never heap-allocates, which
+// keeps it cheap to construct once per Solve on the solver hot path.
+type Shape struct {
+	dims [3]int
+	ndim int
+}
 
-// NewShape1D creates a 1D shape.
+// mustNonNegative panics on a negative extent. The NewShapeND constructors take
+// no error return and are called inline throughout the codebase, so a negative
+// extent is treated as a programming error (like a slice bounds violation)
+// rather than a recoverable condition. Zero extents are permitted: they denote
+// an empty grid, which the iterators handle explicitly.
+func mustNonNegative(extents ...int) {
+	for _, n := range extents {
+		if n < 0 {
+			panic("grid: negative shape extent")
+		}
+	}
+}
+
+// NewShape1D creates a 1D shape. It panics if nx is negative.
 func NewShape1D(nx int) Shape {
-	return Shape{nx, 1, 1}
+	mustNonNegative(nx)
+	return Shape{dims: [3]int{nx, 1, 1}, ndim: 1}
 }
 
-// NewShape2D creates a 2D shape.
+// NewShape2D creates a 2D shape. It panics if any extent is negative.
 func NewShape2D(nx, ny int) Shape {
-	return Shape{nx, ny, 1}
+	mustNonNegative(nx, ny)
+	return Shape{dims: [3]int{nx, ny, 1}, ndim: 2}
 }
 
-// NewShape3D creates a 3D shape.
+// NewShape3D creates a 3D shape. It panics if any extent is negative.
 func NewShape3D(nx, ny, nz int) Shape {
-	return Shape{nx, ny, nz}
+	mustNonNegative(nx, ny, nz)
+	return Shape{dims: [3]int{nx, ny, nz}, ndim: 3}
 }
 
-// Dim returns the dimensionality (1, 2, or 3).
+// Dim returns the declared dimensionality (1, 2, or 3).
 func (s Shape) Dim() int {
-	if s[2] > 1 {
-		return 3
-	}
-
-	if s[1] > 1 {
-		return 2
-	}
-
-	return 1
+	return s.ndim
 }
 
 // Size returns the total number of elements.
 func (s Shape) Size() int {
-	return s[0] * s[1] * s[2]
+	return s.dims[0] * s.dims[1] * s.dims[2]
 }
 
 // N returns the size along the given axis (0=x, 1=y, 2=z).
 func (s Shape) N(axis int) int {
-	return s[axis]
+	return s.dims[axis]
 }
 
 // hasZeroExtent reports whether any axis has a zero extent, in which case the
 // grid is empty (no lines or planes to iterate).
 func (s Shape) hasZeroExtent() bool {
-	return s[0] == 0 || s[1] == 0 || s[2] == 0
+	return s.dims[0] == 0 || s.dims[1] == 0 || s.dims[2] == 0
 }
 
 // Stride represents the memory strides for an N-dimensional grid.
@@ -56,7 +74,7 @@ type Stride [3]int
 // RowMajorStride computes row-major (C-order) strides for a shape.
 // For shape [nx, ny, nz], strides are [ny*nz, nz, 1].
 func RowMajorStride(s Shape) Stride {
-	return Stride{s[1] * s[2], s[2], 1}
+	return Stride{s.dims[1] * s.dims[2], s.dims[2], 1}
 }
 
 // Index2D returns the linear index for a 2D coordinate (row-major).
@@ -66,7 +84,7 @@ func Index2D(i, j, ny int) int {
 
 // Index3D returns the linear index for a 3D coordinate (row-major).
 func Index3D(i, j, k int, s Shape) int {
-	return i*s[1]*s[2] + j*s[2] + k
+	return i*s.dims[1]*s.dims[2] + j*s.dims[2] + k
 }
 
 // Index returns the linear index for coordinates using strides.
@@ -81,10 +99,10 @@ func FromIndex2D(idx, ny int) (i, j int) {
 
 // FromIndex3D converts a linear index to 3D coordinates (row-major).
 func FromIndex3D(idx int, s Shape) (i, j, k int) {
-	i = idx / (s[1] * s[2])
-	rem := idx % (s[1] * s[2])
-	j = rem / s[2]
-	k = rem % s[2]
+	i = idx / (s.dims[1] * s.dims[2])
+	rem := idx % (s.dims[1] * s.dims[2])
+	j = rem / s.dims[2]
+	k = rem % s.dims[2]
 
 	return i, j, k
 }
@@ -121,7 +139,7 @@ func NewLineIterator(shape Shape, axis int) *LineIterator {
 	for d := range 3 {
 		if d != axis {
 			it.other[idx] = d
-			it.max[idx] = shape[d]
+			it.max[idx] = shape.dims[d]
 
 			idx++
 			if idx >= 2 {
@@ -193,7 +211,7 @@ func (it *LineIterator) LineStride() int {
 
 // LineLength returns the number of elements in each line.
 func (it *LineIterator) LineLength() int {
-	return it.shape[it.axis]
+	return it.shape.dims[it.axis]
 }
 
 // NumLines returns the total number of lines. A shape with any zero extent has
@@ -206,8 +224,8 @@ func (it *LineIterator) NumLines() int {
 	total := 1
 
 	for d := range 3 {
-		if d != it.axis && it.shape[d] > 0 {
-			total *= it.shape[d]
+		if d != it.axis && it.shape.dims[d] > 0 {
+			total *= it.shape.dims[d]
 		}
 	}
 
@@ -261,7 +279,7 @@ func NewPlaneIterator(shape Shape, axis int) *PlaneIterator {
 		shape:  shape,
 		stride: stride,
 		axis:   axis,
-		max:    shape[axis],
+		max:    shape.dims[axis],
 	}
 
 	idx := 0
@@ -328,12 +346,12 @@ func (it *PlaneIterator) PlaneStride1() int {
 
 // PlaneSize0 returns the size along the first plane axis.
 func (it *PlaneIterator) PlaneSize0() int {
-	return it.shape[it.other[0]]
+	return it.shape.dims[it.other[0]]
 }
 
 // PlaneSize1 returns the size along the second plane axis.
 func (it *PlaneIterator) PlaneSize1() int {
-	return it.shape[it.other[1]]
+	return it.shape.dims[it.other[1]]
 }
 
 // NumPlanes returns the total number of planes. A shape with any zero extent has

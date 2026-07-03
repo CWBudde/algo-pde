@@ -365,7 +365,7 @@ func TestForwardLines_BadAxis(t *testing.T) {
 }
 
 func TestForwardLines_ZeroExtent(t *testing.T) {
-	shape := grid.Shape{8, 0, 1} // Zero extent on axis 1
+	shape := grid.NewShape3D(8, 0, 1) // Zero extent on axis 1
 
 	plan, err := NewDSTPlan(8)
 	if err != nil {
