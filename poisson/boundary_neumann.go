@@ -3,8 +3,11 @@ package poisson
 import "github.com/MeKo-Tech/algo-pde/grid"
 
 // ApplyNeumannRHS adds inhomogeneous Neumann boundary contributions to rhs.
-// Values represent the derivative along the positive axis direction at each face.
-// The rhs slice is modified in-place and uses row-major ordering.
+// Values represent the derivative along the positive axis direction, ∂u/∂x_axis,
+// at each face — not the outward normal derivative (see the "Neumann Sign
+// Convention" section in the package doc). At a low face the outward normal is
+// -axis, so pass +∂u/∂x there too. The rhs slice is modified in-place and uses
+// row-major ordering.
 func ApplyNeumannRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryConditions) error {
 	if rhs == nil {
 		return ErrNilBuffer

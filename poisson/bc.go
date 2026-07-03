@@ -12,8 +12,11 @@ const (
 	// For homogeneous Dirichlet: u = 0 at boundaries.
 	Dirichlet
 
-	// Neumann boundary condition: ∂u/∂n = g on the boundary.
-	// For homogeneous Neumann: ∂u/∂n = 0 at boundaries.
+	// Neumann boundary condition: the normal derivative is prescribed on the
+	// boundary. Inhomogeneous data is given as the derivative along the
+	// POSITIVE axis direction, ∂u/∂x_axis = g (not the outward normal — see
+	// the "Neumann Sign Convention" section in the package doc). For
+	// homogeneous Neumann this is ∂u/∂x = 0 at both faces, i.e. no flux.
 	Neumann
 )
 

@@ -136,13 +136,23 @@ to the wrong answer. `bc.go:15` documents Neumann as outward-normal ∂u/∂n = 
 but the implementation uses the positive-axis derivative (sign-flipped at low
 faces).
 
-- [ ] Write the conventions section in `poisson/doc.go`: node placement per
+- [x] Write the conventions section in `poisson/doc.go`: node placement per
       BC, domain length per BC, Neumann sign convention, mixed-axis
       implications. Include an ASCII diagram.
-- [ ] Fix the `bc.go` Neumann sign doc to match the implementation (or flip
+      → Added "Grid Conventions" (per-BC table + ASCII node diagrams for
+      periodic/Dirichlet/Neumann + mixed-axis sampling note) to `poisson/doc.go`.
+- [x] Fix the `bc.go` Neumann sign doc to match the implementation (or flip
       the implementation to outward-normal and migrate — decide once, now).
-- [ ] Document eigenvalue formulas and memory layout (carried over from the
+      → Decided: document the positive-axis-derivative convention the
+      implementation already uses (∂u/∂x_axis = g, sign-flipped from the
+      outward normal at low faces). Fixed the `Neumann` const doc in `bc.go`
+      and the `ApplyNeumannRHS` doc, plus a dedicated "Neumann Sign
+      Convention" section in `poisson/doc.go`.
+- [x] Document eigenvalue formulas and memory layout (carried over from the
       old plan; still open).
+      → Added "Eigenvalues" (periodic/Dirichlet/Neumann per-axis formulas,
+      d-dimensional sum, nullspace note) and "Memory Layout" (row-major
+      indexing, axis order, per-face slice layout) sections to `poisson/doc.go`.
 
 ---
 
