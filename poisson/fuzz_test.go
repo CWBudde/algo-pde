@@ -134,10 +134,13 @@ func FuzzPlanSolveBasic(f *testing.F) {
 // clampDim folds an arbitrary fuzz integer into the small extent range [2, 10].
 // The lower bound of 2 satisfies the DCT-I minimum used for Neumann axes.
 func clampDim(v int) int {
-	if v < 0 {
-		v = -v
+	// Reduce first, then take the absolute value: negating before the modulo
+	// would overflow for v == math.MinInt and leave the result negative.
+	m := v % 9
+	if m < 0 {
+		m = -m
 	}
-	return v%9 + 2
+	return m + 2
 }
 
 // clampSpacing rejects non-positive / non-finite spacings and folds valid ones

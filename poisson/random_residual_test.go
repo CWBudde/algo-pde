@@ -146,7 +146,6 @@ func TestRandomRHSResidual2D(t *testing.T) {
 	seed := int64(100)
 	for _, bcx := range residualBCTypes {
 		for _, bcy := range residualBCTypes {
-			bcx, bcy := bcx, bcy
 			t.Run(bcName(bcx)+"_"+bcName(bcy), func(t *testing.T) {
 				bcs := []poisson.BCType{bcx, bcy}
 				raw := randomField(seed, nx*ny)
@@ -195,7 +194,6 @@ func TestRandomRHSResidual3D(t *testing.T) {
 	for _, bcx := range residualBCTypes {
 		for _, bcy := range residualBCTypes {
 			for _, bcz := range residualBCTypes {
-				bcx, bcy, bcz := bcx, bcy, bcz
 				t.Run(bcName(bcx)+"_"+bcName(bcy)+"_"+bcName(bcz), func(t *testing.T) {
 					bcs := []poisson.BCType{bcx, bcy, bcz}
 					raw := randomField(seed, nx*ny*nz)
