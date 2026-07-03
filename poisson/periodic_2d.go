@@ -41,12 +41,18 @@ func NewPlan2DPeriodic(nx, ny int, hx, hy float64, opts ...Option) (*Plan2DPerio
 		return nil, ErrInvalidSize
 	}
 
-	if hx <= 0 || hy <= 0 {
+	if !validSpacing(hx) || !validSpacing(hy) {
 		return nil, ErrInvalidSpacing
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
 	options.Workers = effectiveWorkers(options.Workers)
+
+	// A periodic problem always carries the constant nullspace, so
+	// NullspaceError can never yield a usable Solve. Reject it up front.
+	if options.Nullspace == NullspaceError {
+		return nil, ErrNullspace
+	}
 
 	plan := &Plan2DPeriodic{
 		nx:    nx,
@@ -102,12 +108,8 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 		return ErrSizeMismatch
 	}
 
-	if p.opts.Nullspace == NullspaceError {
-		return ErrNullspace
-	}
-
 	mean, maxAbs := meanAndMaxAbs(rhs)
-	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs) {
+	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRelTol(min(p.nx, p.ny))) {
 		return ErrNonZeroMean
 	}
 
@@ -176,6 +178,13 @@ func (p *Plan2DPeriodic) Solve(dst, rhs []float64) error {
 // SolveInPlace solves the system in-place, overwriting buf with the solution.
 func (p *Plan2DPeriodic) SolveInPlace(buf []float64) error {
 	return p.Solve(buf, buf)
+}
+
+// UsedRealFFT reports whether the plan runs the single-precision (float32)
+// real-FFT path. It is false when WithRealFFT/WithFloat32 was not set or when
+// the sizes did not qualify and the plan fell back to the float64 complex FFT.
+func (p *Plan2DPeriodic) UsedRealFFT() bool {
+	return p.useR
 }
 
 func (p *Plan2DPeriodic) newRealWorkspace() (*real2DWorkspace, error) {

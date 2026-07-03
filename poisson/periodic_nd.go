@@ -48,12 +48,19 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 	}
 
 	for _, spacing := range h {
-		if spacing <= 0 {
+		if !validSpacing(spacing) {
 			return nil, ErrInvalidSpacing
 		}
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
+
+	// A periodic problem always carries the constant nullspace, so
+	// NullspaceError can never yield a usable Solve. Reject it up front.
+	if options.Nullspace == NullspaceError {
+		return nil, ErrNullspace
+	}
+
 	if options.UseRealFFT {
 		log.Printf("poisson: real FFT disabled for ND plan: not supported for arbitrary dimensions")
 	}
@@ -127,12 +134,8 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 		return ErrSizeMismatch
 	}
 
-	if p.opts.Nullspace == NullspaceError {
-		return ErrNullspace
-	}
-
 	mean, maxAbs := meanAndMaxAbs(rhs)
-	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs) {
+	if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRelTol(p.shape.minExtent())) {
 		return ErrNonZeroMean
 	}
 

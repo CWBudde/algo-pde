@@ -2,9 +2,18 @@ package poisson
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/MeKo-Tech/algo-pde/grid"
 )
+
+// resonanceRelTol is the relative-cancellation threshold below which the
+// Helmholtz operator is treated as singular. A mode is flagged resonant when
+// |alpha + eigenvalues| drops below resonanceRelTol times the sum of the term
+// magnitudes, i.e. the divide would amplify by more than ~1/resonanceRelTol and
+// return a near-garbage field. Poisson problems never trip it: with alpha == 0
+// all terms are non-negative, so |denom| == scale for every non-zero mode.
+const resonanceRelTol = 1e-9
 
 // Plan is a reusable Poisson/Helmholtz solver plan with per-axis boundary conditions.
 type Plan struct {
@@ -62,6 +71,10 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		}
 	}
 
+	if !validAlpha(alpha) {
+		return nil, ErrInvalidAlpha
+	}
+
 	options := ApplyOptions(DefaultOptions(), opts)
 	options.Workers = effectiveWorkers(options.Workers)
 	plan := &Plan{
@@ -78,7 +91,7 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		if n[axis] < 1 {
 			return nil, ErrInvalidSize
 		}
-		if h[axis] <= 0 {
+		if !validSpacing(h[axis]) {
 			return nil, ErrInvalidSpacing
 		}
 
@@ -115,6 +128,13 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		}
 	}
 
+	// The nullspace is fully determined by alpha and the boundary conditions,
+	// both fixed at construction. If the problem has a nullspace, NullspaceError
+	// makes every Solve fail, so reject the combination now rather than later.
+	if plan.hasNullspace() && options.Nullspace == NullspaceError {
+		return nil, ErrNullspace
+	}
+
 	realSize := 0
 	if !options.InPlace {
 		realSize = size
@@ -146,14 +166,11 @@ func (p *Plan) Solve(dst, rhs []float64) error {
 // solve runs the transform pipeline using the given per-call workspace.
 func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	hasNullspace := p.hasNullspace()
-	if hasNullspace && p.opts.Nullspace == NullspaceError {
-		return ErrNullspace
-	}
 
 	offset := 0.0
 	if hasNullspace {
 		mean, maxAbs := meanAndMaxAbs(rhs)
-		if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs) {
+		if p.opts.Nullspace == NullspaceZeroMode && !meanWithinTolerance(mean, maxAbs, meanRelTol(p.minExtent())) {
 			return ErrNonZeroMean
 		}
 
@@ -219,6 +236,18 @@ func (p *Plan) size() int {
 	return size
 }
 
+// minExtent returns the smallest active per-axis extent. The coarsest axis
+// dominates the O(h^2) quadrature error that the zero-mean gate must tolerate.
+func (p *Plan) minExtent() int {
+	m := p.n[0]
+	for axis := 1; axis < p.dim; axis++ {
+		if p.n[axis] < m {
+			m = p.n[axis]
+		}
+	}
+	return m
+}
+
 func (p *Plan) hasNullspace() bool {
 	if p.alpha != 0 {
 		return false
@@ -247,15 +276,25 @@ func (p *Plan) applyEigenvalues(buf []complex128) error {
 			j := rem / strideZ
 			k := rem % strideZ
 
+			// scale is the sum of the magnitudes of the terms that build denom.
+			// For a well-conditioned mode denom == scale (all terms share sign),
+			// but when a negative alpha nearly cancels the positive eigenvalue
+			// sum, |denom| collapses far below scale. The ratio |denom|/scale is
+			// exactly the catastrophic-cancellation conditioning of the divide,
+			// so gating on it flags near-resonance before the ~1/|denom|
+			// amplification turns the mode into garbage.
 			denom := p.alpha + p.eig[0][i]
+			scale := math.Abs(p.alpha) + math.Abs(p.eig[0][i])
 			if p.dim > 1 {
 				denom += p.eig[1][j]
+				scale += math.Abs(p.eig[1][j])
 			}
 			if p.dim > 2 {
 				denom += p.eig[2][k]
+				scale += math.Abs(p.eig[2][k])
 			}
 
-			if denom == 0 {
+			if math.Abs(denom) <= resonanceRelTol*scale {
 				if allowZeroMode && i == 0 && (p.dim < 2 || j == 0) && (p.dim < 3 || k == 0) {
 					buf[idx] = 0
 					continue
