@@ -77,16 +77,17 @@ func TestWithSolutionMean_NoNullspaceErrors(t *testing.T) {
 	}
 }
 
-// --- Item 4: WithRealFFT only valid on all-periodic plans ---
+// --- Item 4: WithRealFFT is unsupported on the general Plan ---
 
-func TestWithRealFFT_NonPeriodicErrors(t *testing.T) {
+func TestWithRealFFT_GeneralPlanErrors(t *testing.T) {
+	// Non-periodic BCs.
 	_, err := poisson.NewPlan(
 		2, []int{16, 16}, []float64{1.0 / 17, 1.0 / 17},
 		[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet},
 		poisson.WithRealFFT(true),
 	)
-	if !errors.Is(err, poisson.ErrRealFFTRequiresPeriodic) {
-		t.Fatalf("got %v, want ErrRealFFTRequiresPeriodic", err)
+	if !errors.Is(err, poisson.ErrRealFFTUnsupported) {
+		t.Fatalf("got %v, want ErrRealFFTUnsupported", err)
 	}
 
 	// WithFloat32 is an alias and must be rejected the same way.
@@ -95,8 +96,20 @@ func TestWithRealFFT_NonPeriodicErrors(t *testing.T) {
 		[]poisson.BCType{poisson.Dirichlet, poisson.Periodic},
 		poisson.WithFloat32(true),
 	)
-	if !errors.Is(err, poisson.ErrRealFFTRequiresPeriodic) {
-		t.Fatalf("got %v, want ErrRealFFTRequiresPeriodic", err)
+	if !errors.Is(err, poisson.ErrRealFFTUnsupported) {
+		t.Fatalf("got %v, want ErrRealFFTUnsupported", err)
+	}
+
+	// All-periodic BCs must ALSO be rejected: the general Plan never runs the
+	// real-FFT path, so the option would be a silent no-op (regression test for
+	// the Codex review on #7). Use NewPlan2DPeriodic to actually get real-FFT.
+	_, err = poisson.NewPlan(
+		2, []int{16, 16}, []float64{1.0 / 16, 1.0 / 16},
+		[]poisson.BCType{poisson.Periodic, poisson.Periodic},
+		poisson.WithRealFFT(true),
+	)
+	if !errors.Is(err, poisson.ErrRealFFTUnsupported) {
+		t.Fatalf("all-periodic general Plan: got %v, want ErrRealFFTUnsupported", err)
 	}
 }
 

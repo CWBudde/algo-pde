@@ -41,11 +41,13 @@ var (
 		"WithSolutionMean requires a plan with a nullspace (all-periodic or all-Neumann, alpha==0)",
 	)
 
-	// ErrRealFFTRequiresPeriodic is returned when WithRealFFT/WithFloat32 is set
-	// on a plan that is not all-periodic; the real-FFT path only applies to the
-	// dedicated all-periodic plans.
-	ErrRealFFTRequiresPeriodic = errors.New(
-		"WithRealFFT/WithFloat32 is only supported on all-periodic plans",
+	// ErrRealFFTUnsupported is returned when WithRealFFT/WithFloat32 is set on a
+	// plan type that never runs the real-FFT path. Only the dedicated all-periodic
+	// plans (NewPlan2DPeriodic / NewPlan3DPeriodic) honor it; the general Plan —
+	// including the SolveWithBC path, even with all-periodic BCs — always uses the
+	// complex pipeline, so the option would otherwise be a silent no-op there.
+	ErrRealFFTUnsupported = errors.New(
+		"WithRealFFT/WithFloat32 is only supported by NewPlan2DPeriodic/NewPlan3DPeriodic",
 	)
 
 	// ErrDuplicateFace is returned when SolveWithBC receives more than one

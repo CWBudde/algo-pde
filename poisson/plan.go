@@ -142,19 +142,12 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 	}
 
 	// The general Plan (which also serves the SolveWithBC path) never runs the
-	// real-FFT path. Only the dedicated all-periodic plans do, so reject
-	// WithRealFFT/WithFloat32 unless every axis is periodic.
+	// real-FFT path — only the dedicated all-periodic plans (NewPlan2DPeriodic /
+	// NewPlan3DPeriodic) do. Reject WithRealFFT/WithFloat32 here rather than
+	// silently ignoring it, even when every axis is periodic (a general all-
+	// periodic Plan still uses the complex pipeline).
 	if options.UseRealFFT {
-		allPeriodic := true
-		for axis := range dim {
-			if plan.bc[axis] != Periodic {
-				allPeriodic = false
-				break
-			}
-		}
-		if !allPeriodic {
-			return nil, ErrRealFFTRequiresPeriodic
-		}
+		return nil, ErrRealFFTUnsupported
 	}
 
 	realSize := 0
