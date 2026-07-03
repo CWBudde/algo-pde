@@ -19,16 +19,6 @@ func main() {
 
 	fmt.Printf("2D Neumann Poisson Solver\n")
 
-	plan, err := poisson.NewPlan(
-		2,
-		[]int{nx, ny},
-		[]float64{hx, hy},
-		[]poisson.BCType{poisson.Neumann, poisson.Neumann},
-	)
-	if err != nil {
-		panic(err)
-	}
-
 	// u_exact = cos(pi*x) * cos(pi*y)
 	// -Lap u = 2*pi^2 * u
 	// Grid points x_i = (i + 0.5)*h
@@ -50,7 +40,7 @@ func main() {
 	// We handle it by enabling automatic mean subtraction (NullspaceSubtractMean).
 	// This ensures the solution has zero mean and the RHS is projected onto the range.
 
-	plan, err = poisson.NewPlan(
+	plan, err := poisson.NewPlan(
 		2,
 		[]int{nx, ny},
 		[]float64{hx, hy},

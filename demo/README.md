@@ -76,13 +76,13 @@ For each click at position `(sx, sy)`:
    u(x,y,t) = Σᵢ pᵢ(x,y) · cos(2π fᵢ t) · exp(-γᵢ t)
    ```
 
-   where `γᵢ = 0.5 · fᵢ` (frequency-dependent damping)
+   where `γᵢ = ωᵢ / 20 = 2π fᵢ / 20` (frequency-dependent damping)
 
 3. **Visualization**: Apply diverging colormap (blue ← 0 → red) with percentile normalization
 
 ### Technical Details
 
-- **Grid**: 256×256 cells, 0.05m spacing (~12.8m room)
+- **Grid**: 256×192 cells, 0.05m spacing (12.8m × 9.6m room)
 - **Boundary conditions**: Neumann (rigid walls)
 - **Frequency bins**: 16 logarithmically-spaced modes
 - **Performance**: ~72ms for 16-mode solve (target <200ms)
@@ -113,13 +113,15 @@ Tested on:
 
 ## Performance Notes
 
-The demo is optimized for 60 FPS at 256² resolution:
+The demo runs at 60 FPS at 256×192 resolution. The 16-mode Helmholtz solve is a
+one-time cost per click, not a per-frame cost; only the synthesis, colormap, and
+render run every frame and stay within the 16.67ms 60fps budget:
 
-- **WASM solve**: ~4.5ms per frequency (16 × 4.5ms = 72ms total)
+- **WASM solve**: ~4.5ms per frequency, ~72ms for all 16 modes — paid once per click, not per frame
 - **Frame synthesis**: ~2-3ms (worker thread)
 - **Colormap + transfer**: ~1-2ms
 - **Canvas render**: ~1-2ms (UI thread)
-- **Total frame budget**: ~80ms (well under 16.67ms animation budget)
+- **Per-frame total**: ~4-7ms (within the 16.67ms 60fps budget)
 
 ## GitHub Pages Deployment
 

@@ -8,6 +8,8 @@ import (
 	"math"
 	"os"
 
+	"github.com/MeKo-Tech/algo-pde/fd"
+	"github.com/MeKo-Tech/algo-pde/grid"
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
 
@@ -73,6 +75,33 @@ func main() {
 	}
 
 	fmt.Printf("Solved. Max value: %.3f\n", maxVal(u))
+
+	// Verify correctness by reapplying the operator (alpha - Delta)u and
+	// comparing to the RHS. fd.Apply2D computes the NEGATIVE Laplacian (-Delta),
+	// so the residual at each node is alpha*u[i] + lap[i] - rhs[i].
+	lap := make([]float64, nx*ny)
+	if err := fd.Apply2D(
+		lap,
+		u,
+		grid.NewShape2D(nx, ny),
+		[2]float64{hx, hy},
+		[2]poisson.BCType{poisson.Periodic, poisson.Periodic},
+	); err != nil {
+		panic(err)
+	}
+
+	maxRes := 0.0
+	maxRHS := 0.0
+	for i := range u {
+		res := math.Abs(alpha*u[i] + lap[i] - rhs[i])
+		if res > maxRes {
+			maxRes = res
+		}
+		if a := math.Abs(rhs[i]); a > maxRHS {
+			maxRHS = a
+		}
+	}
+	fmt.Printf("Max residual: %.3e\n", maxRes/maxRHS)
 
 	if err := savePNG("helmholtz.png", u, nx, ny); err != nil {
 		panic(err)
