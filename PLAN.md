@@ -436,8 +436,16 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
 
 ### G.2 Solver features
 
-- [ ] True complex Helmholtz (Re/Im as two real solves) → correct phase,
+- [x] True complex Helmholtz (Re/Im as two real solves) → correct phase,
       damping via complex shift.
+      → `NewComplexHelmholtzPlan` + `SolveComplex(dst []complex128, rhs []float64)`
+      solve `(α−Δ)u = f` for complex α. The existing transform pipeline is linear,
+      so the real/imag parts of each mode ride through independently and a single
+      complex per-mode divide gives the complex solution for every BC (no new
+      transform). `imag(α) != 0` acts as a damping shift (never resonant); real α
+      keeps the `ErrResonant` guard. Zero extra per-solve allocation vs the real
+      path. `poisson/complex_helmholtz.go` + `_test.go` (residual for all BCs,
+      real-path agreement, damping-vs-resonance, validation, alloc parity).
 - [ ] Robin / per-face asymmetric BCs (the `AxisBC` promise, currently dead
       code — implement or drop).
 - [ ] Pressure projection API for incompressible flow (divergence, gradient,

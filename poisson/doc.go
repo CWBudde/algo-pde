@@ -108,6 +108,21 @@
 //   - NullspaceSubtractMean: Automatically subtract mean from RHS
 //   - NullspaceError: Return error if nullspace exists
 //
+// # Complex Helmholtz
+//
+// NewComplexHelmholtzPlan solves (α - Δ)u = f for a complex coefficient α and a
+// real right-hand side f; the solution u is complex and is returned by
+// SolveComplex(dst []complex128, rhs []float64). It reuses the same transform
+// pipeline: because every axis transform is linear, the real and imaginary
+// parts of each spectral mode are carried independently, so a single complex
+// per-mode division yields the complex solution for every boundary condition.
+//
+// A positive imaginary part of α is a complex shift (damping): it keeps the
+// operator non-singular near resonances, so SolveComplex returns a finite field
+// instead of ErrResonant. With α = -k² + i·ε this models a driven, lightly
+// damped acoustic room at wavenumber k (standing-wave room modes). A purely
+// real α behaves like NewHelmholtzPlan and still guards genuine resonances.
+//
 // # Performance
 //
 // The solver has O(N log N) complexity where N is the total number of grid points.
