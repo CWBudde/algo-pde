@@ -48,6 +48,12 @@ type planKey struct {
 // planCache memoizes plans across Solve calls. WASM here is single-threaded (Go
 // scheduling inside one JS event loop, no SharedArrayBuffer / web-worker
 // concurrency touches this map), so a plain map without a mutex is safe.
+//
+// A frequency sweep produces a distinct alpha (hence a distinct plan) per step,
+// so the cache is bounded: once it reaches maxCachedPlans it is dropped and
+// rebuilt, keeping memory flat instead of accumulating hundreds of large plans.
+const maxCachedPlans = 32
+
 var planCache = make(map[planKey]*poisson.Plan)
 
 func main() {
@@ -178,6 +184,9 @@ func getPlan(nx, ny int, dx, dy float64, bcX, bcY int, alpha complex128) (*poiss
 		return nil, err
 	}
 
+	if len(planCache) >= maxCachedPlans {
+		planCache = make(map[planKey]*poisson.Plan, maxCachedPlans)
+	}
 	planCache[key] = plan
 	return plan, nil
 }

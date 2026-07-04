@@ -188,7 +188,11 @@ canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) / rect.width;
   const y = (e.clientY - rect.top) / rect.height;
-  state.source = { sx: x * CONFIG.nx, sy: y * CONFIG.ny };
+  // Clamp to [0, n-1]: a click on the right/bottom edge gives x or y == 1,
+  // which would otherwise place the source center just outside the grid.
+  const sx = Math.min(CONFIG.nx - 1, Math.max(0, x * CONFIG.nx));
+  const sy = Math.min(CONFIG.ny - 1, Math.max(0, y * CONFIG.ny));
+  state.source = { sx, sy };
 
   statusEl.textContent = 'Solving…';
   requestSolve();
