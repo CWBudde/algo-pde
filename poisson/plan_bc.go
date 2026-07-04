@@ -11,6 +11,12 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 		return ErrNilBuffer
 	}
 
+	// Inhomogeneous BC lifting is a real-valued operation; a complex-alpha plan
+	// is not supported here (there is no complex SolveWithBC).
+	if imag(p.alphaComplex) != 0 {
+		return ErrComplexPlan
+	}
+
 	size := p.size()
 	if len(dst) != size || len(rhs) != size {
 		return ErrSizeMismatch

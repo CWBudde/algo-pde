@@ -30,9 +30,11 @@ type Plan struct {
 	complexSize int
 	opts        Options
 	alpha       float64
-	// alphaComplex is the full (possibly complex) Helmholtz coefficient. For the
-	// real Poisson/Helmholtz path it equals complex(alpha, 0) and is unused; the
-	// complex path (SolveComplex) divides by it and can carry a damping shift.
+	// alphaComplex is the full (possibly complex) Helmholtz coefficient. For a
+	// real plan it equals complex(alpha, 0); hasNullspace consults it (so a
+	// nonzero imaginary part removes the nullspace) and the real solve paths
+	// reject it when imag != 0. The complex path (SolveComplex) divides by it and
+	// can carry a damping shift.
 	alphaComplex complex128
 }
 
@@ -184,6 +186,12 @@ func newPlanCore(dim int, n []int, h []float64, bcs []BCType, alphaC complex128,
 func (p *Plan) Solve(dst, rhs []float64) error {
 	if dst == nil || rhs == nil {
 		return ErrNilBuffer
+	}
+
+	// A complex-alpha plan has no real solution; the real path would silently
+	// use only Re(alpha). Direct the caller to SolveComplex instead.
+	if imag(p.alphaComplex) != 0 {
+		return ErrComplexPlan
 	}
 
 	size := p.size()

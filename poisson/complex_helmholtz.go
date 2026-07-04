@@ -111,27 +111,34 @@ func (p *Plan) applyComplexEigenvalues(buf []complex128) error {
 			k := rem % strideZ
 
 			eigSum := p.eig[0][i]
-			scale := math.Abs(real(p.alphaComplex)) + math.Abs(p.eig[0][i])
 			if p.dim > 1 {
 				eigSum += p.eig[1][j]
-				scale += math.Abs(p.eig[1][j])
 			}
 			if p.dim > 2 {
 				eigSum += p.eig[2][k]
-				scale += math.Abs(p.eig[2][k])
 			}
 
 			denom := p.alphaComplex + complex(eigSum, 0)
 
-			if !damped && math.Abs(real(denom)) <= resonanceRelTol*scale {
+			if !damped {
 				// Real alpha through the complex API: a genuine resonance must
-				// error rather than amplify, except for the compatible DC mode
-				// of a nullspace problem.
-				if allowZeroMode && i == 0 && (p.dim < 2 || j == 0) && (p.dim < 3 || k == 0) {
-					buf[idx] = 0
-					continue
+				// error rather than amplify, except for the compatible DC mode of
+				// a nullspace problem. scale (the term-magnitude sum) is only
+				// needed for this guard, so it is skipped in the damped path.
+				scale := math.Abs(real(p.alphaComplex)) + math.Abs(p.eig[0][i])
+				if p.dim > 1 {
+					scale += math.Abs(p.eig[1][j])
 				}
-				return ErrResonant
+				if p.dim > 2 {
+					scale += math.Abs(p.eig[2][k])
+				}
+				if math.Abs(real(denom)) <= resonanceRelTol*scale {
+					if allowZeroMode && i == 0 && (p.dim < 2 || j == 0) && (p.dim < 3 || k == 0) {
+						buf[idx] = 0
+						continue
+					}
+					return ErrResonant
+				}
 			}
 
 			buf[idx] /= denom
