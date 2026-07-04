@@ -102,9 +102,13 @@ func (s Shape) Dims() []int {
 	return s.dims
 }
 
-// hasZeroExtent reports whether any axis has a zero extent, in which case the
-// grid is empty (no lines or planes to iterate).
+// hasZeroExtent reports whether the grid is empty (no lines or planes to
+// iterate): either a zero-dimensional shape (dims == nil) or any axis with a
+// zero extent.
 func (s Shape) hasZeroExtent() bool {
+	if len(s.dims) == 0 {
+		return true
+	}
 	for _, n := range s.dims {
 		if n == 0 {
 			return true
@@ -173,7 +177,15 @@ type LineIterator struct {
 // NewLineIterator creates an iterator over lines along the given axis.
 // For axis=0 in a 2D grid, it iterates over all rows (varying j).
 // For axis=1 in a 2D grid, it iterates over all columns (varying i).
+//
+// The line/plane iterators (and the [3]int RowMajorStride they use) only
+// support up to 3 dimensions; a shape with Dim() > 3 is a programming error and
+// panics. N-D grids are traversed by the caller's own machinery (see
+// poisson.PlanNDPeriodic), not these helpers.
 func NewLineIterator(shape Shape, axis int) *LineIterator {
+	if shape.Dim() > 3 {
+		panic("grid: NewLineIterator supports at most 3 dimensions")
+	}
 	stride := RowMajorStride(shape)
 	it := &LineIterator{
 		shape:  shape,
@@ -321,7 +333,11 @@ type PlaneIterator struct {
 
 // NewPlaneIterator creates an iterator over planes orthogonal to the given axis.
 // For axis=0 in a 3D grid, it iterates over all YZ planes (varying i).
+// Like NewLineIterator it supports at most 3 dimensions and panics on Dim() > 3.
 func NewPlaneIterator(shape Shape, axis int) *PlaneIterator {
+	if shape.Dim() > 3 {
+		panic("grid: NewPlaneIterator supports at most 3 dimensions")
+	}
 	stride := RowMajorStride(shape)
 	it := &PlaneIterator{
 		shape:  shape,

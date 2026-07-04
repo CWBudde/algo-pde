@@ -364,6 +364,25 @@ func TestForwardLines_BadAxis(t *testing.T) {
 	}
 }
 
+func TestForwardLines_RejectsAbove3D(t *testing.T) {
+	// The line transforms use grid's <=3D row-major iteration; a 4D shape must
+	// be rejected (ErrInvalidAxis) rather than silently skipping the 4th axis.
+	shape := grid.NewShapeND(2, 3, 4, 5)
+
+	plan, err := NewDSTPlan(2)
+	if err != nil {
+		t.Fatalf("NewDSTPlan failed: %v", err)
+	}
+
+	data := make([]float64, shape.Size())
+	if err := plan.ForwardLines(data, shape, 0); !errors.Is(err, ErrInvalidAxis) {
+		t.Errorf("4D forward: got %v, want ErrInvalidAxis", err)
+	}
+	if err := plan.InverseLines(data, shape, 0); !errors.Is(err, ErrInvalidAxis) {
+		t.Errorf("4D inverse: got %v, want ErrInvalidAxis", err)
+	}
+}
+
 func TestForwardLines_ZeroExtent(t *testing.T) {
 	shape := grid.NewShape3D(8, 0, 1) // Zero extent on axis 1
 

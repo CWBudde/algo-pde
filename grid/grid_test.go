@@ -457,6 +457,18 @@ func TestLineIteratorZeroExtentYieldsNoLines(t *testing.T) {
 	}
 }
 
+func TestLineIteratorEmptyShapeYieldsNoLines(t *testing.T) {
+	// The zero-value Shape (Dim()==0) is empty and must yield no lines, not a
+	// phantom 1x1x1 line.
+	it := NewLineIterator(Shape{}, 0)
+	if got := it.NumLines(); got != 0 {
+		t.Fatalf("empty shape: NumLines() = %d, want 0", got)
+	}
+	if it.Next() {
+		t.Fatal("empty shape: iterator yielded a line, want none")
+	}
+}
+
 func TestPlaneIteratorZeroExtentYieldsNoPlanes(t *testing.T) {
 	shapes := []Shape{
 		NewShape3D(0, 3, 2),

@@ -39,9 +39,13 @@ func TestPlan_SolveShapeCached(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var solveErr error
 	got := testing.AllocsPerRun(100, func() {
-		_ = plan.Solve(dst, rhs)
+		solveErr = plan.Solve(dst, rhs)
 	})
+	if solveErr != nil {
+		t.Fatalf("Solve returned error during measurement: %v", solveErr)
+	}
 	t.Logf("2D Dirichlet workers=1 allocs/op = %v", got)
 
 	if got > 5 {
@@ -80,9 +84,13 @@ func TestPlanNDPeriodic_SolveShapeCached(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var solveErr error
 	got := testing.AllocsPerRun(50, func() {
-		_ = plan.Solve(dst, rhs)
+		solveErr = plan.Solve(dst, rhs)
 	})
+	if solveErr != nil {
+		t.Fatalf("Solve returned error during measurement: %v", solveErr)
+	}
 	t.Logf("ND workers=1 allocs/op = %v", got)
 
 	if got > 640 {

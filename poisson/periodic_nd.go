@@ -70,7 +70,9 @@ func NewPlanNDPeriodic(shape grid.Shape, h []float64, opts ...Option) (*PlanNDPe
 	// Real FFT is not supported for arbitrary dimensions; the plan runs the
 	// float64 complex path. UsedRealFFT reports this (always false for ND).
 
-	dims := append([]int(nil), shape.Dims()...)
+	// dims is read-only during construction; grid.NewShapeN below makes the one
+	// defensive copy that the plan retains, so no separate copy is needed here.
+	dims := shape.Dims()
 
 	hCopy := make([]float64, len(h))
 	copy(hCopy, h)
