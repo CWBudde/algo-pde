@@ -34,6 +34,11 @@ var (
 	// ErrResonant is returned when the Helmholtz operator is singular.
 	ErrResonant = errors.New("helmholtz operator is singular: alpha cancels eigenvalue")
 
+	// ErrComplexPlan is returned by the real solve paths (Solve, SolveInPlace,
+	// SolveWithBC) when the plan was built with a complex alpha (imag != 0). Such
+	// a plan represents a complex-valued problem; solve it with SolveComplex.
+	ErrComplexPlan = errors.New("plan has a complex alpha: use SolveComplex")
+
 	// ErrSolutionMeanRequiresNullspace is returned when WithSolutionMean is set
 	// on a plan whose operator has no nullspace, where the requested mean would
 	// otherwise be silently ignored.

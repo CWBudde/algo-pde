@@ -217,6 +217,39 @@ func TestSolveComplex_DampingAvoidsResonance(t *testing.T) {
 	}
 }
 
+// TestComplexPlan_RealPathRejected verifies the real solve paths refuse a
+// complex-alpha plan (which would otherwise silently use only Re(alpha)) and
+// point the caller at SolveComplex.
+func TestComplexPlan_RealPathRejected(t *testing.T) {
+	plan, err := poisson.NewComplexHelmholtzPlan(
+		1, []int{8}, []float64{0.1},
+		[]poisson.BCType{poisson.Dirichlet}, complex(-5, 2),
+	)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	buf := make([]float64, 8)
+
+	if err := plan.Solve(buf, buf); !errors.Is(err, poisson.ErrComplexPlan) {
+		t.Fatalf("Solve on complex plan: got %v, want ErrComplexPlan", err)
+	}
+	if err := plan.SolveInPlace(buf); !errors.Is(err, poisson.ErrComplexPlan) {
+		t.Fatalf("SolveInPlace on complex plan: got %v, want ErrComplexPlan", err)
+	}
+	if err := plan.SolveWithBC(buf, buf, nil); !errors.Is(err, poisson.ErrComplexPlan) {
+		t.Fatalf("SolveWithBC on complex plan: got %v, want ErrComplexPlan", err)
+	}
+
+	// A real-alpha plan through the complex constructor still takes the real path.
+	realish, err := poisson.NewComplexHelmholtzPlan(1, []int{8}, []float64{0.1}, []poisson.BCType{poisson.Dirichlet}, complex(2, 0))
+	if err != nil {
+		t.Fatalf("real-alpha complex plan: %v", err)
+	}
+	if err := realish.Solve(buf, buf); err != nil {
+		t.Fatalf("Solve on real-alpha plan should work, got %v", err)
+	}
+}
+
 func TestSolveComplex_Validation(t *testing.T) {
 	bcs := []poisson.BCType{poisson.Dirichlet}
 
