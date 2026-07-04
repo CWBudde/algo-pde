@@ -504,6 +504,49 @@ func dst2Reference(dst, src []float64) {
 	}
 }
 
+// dst1Reference is a direct O(N²) evaluation of the unnormalized DST-I used to
+// cross-check the FFT-based DSTPlan.Forward: X[k] = Σ x[i]·sin(π(i+1)(k+1)/(N+1)).
+func dst1Reference(dst, src []float64) {
+	n := len(src)
+	for k := range n {
+		sum := 0.0
+		for i := range n {
+			sum += src[i] * DST1Coefficient(i, k, n)
+		}
+		dst[k] = sum
+	}
+}
+
+func TestDSTPlan_Reference(t *testing.T) {
+	sizes := []int{1, 2, 3, 4, 5, 8, 9, 16}
+	for _, n := range sizes {
+		t.Run("dst1-"+sizeStr(n), func(t *testing.T) {
+			plan, err := NewDSTPlan(n)
+			if err != nil {
+				t.Fatalf("NewDSTPlan(%d) failed: %v", n, err)
+			}
+
+			src := make([]float64, n)
+			for i := range n {
+				src[i] = math.Cos(float64(i)*0.6) - 0.4*float64(i%2) + 0.2
+			}
+
+			dst := make([]float64, n)
+			if err := plan.Forward(dst, src); err != nil {
+				t.Fatalf("Forward failed: %v", err)
+			}
+
+			ref := make([]float64, n)
+			dst1Reference(ref, src)
+			for i := range n {
+				if math.Abs(dst[i]-ref[i]) > 1e-9 {
+					t.Errorf("n=%d reference mismatch at [%d]: got %v, want %v", n, i, dst[i], ref[i])
+				}
+			}
+		})
+	}
+}
+
 func sizeStr(n int) string {
 	if n >= 1024 {
 		return itoa(n/1024) + "K"

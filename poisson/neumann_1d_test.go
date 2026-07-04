@@ -124,13 +124,29 @@ func TestPlan1DNeumann_SubtractMean(t *testing.T) {
 func checkNeumannDerivative(t *testing.T, u []float64, h float64) {
 	t.Helper()
 
-	if len(u) == 0 {
+	if len(u) < 3 {
 		return
 	}
+	n := len(u)
 
-	leftDeriv := (u[0] - u[0]) / h
-	rightDeriv := (u[len(u)-1] - u[len(u)-1]) / h
-	if math.Abs(leftDeriv) > neumann1dTol || math.Abs(rightDeriv) > neumann1dTol {
-		t.Fatalf("expected zero boundary derivative, got %g %g", leftDeriv, rightDeriv)
+	// The manufactured Neumann fields are cell-centered samples of cos(kπx),
+	// whose physical derivative vanishes at both boundaries — that is exactly the
+	// homogeneous Neumann data (∂u/∂x = 0) the solver enforces. Estimate that
+	// boundary derivative with a genuine second-order one-sided finite difference
+	// built from the three nearest cell-centered nodes and confirm it is
+	// (numerically) zero. Unlike the previous (u[0]-u[0])/h tautology this
+	// combines distinct sample values, so a corrupted field would be caught.
+	//
+	// The one-sided stencil (-2·u0 + 3·u1 - u2)/h approximates ∂u/∂x at the left
+	// boundary x=0 (nodes sit at (i+½)h); its mirror does the right boundary. For
+	// cos(kπx) with k up to 2 the residual is O(h²) ≈ 2e-3, far below the gate.
+	const boundarySlopeTol = 1e-2
+
+	leftDeriv := (-2*u[0] + 3*u[1] - u[2]) / h
+	rightDeriv := (2*u[n-1] - 3*u[n-2] + u[n-3]) / h
+
+	if math.Abs(leftDeriv) > boundarySlopeTol || math.Abs(rightDeriv) > boundarySlopeTol {
+		t.Fatalf("expected ~zero Neumann boundary derivative, got left=%g right=%g (tol %g)",
+			leftDeriv, rightDeriv, boundarySlopeTol)
 	}
 }

@@ -181,36 +181,68 @@ ship green today.
       sine/cosine tests probe) fails this check at 2e-3 while every manufactured
       test still passes — confirming it pins the whole spectrum, not just low
       modes.
-- [ ] Feed the dense Gaussian-elimination reference
+- [x] Feed the dense Gaussian-elimination reference
       (`reference_solver_test.go`) **random** RHS, and extend it beyond 2D
       homogeneous Dirichlet: Neumann, periodic, mixed, anisotropic h,
       Helmholtz, inhomogeneous BC.
-- [ ] Give the fuzz test a property: currently `_ = plan.Solve(dst, rhs)`
+      → `TestReferenceSolve2D_Random` + `buildDenseOperator2D` compare the
+      spectral solver against a dense Gaussian-elimination reference on a
+      deterministic random RHS for 2D Neumann, periodic, Dirichlet×Neumann,
+      anisotropic-h Dirichlet, and Helmholtz(α>0). Singular (Neumann/periodic)
+      cases project to zero-mean and compare up to an additive constant.
+- [x] Give the fuzz test a property: currently `_ = plan.Solve(dst, rhs)`
       (`fuzz_test.go:58`) asserts nothing. Check err handling, finite output,
       and (for valid inputs) the residual. Un-tie `nz` from `nx` (line 27).
-- [ ] Delete or fix vacuous assertions:
+      → Fuzz target now takes an independent `nz`, clamps dims/spacings, and on
+      a successful solve asserts finite output and a reapplied-operator residual
+      (mean-projected for nullspace BCs) within tolerance.
+- [x] Delete or fix vacuous assertions:
       `(u[0]-u[0])/h` in `neumann_1d_test.go:131` (identically zero),
       the `t.Logf`-only `TestDCTPlan_KnownValues` (`dct_test.go:117`),
       the `math.Sin(0)` checks in `dirichlet_1d_test.go:29,62`.
-- [ ] Tighten the periodic convergence test: `0.6×` per halving accepts
+      → `checkNeumannDerivative` now computes a real one-sided FD of the boundary
+      derivative; `dirichlet_1d_test.go` extrapolates the solver output to the
+      vertex-centered boundary; `TestDCTPlan_KnownValues` asserts the DCT-I
+      amplitude spike (`N-1`) at the driven mode (the old `(N-1)/2` expectation
+      was wrong, which is why it never asserted).
+- [x] Tighten the periodic convergence test: `0.6×` per halving accepts
       first-order schemes (`periodic_2d_test.go:160`); require rate ≥ 1.8 as
       `convergence_test.go` already does — and add strict-order tests for
       Neumann, periodic, mixed, and 3D.
-- [ ] Replace the circular eigenvalue tests (`fd/eigenvalues_test.go` re-types
+      → Periodic test uses the strict log-log `checkConvergenceRates` (≥1.8);
+      added `TestConvergence2D_Neumann`, `_Mixed_DirichletNeumann`, and
+      `TestConvergence3D_Dirichlet`.
+- [x] Replace the circular eigenvalue tests (`fd/eigenvalues_test.go` re-types
       the identical formula inline) with actual small-matrix
       eigendecomposition or brute-force stencil checks on random vectors.
-- [ ] Helmholtz gaps: solve tests for negative non-resonant α, a
+      → `fd/eigenvalues_verify_test.go` `TestEigenvaluesMatchStencil` applies the
+      real `Apply1D` stencil to each BC's analytic eigenvector and asserts
+      `A·v_k = λ_k·v_k` — no restatement of the closed-form λ formula.
+- [x] Helmholtz gaps: solve tests for negative non-resonant α, a
       near-resonant α test (1 ulp off — must return ErrResonant, not
       garbage), Neumann/periodic BC with α > 0.
-- [ ] Cover the 0%-coverage surface: `Plan.SolveInPlace`,
+      → Negative-non-resonant and near-resonant already existed in
+      `correctness_a3_test.go`; added α>0 accuracy tests for Neumann and Periodic
+      BC (1D/2D) in `helmholtz_test.go`.
+- [x] Cover the 0%-coverage surface: `Plan.SolveInPlace`,
       `Plan2DPeriodic.SolveInPlace`, `Plan3DPeriodic.SolveInPlace`,
       `WithNullspace`, `WithWorkers`, `WithInPlace`.
-- [ ] Asymmetric Neumann data through `SolveWithBC` (currently only constant,
+      → `coverage_gaps_test.go` adds `TestWithInPlace_MatchesDefault` (also
+      exercises `Plan.SolveInPlace`), `TestWithNullspace_Functional`, and
+      dedicated `Plan2D/3DPeriodic.SolveInPlace` correctness tests; `WithWorkers`
+      was already covered by `concurrency_test.go`.
+- [x] Asymmetric Neumann data through `SolveWithBC` (currently only constant,
       symmetric faces — `inhom_api_test.go:50,134`; swapped/mirrored faces
       would pass).
-- [ ] Add a naive-DFT reference test for DST-I/DCT-I amplitudes (only type-II
+      → `TestPlan2D_SolveWithBC_AsymmetricNeumannFaces` uses yHigh=−yLow and
+      x-varying face data.
+- [x] Add a naive-DFT reference test for DST-I/DCT-I amplitudes (only type-II
       has one), and a test pinning the Hermitian/Nyquist bin in the real-FFT
       path.
+      → `dst1Reference`/`dct1Reference` + `TestDSTPlan_Reference`/
+      `TestDCTPlan_Reference` (direct O(N²) type-I DFT), and
+      `TestPlan2DPeriodic_RealFFT_NyquistBin` pins the Nyquist mode in the
+      real-FFT path.
 
 ---
 

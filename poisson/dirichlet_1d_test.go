@@ -26,10 +26,6 @@ func TestPlan1DDirichlet_Solve_Fundamental(t *testing.T) {
 		u[i] = math.Sin(math.Pi * x / L)
 	}
 
-	if math.Abs(math.Sin(0)) > dirichlet1dTol || math.Abs(math.Sin(math.Pi)) > dirichlet1dTol {
-		t.Fatalf("expected Dirichlet boundary values to be zero")
-	}
-
 	rhs := make([]float64, n)
 	fd.Apply1D(rhs, u, h, poisson.Dirichlet)
 
@@ -41,6 +37,8 @@ func TestPlan1DDirichlet_Solve_Fundamental(t *testing.T) {
 	if maxErr := maxAbsDiff(got, u); maxErr > dirichlet1dTol {
 		t.Fatalf("max error %g exceeds tol %g", maxErr, dirichlet1dTol)
 	}
+
+	assertDirichletBoundaryDecay(t, got)
 }
 
 func TestPlan1DDirichlet_Solve_Combination(t *testing.T) {
@@ -59,12 +57,6 @@ func TestPlan1DDirichlet_Solve_Combination(t *testing.T) {
 		u[i] = math.Sin(math.Pi*x/L) + 0.3*math.Sin(2.0*math.Pi*x/L)
 	}
 
-	u0 := math.Sin(0) + 0.3*math.Sin(0)
-	uL := math.Sin(math.Pi) + 0.3*math.Sin(2.0*math.Pi)
-	if math.Abs(u0) > dirichlet1dTol || math.Abs(uL) > dirichlet1dTol {
-		t.Fatalf("expected Dirichlet boundary values to be zero")
-	}
-
 	rhs := make([]float64, n)
 	fd.Apply1D(rhs, u, h, poisson.Dirichlet)
 
@@ -75,5 +67,31 @@ func TestPlan1DDirichlet_Solve_Combination(t *testing.T) {
 
 	if maxErr := maxAbsDiff(got, u); maxErr > dirichlet1dTol {
 		t.Fatalf("max error %g exceeds tol %g", maxErr, dirichlet1dTol)
+	}
+
+	assertDirichletBoundaryDecay(t, got)
+}
+
+// assertDirichletBoundaryDecay checks that the SOLVED field decays to the
+// homogeneous Dirichlet boundary value (0). The nodes are vertex-centered at
+// (i+1)h, so the physical boundaries at x=0 and x=(n+1)h lie one grid step
+// outside got[0] and got[n-1]. Linearly extrapolating the solver output to those
+// off-grid boundaries must recover ~0. This exercises the actual solution rather
+// than the compile-time constant math.Sin(0)/math.Sin(math.Pi).
+func assertDirichletBoundaryDecay(t *testing.T, got []float64) {
+	t.Helper()
+	if len(got) < 2 {
+		return
+	}
+	n := len(got)
+
+	// For a field vanishing at the boundary the extrapolation residual is
+	// O(h²·u''(0)); for these manufactured modes u''(0)=0, so it is ~1e-4.
+	const boundaryTol = 1e-2
+
+	left := 2*got[0] - got[1]
+	right := 2*got[n-1] - got[n-2]
+	if math.Abs(left) > boundaryTol || math.Abs(right) > boundaryTol {
+		t.Fatalf("Dirichlet boundary not ~0: left=%g right=%g (tol %g)", left, right, boundaryTol)
 	}
 }

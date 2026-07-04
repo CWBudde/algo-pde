@@ -71,6 +71,80 @@ func TestPlan2D_SolveWithBC_DirichletNeumann(t *testing.T) {
 	}
 }
 
+// TestPlan2D_SolveWithBC_AsymmetricNeumannFaces uses genuinely asymmetric and
+// spatially varying Neumann face data (yHigh = -yLow, both varying along x)
+// rather than the constant, mirror-symmetric data of the test above. A solver
+// that swapped or mirrored the low/high Neumann faces would apply the wrong
+// contribution to each face and fail to recover the manufactured field, so this
+// case guards against that class of bug.
+func TestPlan2D_SolveWithBC_AsymmetricNeumannFaces(t *testing.T) {
+	nx, ny := 48, 36
+	hx := 1.0 / float64(nx+1)
+	hy := 1.0 / float64(ny)
+	Lx := float64(nx+1) * hx
+	Ly := float64(ny) * hy
+
+	plan, err := poisson.NewPlan(
+		2,
+		[]int{nx, ny},
+		[]float64{hx, hy},
+		[]poisson.BCType{poisson.Dirichlet, poisson.Neumann},
+	)
+	if err != nil {
+		t.Fatalf("NewPlan failed: %v", err)
+	}
+
+	// u = sin(πx/Lx)·sin(πy/Ly) + 0.2x + 0.1.
+	// ∂u/∂y = (π/Ly)·sin(πx/Lx)·cos(πy/Ly), so at the low face (y=0) it is
+	// +(π/Ly)sin(πx/Lx) and at the high face (y=Ly) it is −(π/Ly)sin(πx/Lx):
+	// opposite sign and varying with x — a mirrored/swapped face is detectable.
+	u := make([]float64, nx*ny)
+	for i := range nx {
+		x := float64(i+1) * hx
+		for j := range ny {
+			y := (float64(j) + 0.5) * hy
+			u[i*ny+j] = math.Sin(math.Pi*x/Lx)*math.Sin(math.Pi*y/Ly) + 0.2*x + 0.1
+		}
+	}
+
+	// Dirichlet x faces: u at x=0 and x=Lx (the sine vanishes there).
+	xLow := make([]float64, ny)
+	xHigh := make([]float64, ny)
+	for j := range ny {
+		xLow[j] = 0.1
+		xHigh[j] = 0.2*Lx + 0.1
+	}
+
+	// Asymmetric, spatially varying Neumann y faces.
+	yLow := make([]float64, nx)
+	yHigh := make([]float64, nx)
+	for i := range nx {
+		x := float64(i+1) * hx
+		slope := (math.Pi / Ly) * math.Sin(math.Pi*x/Lx)
+		yLow[i] = slope   // +∂u/∂y at y=0
+		yHigh[i] = -slope // +∂u/∂y at y=Ly
+	}
+
+	rhs := make([]float64, nx*ny)
+	applyInhomDirichletNeumann2D(rhs, u, grid.NewShape2D(nx, ny), hx, hy, xLow, xHigh, yLow, yHigh)
+
+	bc := poisson.BoundaryConditions{
+		{Face: poisson.XLow, Type: poisson.Dirichlet, Values: xLow},
+		{Face: poisson.XHigh, Type: poisson.Dirichlet, Values: xHigh},
+		{Face: poisson.YLow, Type: poisson.Neumann, Values: yLow},
+		{Face: poisson.YHigh, Type: poisson.Neumann, Values: yHigh},
+	}
+
+	got := make([]float64, nx*ny)
+	if err := plan.SolveWithBC(got, rhs, bc); err != nil {
+		t.Fatalf("SolveWithBC failed: %v", err)
+	}
+
+	if max := maxAbsDiff(got, u); max > inhomAPITol {
+		t.Fatalf("max error %g exceeds tol %g", max, inhomAPITol)
+	}
+}
+
 func TestPlan3D_SolveWithBC_DirichletDirichletNeumann(t *testing.T) {
 	nx, ny, nz := 24, 20, 18
 	hx := 1.0 / float64(nx+1)
