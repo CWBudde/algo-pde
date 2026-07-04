@@ -30,21 +30,37 @@ type Plan struct {
 	complexSize int
 	opts        Options
 	alpha       float64
+	// alphaComplex is the full (possibly complex) Helmholtz coefficient. For the
+	// real Poisson/Helmholtz path it equals complex(alpha, 0) and is unused; the
+	// complex path (SolveComplex) divides by it and can carry a damping shift.
+	alphaComplex complex128
 }
 
 // NewPlan creates a new Poisson plan with per-axis boundary conditions.
 func NewPlan(dim int, n []int, h []float64, bc []BCType, opts ...Option) (*Plan, error) {
-	return newPlanWithAlpha(dim, n, h, bc, 0, opts...)
+	return newPlanCore(dim, n, h, bc, 0, opts...)
 }
 
 // NewHelmholtzPlan creates a new Helmholtz plan for (alpha - Δ)u = f.
 // Negative alpha values are allowed but may lead to singular operators when
 // alpha cancels an eigenvalue; Solve will return ErrResonant in that case.
 func NewHelmholtzPlan(dim int, n []int, h []float64, bc []BCType, alpha float64, opts ...Option) (*Plan, error) {
-	return newPlanWithAlpha(dim, n, h, bc, alpha, opts...)
+	return newPlanCore(dim, n, h, bc, complex(alpha, 0), opts...)
 }
 
-func newPlanWithAlpha(dim int, n []int, h []float64, bcs []BCType, alpha float64, opts ...Option) (*Plan, error) {
+// NewComplexHelmholtzPlan creates a plan for the complex Helmholtz equation
+// (alpha - Δ)u = f with a complex coefficient alpha and a real right-hand side
+// f; the solution u is complex. Solve it with SolveComplex.
+//
+// A positive imaginary part of alpha acts as a complex shift (damping): it
+// keeps the operator non-singular near resonances, so SolveComplex returns a
+// finite field instead of ErrResonant. With alpha = -k^2 + i*eps this models a
+// driven, lightly damped acoustic room at wavenumber k.
+func NewComplexHelmholtzPlan(dim int, n []int, h []float64, bc []BCType, alpha complex128, opts ...Option) (*Plan, error) {
+	return newPlanCore(dim, n, h, bc, alpha, opts...)
+}
+
+func newPlanCore(dim int, n []int, h []float64, bcs []BCType, alphaC complex128, opts ...Option) (*Plan, error) {
 	if dim < 1 || dim > 3 {
 		return nil, &ValidationError{
 			Field:   "dim",
@@ -73,19 +89,20 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bcs []BCType, alpha float64
 		}
 	}
 
-	if !validAlpha(alpha) {
+	if !validComplexAlpha(alphaC) {
 		return nil, ErrInvalidAlpha
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
 	options.Workers = effectiveWorkers(options.Workers)
 	plan := &Plan{
-		dim:   dim,
-		n:     [3]int{1, 1, 1},
-		h:     [3]float64{1, 1, 1},
-		bc:    [3]BCType{Periodic, Periodic, Periodic},
-		opts:  options,
-		alpha: alpha,
+		dim:          dim,
+		n:            [3]int{1, 1, 1},
+		h:            [3]float64{1, 1, 1},
+		bc:           [3]BCType{Periodic, Periodic, Periodic},
+		opts:         options,
+		alpha:        real(alphaC),
+		alphaComplex: alphaC,
 	}
 
 	size := 1
@@ -284,7 +301,9 @@ func (p *Plan) meanRelTol() float64 {
 }
 
 func (p *Plan) hasNullspace() bool {
-	if p.alpha != 0 {
+	// Any nonzero coefficient (real or imaginary) shifts the operator off the
+	// singular point, so only alpha == 0 (pure Poisson) can have a nullspace.
+	if p.alphaComplex != 0 {
 		return false
 	}
 

@@ -15,3 +15,9 @@ func validSpacing(h float64) bool {
 func validAlpha(alpha float64) bool {
 	return !math.IsNaN(alpha) && !math.IsInf(alpha, 0)
 }
+
+// validComplexAlpha reports whether a complex Helmholtz alpha is finite in both
+// its real and imaginary parts.
+func validComplexAlpha(alpha complex128) bool {
+	return validAlpha(real(alpha)) && validAlpha(imag(alpha))
+}
