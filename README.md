@@ -2,7 +2,7 @@
 
 Fast spectral Poisson and Helmholtz solvers for Go, built on top of `algo-fft`. The library uses plan-based APIs (like FFTW) to precompute eigenvalues and reuse transform plans for many solves on the same grid.
 
-🌊 **Interactive WebAssembly demo** — a browser wave-propagation simulation lives in [`demo/`](demo/); build and run it locally with `just demo-dev` (see [demo/README.md](demo/README.md)). A hosted GitHub Pages build is a work in progress: the demo worker still loads its WASM assets with root-absolute paths, so it does not yet initialize under the Pages subpath.
+🔊 **Interactive WebAssembly demo** — an [Acoustic Room Modes lab](https://meko-tech.github.io/algo-pde/) runs entirely in the browser: click to place a harmonic source and sweep the drive frequency to watch the rigid room's standing-wave (modal) pressure pattern form. It solves the driven acoustic Helmholtz equation (`(−k² − Δ)p = s`) with a small complex damping shift via the WASM-compiled solver. Source lives in [`demo/`](demo/); build and run locally with `just demo-dev` (see [demo/README.md](demo/README.md)).
 
 ## Motivation
 
@@ -98,7 +98,7 @@ For an implicit Euler diffusion step `u^{n+1} - nu*dt*Delta u^{n+1} = u^n`, set
 
 ## Demo
 
-A WebAssembly-powered wave propagation demo is included. See it live or run locally:
+A WebAssembly-powered **Acoustic Room Modes** demo is included. [See it live](https://meko-tech.github.io/algo-pde/) or run locally:
 
 ```bash
 just demo-dev    # Build WASM and start dev server at http://localhost:5173
@@ -106,10 +106,10 @@ just demo-dev    # Build WASM and start dev server at http://localhost:5173
 
 The demo showcases:
 
-- Multi-frequency wave synthesis (16 modes, 80-600 Hz)
-- Neumann boundary conditions (rigid walls with reflections)
-- Real-time 60 FPS animation at 256×192 resolution
-- Click-to-ping interaction
+- Driven acoustic Helmholtz solve `(−k² − Δ)p = s` at a chosen frequency
+- Complex damping shift (`alpha = −k²(1 − iη)`) so resonant modes stay finite
+- Neumann boundary conditions (rigid room walls) and their standing-wave modes
+- Click-to-place-source and a 40–600 Hz frequency sweep at 256×192 resolution
 
 See [demo/README.md](demo/README.md) for details and [.github/DEPLOYMENT.md](.github/DEPLOYMENT.md) for GitHub Pages setup.
 

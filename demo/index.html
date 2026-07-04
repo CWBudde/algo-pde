@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Acoustic Wave Propagation - algo-pde</title>
+  <title>Acoustic Room Modes - algo-pde</title>
   <style>
     * {
       margin: 0;
@@ -114,7 +114,7 @@
       transform: scale(0.95);
     }
 
-    #timeSlider {
+    #freqSlider {
       width: 400px;
       max-width: 80vw;
       height: 4px;
@@ -126,7 +126,7 @@
       cursor: pointer;
     }
 
-    #timeSlider::-webkit-slider-thumb {
+    #freqSlider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
       width: 14px;
@@ -137,7 +137,7 @@
       box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
     }
 
-    #timeSlider::-moz-range-thumb {
+    #freqSlider::-moz-range-thumb {
       width: 14px;
       height: 14px;
       background: #fff;
@@ -171,25 +171,20 @@
 
   <div id="overlay">
     <div class="status">Loading WASM module...</div>
-    <div class="fps"></div>
     <div class="debug"></div>
     <div class="hint"></div>
   </div>
 
   <div id="controls">
-    <div class="button-row">
-      <button id="playPauseBtn">Pause</button>
-      <button id="resetBtn">Reset</button>
-    </div>
-    <input type="range" id="timeSlider" min="0" max="1000" value="0" step="1">
     <div class="time-display">
-      Time: <span id="timeDisplay">0.00s</span> / <span id="durationDisplay">2.0s</span>
+      Drive frequency: <span id="freqDisplay">120 Hz</span>
     </div>
+    <input type="range" id="freqSlider" min="40" max="600" value="120" step="1">
   </div>
 
   <div id="info">
-    algo-pde: Acoustic Wave Propagation<br>
-    Helmholtz solver + FFT-based Poisson
+    algo-pde: Acoustic Room Modes<br>
+    Driven Helmholtz (complex shift) + FFT solver
   </div>
 
   <script type="module" src="./main.ts"></script>

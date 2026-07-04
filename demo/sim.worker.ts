@@ -1,11 +1,26 @@
 /// <reference lib="webworker" />
 
-// Type declarations for Go WASM
+// Web Worker: loads the Go WASM acoustic-Helmholtz solver and, on each request,
+// solves the driven steady-state field for a source at a clicked point and a
+// chosen frequency, then posts back a ready-to-blit RGBA image built in Go.
+
+// Type declarations for the Go WASM runtime and exports.
 declare global {
   const Go: new () => GoInstance;
-  function goInitPlan(nx: number, ny: number, dx: number, dy: number, bcX: number, bcY: number): GoResult;
-  function goSolve(planID: string, alpha: number, sx: number, sy: number, srcRadius: number): GoSolveResult;
-  function goGetPlanInfo(planID: string): GoPlanInfo;
+  function goSolveAcoustic(
+    nx: number,
+    ny: number,
+    dx: number,
+    dy: number,
+    bcX: number,
+    bcY: number,
+    freqHz: number,
+    soundSpeed: number,
+    eta: number,
+    sx: number,
+    sy: number,
+    srcRadius: number,
+  ): GoSolveResult;
 }
 
 interface GoInstance {
@@ -13,134 +28,42 @@ interface GoInstance {
   run(instance: WebAssembly.Instance): void;
 }
 
-interface GoResult {
-  success: boolean;
-  error?: string;
-  planID?: string;
-  nx?: number;
-  ny?: number;
-  cached?: boolean;
-}
-
 interface GoSolveResult {
   success: boolean;
   error?: string;
-  field?: Float32Array;
+  width?: number;
+  height?: number;
+  k?: number;
+  lambda?: number;
+  rgba?: Uint8Array;
 }
 
-interface GoPlanInfo {
-  success: boolean;
-  error?: string;
-  nx?: number;
-  ny?: number;
-  dx?: number;
-  dy?: number;
-}
-
-// Worker state
-let planID: string | null = null;
+// Solver configuration (set on init).
 let nx = 0;
 let ny = 0;
-let fields: Float32Array[] = [];
-let frequencies: number[] = [];
-let isAnimating = false;
+let dx = 0;
+let dy = 0;
+let bcX = 2;
+let bcY = 2;
+let wasmReady = false;
 
-// Speed of sound (m/s)
-const SPEED_OF_SOUND = 343.0;
+// Physical constants / defaults.
+const SPEED_OF_SOUND = 343.0; // m/s
+const DAMPING_ETA = 0.03; // damping fraction η in α = −k²(1 − iη)
+const SRC_RADIUS = 3.0; // Gaussian source radius (grid cells)
 
-// Colormap LUT (blue-white-red diverging)
-const colormapLUT = new Uint8Array(256 * 3);
-buildDivergingColormap();
+// How long to wait for the Go exports to appear before failing.
+const READY_TIMEOUT_MS = 15000;
+const READY_POLL_MS = 10;
 
-function buildDivergingColormap() {
-  for (let i = 0; i < 256; i++) {
-    const t = i / 255.0;
-    const s = 2.0 * t - 1.0; // Map to [-1, 1]
+// Asset URLs. The main thread resolves these against the HTML document and
+// passes them in `init` (files in demo/public/ land at the dist root, whereas
+// this worker bundle lives in dist/assets/, so a URL relative to the worker
+// would point at the wrong directory under a subpath deploy). We fall back to a
+// worker-relative URL only if the main thread did not supply them.
+let wasmUrl = new URL('../acoustics.wasm', import.meta.url).href;
+let wasmExecUrl = new URL('../wasm_exec.js', import.meta.url).href;
 
-    if (s < 0) {
-      // Blue to white
-      colormapLUT[i * 3 + 0] = Math.floor(255 * (1 + s)); // R
-      colormapLUT[i * 3 + 1] = Math.floor(255 * (1 + s)); // G
-      colormapLUT[i * 3 + 2] = 255; // B
-    } else {
-      // White to red
-      colormapLUT[i * 3 + 0] = 255; // R
-      colormapLUT[i * 3 + 1] = Math.floor(255 * (1 - s)); // G
-      colormapLUT[i * 3 + 2] = Math.floor(255 * (1 - s)); // B
-    }
-  }
-}
-
-function applyColormap(field: Float32Array): Uint8ClampedArray {
-  const n = field.length;
-  const rgba = new Uint8ClampedArray(n * 4);
-
-  // Find min/max for symmetric range
-  let minVal = Infinity;
-  let maxVal = -Infinity;
-  for (let i = 0; i < n; i++) {
-    const v = field[i];
-    if (v < minVal) minVal = v;
-    if (v > maxVal) maxVal = v;
-  }
-
-  // Use symmetric range for diverging colormap
-  const range = Math.max(Math.abs(minVal), Math.abs(maxVal), 1e-10);
-
-  // Apply colormap with enhanced contrast
-  for (let i = 0; i < n; i++) {
-    const val = field[i];
-    // Enhanced contrast: apply power function to compress mid-tones
-    const normalized = Math.max(-1, Math.min(1, val / range));
-    const enhanced = Math.sign(normalized) * Math.pow(Math.abs(normalized), 0.7);
-    const idx = Math.floor(((enhanced + 1) / 2) * 255);
-
-    rgba[i * 4 + 0] = colormapLUT[idx * 3 + 0];
-    rgba[i * 4 + 1] = colormapLUT[idx * 3 + 1];
-    rgba[i * 4 + 2] = colormapLUT[idx * 3 + 2];
-    rgba[i * 4 + 3] = 255;
-  }
-
-  return rgba;
-}
-
-/**
- * Synthesize wave field at given time by combining frequency modes
- * @param t Time in seconds (real time, not scaled)
- * @returns Combined wave field
- */
-function synthesizeFrame(t: number): Float32Array {
-  const result = new Float32Array(nx * ny);
-  if (fields.length === 0) return result;
-
-  // Each frequency mode oscillates as: A_i * cos(2π * f_i * t) * exp(-γ_i * t)
-  // where γ_i is the damping coefficient
-
-  for (let i = 0; i < nx * ny; i++) {
-    let sum = 0;
-
-    for (let fi = 0; fi < frequencies.length; fi++) {
-      const f = frequencies[fi];
-      const omega = 2 * Math.PI * f; // Angular frequency (rad/s)
-
-      // Damping: higher frequencies decay faster
-      // Using quality factor Q ≈ 10 for room acoustics
-      const gamma = omega / 20.0; // Decay rate (1/s)
-
-      const amplitude = fields[fi][i];
-      const oscillation = Math.cos(omega * t);
-      const decay = Math.exp(-gamma * t);
-
-      sum += amplitude * oscillation * decay;
-    }
-
-    result[i] = sum;
-  }
-
-  return result;
-}
-
-// Message handlers
 self.onmessage = async (e: MessageEvent) => {
   const { type, ...data } = e.data;
 
@@ -149,159 +72,117 @@ self.onmessage = async (e: MessageEvent) => {
       case 'init':
         await handleInit(data);
         break;
-      case 'ping':
-        await handlePing(data);
-        break;
-      case 'frame':
-        handleFrame(data);
-        break;
-      case 'stop':
-        handleStop();
+      case 'solve':
+        handleSolve(data);
         break;
       default:
         self.postMessage({ type: 'error', message: `Unknown message type: ${type}` });
     }
   } catch (error) {
-    self.postMessage({ type: 'error', message: String(error) });
+    self.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) });
   }
 };
 
-async function handleInit(data: { nx: number; ny: number; dx: number; dy: number; bcX: number; bcY: number }) {
-  // Load WASM if not already loaded
-  if (typeof Go === 'undefined') {
-    // Dynamically import wasm_exec.js as a module
-    await new Promise<void>((resolve, reject) => {
-      // Fetch and evaluate wasm_exec.js in global scope
-      fetch('/wasm_exec.js')
-        .then(response => response.text())
-        .then(script => {
-          // Execute in global scope using indirect eval
-          (0, eval)(script);
-          resolve();
-        })
-        .catch(reject);
-    });
+async function loadWasm() {
+  if (wasmReady) return;
 
-    // Load and initialize WASM module
-    const go = new Go();
-    const result = await WebAssembly.instantiateStreaming(
-      fetch('/acoustics.wasm'),
-      go.importObject
-    );
+  // Fetch and evaluate the Go runtime shim in the worker's global scope.
+  const execResp = await fetch(wasmExecUrl);
+  if (!execResp.ok) {
+    throw new Error(`Failed to load wasm_exec.js (${execResp.status} ${execResp.statusText}) from ${wasmExecUrl}`);
+  }
+  const execScript = await execResp.text();
+  // Indirect eval to run in global scope so `Go` becomes globally visible.
+  (0, eval)(execScript);
 
-    // Run Go runtime in background
-    go.run(result.instance);
-
-    // Wait for Go exports to be ready
-    await new Promise((resolve) => {
-      const check = setInterval(() => {
-        const ready = typeof goInitPlan !== 'undefined' &&
-                     typeof goSolve !== 'undefined' &&
-                     typeof goGetPlanInfo !== 'undefined';
-
-        if (ready) {
-          clearInterval(check);
-          resolve(undefined);
-        }
-      }, 10);
-    });
+  const go = new Go();
+  let result: WebAssembly.WebAssemblyInstantiatedSource;
+  try {
+    result = await WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject);
+  } catch (streamErr) {
+    // Some servers send the wrong MIME type for .wasm; fall back to ArrayBuffer.
+    const wasmResp = await fetch(wasmUrl);
+    if (!wasmResp.ok) {
+      throw new Error(`Failed to load acoustics.wasm (${wasmResp.status} ${wasmResp.statusText}) from ${wasmUrl}: ${String(streamErr)}`);
+    }
+    const bytes = await wasmResp.arrayBuffer();
+    result = await WebAssembly.instantiate(bytes, go.importObject);
   }
 
-  // Initialize plan
-  const result = goInitPlan(data.nx, data.ny, data.dx, data.dy, data.bcX, data.bcY);
+  // Run the Go program (blocks forever inside Go, installing the exports).
+  go.run(result.instance);
+
+  // Poll for the exports, but bail out (rejecting) if they never appear so a
+  // half-failed instantiation surfaces an error instead of hanging forever.
+  await new Promise<void>((resolve, reject) => {
+    const deadline = Date.now() + READY_TIMEOUT_MS;
+    const check = setInterval(() => {
+      if (typeof (globalThis as { goReady?: boolean }).goReady !== 'undefined' && typeof goSolveAcoustic !== 'undefined') {
+        clearInterval(check);
+        wasmReady = true;
+        resolve();
+      } else if (Date.now() > deadline) {
+        clearInterval(check);
+        reject(new Error('Timed out waiting for WASM exports (Go runtime failed to initialize)'));
+      }
+    }, READY_POLL_MS);
+  });
+}
+
+async function handleInit(data: {
+  nx: number;
+  ny: number;
+  dx: number;
+  dy: number;
+  bcX: number;
+  bcY: number;
+  wasmUrl?: string;
+  wasmExecUrl?: string;
+}) {
+  nx = data.nx;
+  ny = data.ny;
+  dx = data.dx;
+  dy = data.dy;
+  bcX = data.bcX;
+  bcY = data.bcY;
+  if (data.wasmUrl) wasmUrl = data.wasmUrl;
+  if (data.wasmExecUrl) wasmExecUrl = data.wasmExecUrl;
+
+  await loadWasm();
+
+  self.postMessage({ type: 'ready', nx, ny });
+}
+
+function handleSolve(data: { sx: number; sy: number; freqHz: number }) {
+  if (!wasmReady) {
+    throw new Error('WASM not initialized. Call init first.');
+  }
+
+  const result = goSolveAcoustic(nx, ny, dx, dy, bcX, bcY, data.freqHz, SPEED_OF_SOUND, DAMPING_ETA, data.sx, data.sy, SRC_RADIUS);
 
   if (!result || typeof result !== 'object') {
-    throw new Error(`goInitPlan returned invalid result`);
+    throw new Error('goSolveAcoustic returned an invalid result');
   }
-
   if (!result.success) {
-    throw new Error(result.error || 'Failed to initialize plan');
+    throw new Error(result.error || 'solve failed');
+  }
+  if (!result.rgba) {
+    throw new Error('no field returned from solver');
   }
 
-  planID = result.planID!;
-  nx = result.nx!;
-  ny = result.ny!;
+  // The Go side already produced RGBA bytes; wrap in a clamped array for the
+  // canvas. Transfer the underlying buffer for a zero-copy hand-off.
+  const rgba = new Uint8ClampedArray(result.rgba.buffer, result.rgba.byteOffset, result.rgba.byteLength);
 
-  self.postMessage({
-    type: 'ready',
-    planID,
-    nx,
-    ny,
-  });
-}
-
-async function handlePing(data: { sx: number; sy: number; frequencies: number[] }) {
-  if (!planID) {
-    throw new Error('Plan not initialized. Call init first.');
-  }
-
-  const { sx, sy, frequencies: freqs } = data;
-
-  // Store frequencies
-  frequencies = freqs;
-
-  // Solve for each frequency
-  fields = [];
-  const srcRadius = 3.0; // Grid cells
-
-  for (let i = 0; i < freqs.length; i++) {
-    const f = freqs[i];
-    const k = (2 * Math.PI * f) / SPEED_OF_SOUND; // Wave number (1/m)
-    const alpha = k * k; // Helmholtz parameter
-
-    // Send progress update
-    self.postMessage({
-      type: 'progress',
-      current: i + 1,
-      total: freqs.length,
-      frequency: f,
-    });
-
-    const result = goSolve(planID, alpha, sx, sy, srcRadius);
-
-    if (!result.success) {
-      throw new Error(result.error || `Failed to solve for frequency ${f} Hz`);
-    }
-
-    if (!result.field) {
-      throw new Error(`No field returned for frequency ${f} Hz`);
-    }
-
-    fields.push(result.field);
-  }
-
-  isAnimating = true;
-
-  self.postMessage({
-    type: 'computed',
-    nFreqs: fields.length,
-    freqRange: [freqs[0], freqs[freqs.length - 1]],
-  });
-}
-
-function handleFrame(data: { t: number }) {
-  if (!isAnimating || fields.length === 0) {
-    return;
-  }
-
-  // t is already in seconds - use it directly
-  const field = synthesizeFrame(data.t);
-  const rgba = applyColormap(field);
-
-  // Transfer ownership of RGBA buffer for zero-copy
   self.postMessage(
     {
       type: 'pixels',
       data: rgba,
-      width: nx,
-      height: ny,
+      width: result.width,
+      height: result.height,
+      freqHz: data.freqHz,
+      lambda: result.lambda,
     },
-    [rgba.buffer]
+    [rgba.buffer],
   );
-}
-
-function handleStop() {
-  isAnimating = false;
-  fields = [];
-  frequencies = [];
 }

@@ -1,13 +1,26 @@
-# Wave Propagation Demo
+# Acoustic Room Modes Demo
 
-A minimal browser-based demonstration of 2D wave propagation using the algo-pde Helmholtz solver compiled to WebAssembly.
+A browser demonstration of the **driven acoustic Helmholtz equation** on a
+rigid-walled rectangular room, using the algo-pde complex Helmholtz solver
+compiled to WebAssembly.
 
-## Features
+Click to place a harmonic source, then sweep the drive frequency to watch the
+room's standing-wave (modal) pressure pattern form and shift. A small complex
+damping term keeps the field finite when the drive frequency lands on a room
+mode.
 
-- **Click-to-ping**: Click anywhere to create a wave that propagates and reflects
-- **Multi-frequency synthesis**: Uses 16 frequency modes (80-600 Hz) for realistic wave behavior
-- **Real-time animation**: Smooth 60 FPS visualization
-- **Neumann boundary conditions**: Rigid walls with perfect reflections
+## What it shows
+
+- **Driven Helmholtz, not wave propagation.** For a source at angular frequency
+  ω and sound speed c (343 m/s), with wavenumber `k = ω/c`, we solve the
+  steady-state response `∇²p + k²p = -s`, i.e. `(−k² − Δ)p = s`.
+- **Room modes.** Rigid (Neumann) walls give a discrete set of standing-wave
+  modes. As you sweep frequency, the field peaks and reshapes as `k²` sweeps
+  past each modal eigenvalue.
+- **Complex damping.** The solve uses `alpha = −k²(1 − iη)` (`η ≈ 0.03`). The
+  imaginary shift keeps `|α + λ|` bounded away from zero, so a mode driven at
+  resonance yields a finite field instead of blowing up.
+- **Click-to-place-source**: a narrow Gaussian source at the clicked point.
 
 ## Quick Start
 
@@ -44,136 +57,94 @@ Output will be in `demo/dist/` ready for static hosting.
 │   Browser   │
 │             │
 │  ┌────────┐ │
-│  │  UI    │ │ ← Click events, canvas rendering
+│  │  UI    │ │ ← click (source), frequency slider, canvas blit
 │  │ Thread │ │
 │  └────┬───┘ │
 │       │     │
 │  ┌────┴────┐│
-│  │ Worker  ││ ← Multi-frequency synthesis, colormap
+│  │ Worker  ││ ← loads WASM, calls the solver, posts RGBA frames
 │  │ Thread  ││
 │  └────┬────┘│
 │       │     │
 │  ┌────┴────┐│
-│  │  WASM   ││ ← Helmholtz solver (Go)
+│  │  WASM   ││ ← complex Helmholtz solve + colormap (Go)
 │  │ Module  ││
 │  └─────────┘│
 └─────────────┘
 ```
 
-### Physics
+### Solve pipeline
 
-For each click at position `(sx, sy)`:
+For each click / frequency change:
 
-1. **Multi-frequency solve**: For each frequency `f` in [80, 600] Hz:
-   - Compute wavenumber: `k = 2πf/c` (c = 343 m/s)
-   - Solve Helmholtz equation: `(-Δ + k²)p = s`
-   - Source `s` is a Gaussian blob at click position
-   - Store pressure field `p_i(x,y)`
+1. **Assemble the drive.** `k = 2πf / c`, `alpha = complex(−k², k²·η)`.
+2. **Build the source.** A narrow Gaussian bump at the clicked grid cell.
+3. **Solve.** `NewComplexHelmholtzPlan` + `SolveComplex` return the complex
+   steady-state field `p(x,y)`. Plans are cached by
+   `(nx, ny, dx, dy, bc, alpha)` and reused across clicks at the same
+   frequency — the transforms and eigenvalues are the expensive part.
+4. **Colormap in Go.** `Re(p)` is mapped to a symmetric blue-white-red diverging
+   colormap and returned as an RGBA byte buffer via `js.CopyBytesToJS` (one bulk
+   copy, no per-element writes).
+5. **Blit.** The worker transfers the buffer to the UI thread, which draws it to
+   the canvas.
 
-2. **Animation synthesis**: For each frame at time `t`:
-
-   ```
-   u(x,y,t) = Σᵢ pᵢ(x,y) · cos(2π fᵢ t) · exp(-γᵢ t)
-   ```
-
-   where `γᵢ = ωᵢ / 20 = 2π fᵢ / 20` (frequency-dependent damping)
-
-3. **Visualization**: Apply diverging colormap (blue ← 0 → red) with percentile normalization
+There is no time-domain animation: each frame is the steady-state field for the
+current source and frequency.
 
 ### Technical Details
 
-- **Grid**: 256×192 cells, 0.05m spacing (12.8m × 9.6m room)
+- **Grid**: 256×192 cells, 0.05 m spacing (12.8 m × 9.6 m room)
 - **Boundary conditions**: Neumann (rigid walls)
-- **Frequency bins**: 16 logarithmically-spaced modes
-- **Performance**: ~72ms for 16-mode solve (target <200ms)
-- **Bundle size**: ~4.1 MB WASM + 17 KB runtime
+- **Frequency range**: 40–600 Hz (slider)
+- **Damping**: `η = 0.03` complex shift
 
 ## Files
 
-- `index.html` - Minimal HTML shell with canvas
-- `main.ts` - UI thread (canvas, click handling, FPS counter)
-- `sim.worker.ts` - Web Worker (WASM loading, synthesis, colormap)
-- `vite.config.ts` - Vite bundler configuration
-- `public/` - Static assets (WASM module, Go runtime)
+- `index.html` — HTML shell with canvas and frequency slider
+- `main.ts` — UI thread (canvas, click handling, frequency control)
+- `sim.worker.ts` — Web Worker (WASM loading, solve calls, buffer transfer)
+- `vite.config.ts` — Vite bundler configuration (`base: './'`)
+- `public/` — static assets (WASM module, Go runtime) emitted at the dist root
 
-## Browser Compatibility
+## Deployment notes
 
-Requires modern browser with:
+The demo is built with Vite `base: './'` so it works under a subpath such as
+`https://<username>.github.io/algo-pde/`. WASM asset URLs are resolved against
+the HTML document (`document.baseURI`) in `main.ts` and passed to the worker, so
+they resolve correctly under the Pages subpath (the worker bundle lives in
+`assets/` while the WASM files land at the dist root). GitHub Pages deployment is
+handled by `.github/workflows/deploy-demo.yml`.
 
-- WebAssembly support
-- Web Workers
-- Float32Array
-- Canvas 2D API
-
-Tested on:
-
-- Chrome 120+
-- Firefox 120+
-- Safari 17+
-
-## Performance Notes
-
-The demo runs at 60 FPS at 256×192 resolution. The 16-mode Helmholtz solve is a
-one-time cost per click, not a per-frame cost; only the synthesis, colormap, and
-render run every frame and stay within the 16.67ms 60fps budget:
-
-- **WASM solve**: ~4.5ms per frequency, ~72ms for all 16 modes — paid once per click, not per frame
-- **Frame synthesis**: ~2-3ms (worker thread)
-- **Colormap + transfer**: ~1-2ms
-- **Canvas render**: ~1-2ms (UI thread)
-- **Per-frame total**: ~4-7ms (within the 16.67ms 60fps budget)
-
-## GitHub Pages Deployment
-
-The demo is automatically deployed to GitHub Pages on every push to the `main` branch (when demo-related files change).
-
-### Setup (One-time)
-
-1. Go to your repository **Settings** → **Pages**
-2. Under **Source**, select **GitHub Actions**
-3. The workflow will automatically deploy on the next push
-
-### Manual Deployment
-
-Trigger a manual deployment from the Actions tab:
-
-1. Go to **Actions** → **Deploy Demo to GitHub Pages**
-2. Click **Run workflow** → **Run workflow**
-
-The demo will be available at: `https://<username>.github.io/algo-pde/`
-
-### Local Production Build
-
-Test the production build locally:
+### Local subpath test
 
 ```bash
 just demo-build
-cd demo/dist
-python3 -m http.server 8000
-# Open http://localhost:8000
+mkdir -p /tmp/pages && ln -s "$PWD/dist" /tmp/pages/algo-pde
+npx --yes http-server /tmp/pages -p 8099
+# open http://localhost:8099/algo-pde/
 ```
+
+## Browser Compatibility
+
+Requires a modern browser with WebAssembly, Web Workers, and the Canvas 2D API
+(Chrome 120+, Firefox 120+, Safari 17+).
 
 ## Troubleshooting
 
 ### WASM fails to load
 
-Check browser console for errors. Ensure:
+Check the browser console. Ensure `demo/public/acoustics.wasm` and
+`wasm_exec.js` exist (run `just wasm`) and that the server sends
+`Content-Type: application/wasm` for `.wasm` (Vite handles this in dev).
 
-- Files exist: `demo/public/acoustics.wasm` and `wasm_exec.js`
-- Server sends correct MIME type for `.wasm` (Vite handles this)
+### No field after click
 
-### Poor performance
-
-- Check FPS counter (top left)
-- Reduce frequency bins in `main.ts` (CONFIG.nBins = 8)
-- Check browser dev tools for memory leaks
-
-### No animation after click
-
-- Check browser console for worker errors
-- Verify WASM initialized (status should show "Ready")
-- Try clicking in different locations
+- Verify the status line shows "Ready …"; if it shows a WASM error the runtime
+  failed to initialize (the worker rejects after a 15 s readiness timeout).
+- Try a different frequency — some frequencies sit between modes and produce a
+  low-amplitude field.
 
 ## License
 
-Same as parent project (algo-pde).
+MIT (same as the parent project).

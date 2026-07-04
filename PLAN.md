@@ -342,31 +342,46 @@ one contract (errors) and enforce it.
 The shipped demo is broken end-to-end and actively misrepresents the library.
 Either fix all of the below or pull it from the README until fixed.
 
-- [ ] **Wrong equation:** worker passes `alpha = +k²` (`demo/sim.worker.ts:250`),
-      solving screened Poisson `(k² − Δ)p = s` — monotone decaying blobs, no
-      waves, no room modes. Acoustic Helmholtz needs `alpha = −k²` — which
-      requires Phase A.3's near-resonance handling plus a damping strategy
-      (complex shift via two real solves, or stay with the screened form and
-      re-brand the demo honestly as a "room modes / decay-length lab").
-- [ ] **Broken deploy:** root-absolute `fetch('/wasm_exec.js')` /
-      `fetch('/acoustics.wasm')` (`sim.worker.ts:175,188`) 404 under the
-      GitHub-Pages subpath + Vite `base: './'`. Use relative URLs.
-- [ ] **Dead plan cache:** `InitPlan` caches a plan that is never used;
-      `Solve` builds a fresh plan per call (`cmd/acoustics-wasm/main.go:80`
-      vs `:131`) — 16 plan constructions per click. Cache by
-      `(nx,ny,dx,dy,bc,alpha-independent)` and reuse.
-- [ ] Replace the ~49k `jsArray.SetIndex` calls per solve with
-      `js.CopyBytesToJS` over a `Uint8Array` view (`main.go:158` — the
-      comment claiming this is impossible is wrong).
-- [ ] Add timeout/error path to the WASM readiness poll
-      (`sim.worker.ts:196` — hangs forever on half-failed instantiation).
-- [ ] Fix README/demo-README claims: `yourusername` placeholder link, grid
-      256×192 not 256×256, damping γ = ω/20 not 0.5·f, "80ms well under
-      16.67ms" arithmetic, "reflections" claim.
-- [ ] Modern build constraint in `cmd/acoustics-wasm/main.go:1`
-      (`//go:build js && wasm`), `Release()` strategy or comment for
-      `js.FuncOf` callbacks, note the single-threaded assumption on
-      `planCache`.
+- [x] **Wrong equation:** worker passed `alpha = +k²`, solving screened Poisson
+      `(k² − Δ)p = s` — monotone decaying blobs, no room modes.
+      → The WASM `SolveAcoustic` now solves the driven acoustic Helmholtz
+      `(−k² − Δ)p = s` via `NewComplexHelmholtzPlan`/`SolveComplex` with
+      `alpha = complex(−k², k²·η)` (= `−k²(1 − iη)`, `η = 0.03`). The imaginary
+      shift bounds `|α + λ| ≥ |Im α| > 0`, so modes driven at resonance stay
+      finite. The demo is re-branded honestly as an "Acoustic Room Modes" lab
+      (single driving frequency, standing-wave field; no bogus time synthesis).
+- [x] **Broken deploy:** root-absolute `fetch('/wasm_exec.js')` /
+      `fetch('/acoustics.wasm')` 404 under the Pages subpath + Vite `base: './'`.
+      → `main.ts` now resolves the asset URLs against `document.baseURI` and
+      passes them to the worker (the worker bundle lives in `dist/assets/` but
+      the WASM files land at the dist root, so a worker-relative `./` URL was
+      wrong too). Verified loading under `http://localhost:8099/algo-pde/` with
+      no 404s (headless Chromium / Playwright). `deploy-demo.yml` now uses
+      `go-version-file: go.mod` instead of the dead `1.23` pin.
+- [x] **Dead plan cache:** `InitPlan` cached a plan that was never used; `Solve`
+      built a fresh plan per call (16 constructions per click).
+      → Plans are now cached by `(nx,ny,dx,dy,bc,alpha)` in a plain map (single-
+      threaded WASM — noted in a comment) and reused across clicks at the same
+      frequency.
+- [x] Replace the ~49k `jsArray.SetIndex` calls per solve with `js.CopyBytesToJS`.
+      → Go builds the RGBA byte buffer (diverging colormap on `Re(p)`) and copies
+      it into a `Uint8Array` with a single `js.CopyBytesToJS`.
+- [x] Add timeout/error path to the WASM readiness poll (hung forever on a
+      half-failed instantiation).
+      → The poll now rejects after a 15 s deadline, and fetch failures for
+      `wasm_exec.js`/`acoustics.wasm` throw with the status; errors are posted to
+      `main.ts` and shown in the status line.
+- [x] Fix README/demo-README claims (placeholder link, grid, damping, timing,
+      "reflections").
+      → `demo/README.md` and the root `README.md` were rewritten for the accurate
+      acoustic room-modes description; the live-demo link points at
+      `https://meko-tech.github.io/algo-pde/` and the stale synthesis/FPS/timing
+      claims are gone.
+- [x] Modern build constraint (`//go:build js && wasm`), `Release()` strategy /
+      comment for `js.FuncOf`, note the single-threaded `planCache` assumption.
+      → `main.go` starts with `//go:build js && wasm`; the callback lives for the
+      program lifetime (main blocks forever), documented with why no `Release()`
+      is needed; the plan-cache comment notes the single-threaded assumption.
 
 ---
 
