@@ -372,9 +372,10 @@ Either fix all of the below or pull it from the README until fixed.
 
 ## Phase F: Hygiene & Release Readiness
 
-- [ ] **LICENSE file.** README says "TBD" while giving `go get` instructions;
+- [x] **LICENSE file.** README says "TBD" while giving `go get` instructions;
       legally nobody may use the library today. Pick one (MIT/Apache-2.0).
-      → Deferred: a legal choice for the repo owner, out of scope for this PR.
+      → Added the MIT license (`LICENSE`, © 2026 Christian Budde) and pointed
+      the README License section at it.
 - [x] `gofmt` the tree: 7 of 8 examples + the WASM main currently fail plain
       gofmt despite a formatting CI job. Then figure out why CI didn't catch
       it (format workflow scope).
