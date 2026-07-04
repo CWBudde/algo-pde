@@ -5,33 +5,34 @@ import (
 	"math"
 	"testing"
 
+	"github.com/MeKo-Tech/algo-pde/grid"
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
 
 const periodicNDTol = 1e-9
 
 func TestNewPlanNDPeriodic_InvalidInputs(t *testing.T) {
-	if _, err := poisson.NewPlanNDPeriodic(nil, nil); !errors.Is(err, poisson.ErrInvalidSize) {
+	if _, err := poisson.NewPlanNDPeriodic(grid.Shape{}, nil); !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlanNDPeriodic(poisson.Shape{4, 0}, []float64{1.0, 1.0}); !errors.Is(err, poisson.ErrInvalidSize) {
+	if _, err := poisson.NewPlanNDPeriodic(grid.NewShapeND(4, 0), []float64{1.0, 1.0}); !errors.Is(err, poisson.ErrInvalidSize) {
 		t.Fatalf("expected ErrInvalidSize, got %v", err)
 	}
 
-	if _, err := poisson.NewPlanNDPeriodic(poisson.Shape{4, 4}, []float64{1.0}); err == nil {
+	if _, err := poisson.NewPlanNDPeriodic(grid.NewShapeND(4, 4), []float64{1.0}); err == nil {
 		t.Fatalf("expected error for mismatched h length")
 	}
 
-	if _, err := poisson.NewPlanNDPeriodic(poisson.Shape{4, 4}, []float64{1.0, 0.0}); !errors.Is(err, poisson.ErrInvalidSpacing) {
+	if _, err := poisson.NewPlanNDPeriodic(grid.NewShapeND(4, 4), []float64{1.0, 0.0}); !errors.Is(err, poisson.ErrInvalidSpacing) {
 		t.Fatalf("expected ErrInvalidSpacing, got %v", err)
 	}
 }
 
 func TestPlanNDPeriodic_Solve_Manufactured(t *testing.T) {
-	dims := poisson.Shape{4, 5, 6, 7}
-	h := make([]float64, len(dims))
-	for i, n := range dims {
+	dims := grid.NewShapeND(4, 5, 6, 7)
+	h := make([]float64, dims.Dim())
+	for i, n := range dims.Dims() {
 		h[i] = 1.0 / float64(n)
 	}
 
@@ -53,9 +54,9 @@ func TestPlanNDPeriodic_Solve_Manufactured(t *testing.T) {
 }
 
 func TestPlanNDPeriodic_SolveInPlace(t *testing.T) {
-	dims := poisson.Shape{4, 4, 4, 4}
-	h := make([]float64, len(dims))
-	for i, n := range dims {
+	dims := grid.NewShapeND(4, 4, 4, 4)
+	h := make([]float64, dims.Dim())
+	for i, n := range dims.Dims() {
 		h[i] = 1.0 / float64(n)
 	}
 
@@ -76,20 +77,21 @@ func TestPlanNDPeriodic_SolveInPlace(t *testing.T) {
 	}
 }
 
-func manufacturedND(dims poisson.Shape, h []float64) ([]float64, []float64) {
-	L := make([]float64, len(dims))
-	for i, n := range dims {
+func manufacturedND(dims grid.Shape, h []float64) ([]float64, []float64) {
+	ext := dims.Dims()
+	L := make([]float64, len(ext))
+	for i, n := range ext {
 		L[i] = float64(n) * h[i]
 	}
 
 	size := dims.Size()
 	u := make([]float64, size)
 	rhs := make([]float64, size)
-	indices := make([]int, len(dims))
+	indices := make([]int, len(ext))
 
 	for idx := range u {
 		val := 1.0
-		for d := range dims {
+		for d := range ext {
 			x := float64(indices[d]) * h[d]
 			val *= math.Sin(2.0 * math.Pi * x / L[d])
 		}
@@ -98,7 +100,7 @@ func manufacturedND(dims poisson.Shape, h []float64) ([]float64, []float64) {
 
 		for d := len(indices) - 1; d >= 0; d-- {
 			indices[d]++
-			if indices[d] < dims[d] {
+			if indices[d] < ext[d] {
 				break
 			}
 			indices[d] = 0
@@ -110,8 +112,9 @@ func manufacturedND(dims poisson.Shape, h []float64) ([]float64, []float64) {
 	return u, rhs
 }
 
-func applyPeriodicND(dst, src []float64, dims poisson.Shape, h []float64) {
-	nDims := len(dims)
+func applyPeriodicND(dst, src []float64, dims grid.Shape, h []float64) {
+	ext := dims.Dims()
+	nDims := len(ext)
 	if len(h) != nDims {
 		return
 	}
@@ -125,7 +128,7 @@ func applyPeriodicND(dst, src []float64, dims poisson.Shape, h []float64) {
 	stride := 1
 	for d := nDims - 1; d >= 0; d-- {
 		strides[d] = stride
-		stride *= dims[d]
+		stride *= ext[d]
 	}
 
 	indices := make([]int, nDims)
@@ -136,11 +139,11 @@ func applyPeriodicND(dst, src []float64, dims poisson.Shape, h []float64) {
 		for d := range nDims {
 			left := indices[d] - 1
 			if left < 0 {
-				left = dims[d] - 1
+				left = ext[d] - 1
 			}
 
 			right := indices[d] + 1
-			if right >= dims[d] {
+			if right >= ext[d] {
 				right = 0
 			}
 
@@ -154,7 +157,7 @@ func applyPeriodicND(dst, src []float64, dims poisson.Shape, h []float64) {
 
 		for d := nDims - 1; d >= 0; d-- {
 			indices[d]++
-			if indices[d] < dims[d] {
+			if indices[d] < ext[d] {
 				break
 			}
 			indices[d] = 0

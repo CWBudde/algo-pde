@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MeKo-Tech/algo-pde/bc"
+	"github.com/MeKo-Tech/algo-pde/grid"
 )
 
 // ndWorkspace holds the per-solve buffers for PlanNDPeriodic: the complex
@@ -20,7 +21,7 @@ type ndWorkspace struct {
 // PlanNDPeriodic is a reusable plan for solving N-dimensional periodic Poisson problems.
 // It solves -Δu = f on a periodic grid with spacing h per axis.
 type PlanNDPeriodic struct {
-	shape  Shape
+	shape  grid.Shape
 	h      []float64
 	eig    [][]float64
 	fft    []*fftWorkerPool
@@ -33,18 +34,18 @@ type PlanNDPeriodic struct {
 }
 
 // NewPlanNDPeriodic creates a new N-dimensional periodic Poisson plan.
-func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodic, error) {
-	if len(shape) == 0 {
+func NewPlanNDPeriodic(shape grid.Shape, h []float64, opts ...Option) (*PlanNDPeriodic, error) {
+	if shape.Dim() == 0 {
 		return nil, ErrInvalidSize
 	}
 
-	for _, n := range shape {
+	for _, n := range shape.Dims() {
 		if n < 1 {
 			return nil, ErrInvalidSize
 		}
 	}
 
-	if len(h) != len(shape) {
+	if len(h) != shape.Dim() {
 		return nil, &ValidationError{
 			Field:   "h",
 			Message: "length must match shape dimensions",
@@ -69,8 +70,7 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 	// Real FFT is not supported for arbitrary dimensions; the plan runs the
 	// float64 complex path. UsedRealFFT reports this (always false for ND).
 
-	dims := make(Shape, len(shape))
-	copy(dims, shape)
+	dims := append([]int(nil), shape.Dims()...)
 
 	hCopy := make([]float64, len(h))
 	copy(hCopy, h)
@@ -115,7 +115,7 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 	}
 
 	plan := &PlanNDPeriodic{
-		shape:     dims,
+		shape:     grid.NewShapeN(dims),
 		h:         hCopy,
 		eig:       eig,
 		fft:       pools,
@@ -209,7 +209,7 @@ func (p *PlanNDPeriodic) getWorkspace() *ndWorkspace {
 	// each long enough for the full multi-index; the axis loops slice it down.
 	idx := make([][]int, p.opts.Workers)
 	for w := range idx {
-		idx[w] = make([]int, len(p.shape))
+		idx[w] = make([]int, p.shape.Dim())
 	}
 	return &ndWorkspace{
 		complexBuf: make([]complex128, p.shape.Size()),
@@ -247,8 +247,9 @@ func (p *PlanNDPeriodic) applyEigenvalues(ws *ndWorkspace) error {
 			return err
 		}
 
-		indices := ws.idx[worker][:len(p.shape)]
-		ndMultiIndex(indices, p.shape, start)
+		radices := p.shape.Dims()
+		indices := ws.idx[worker][:len(radices)]
+		ndMultiIndex(indices, radices, start)
 
 		for i := start; i < end; i++ {
 			denom := 0.0
@@ -262,7 +263,7 @@ func (p *PlanNDPeriodic) applyEigenvalues(ws *ndWorkspace) error {
 				data[i] /= complex(denom, 0)
 			}
 
-			ndIncrement(indices, p.shape)
+			ndIncrement(indices, radices)
 		}
 		return nil
 	})
@@ -270,7 +271,7 @@ func (p *PlanNDPeriodic) applyEigenvalues(ws *ndWorkspace) error {
 
 func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, ws *ndWorkspace) error {
 	data := ws.complexBuf
-	lineLen := p.shape[axis]
+	lineLen := p.shape.N(axis)
 	lineStride := p.stride[axis]
 	totalLines := p.shape.Size() / lineLen
 

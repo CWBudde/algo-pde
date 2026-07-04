@@ -5,16 +5,17 @@ import (
 	"math"
 	"testing"
 
+	"github.com/MeKo-Tech/algo-pde/grid"
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
 
 // --- Item 4: WithWorkers wired through PlanNDPeriodic ---
 
 func TestPlanNDPeriodic_WithWorkersMatchesSerial(t *testing.T) {
-	shape := poisson.Shape{8, 6, 10}
+	shape := grid.NewShapeND(8, 6, 10)
 	h := []float64{1.0 / 8, 1.0 / 6, 1.0 / 10}
 
-	size := shape[0] * shape[1] * shape[2]
+	size := shape.Size()
 	rhs := make([]float64, size)
 	// Build a zero-mean RHS deterministically.
 	for i := range rhs {
@@ -234,7 +235,7 @@ func TestUsedRealFFT_FallbackReported(t *testing.T) {
 	}
 
 	// ND never uses the real path.
-	nd, err := poisson.NewPlanNDPeriodic(poisson.Shape{8, 8}, []float64{1.0 / 8, 1.0 / 8}, poisson.WithRealFFT(true))
+	nd, err := poisson.NewPlanNDPeriodic(grid.NewShapeND(8, 8), []float64{1.0 / 8, 1.0 / 8}, poisson.WithRealFFT(true))
 	if err != nil {
 		t.Fatalf("NewPlanNDPeriodic: %v", err)
 	}

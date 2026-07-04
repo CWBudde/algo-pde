@@ -301,22 +301,28 @@ one contract (errors) and enforce it.
       `eigenvalues_periodic.go` are deleted, `fd/eigenvalues.go` is deleted, and
       `fd` no longer imports `poisson` (cycle broken). The `(2-2cos)/h²`
       formula now lives only in `bc/eigenvalues.go`.
-- [ ] One `Shape` type. `grid.Shape` (fixed `[3]int`) and `poisson`'s
+- [x] One `Shape` type. `grid.Shape` (fixed `[3]int`) and `poisson`'s
       `Shape []int` (`shape_nd.go`) coexist; `parallel.go`'s helpers hardcode
       3 axes and would silently miscount for >3D.
-      (PARTIAL — `parallel.go` fixed: `lineCount`/`lineStartIndex` now iterate
-      over `shape.Dim()` axes instead of a hardcoded 3, and `otherAxes` was
-      removed. `grid.Shape` was converted to a declared-dimension value struct
-      (see Phase C items above). The full type MERGE is DESCOPED: `NewPlanNDPeriodic`
-      genuinely supports and is tested with >3D shapes (4D: `{4,5,6,7}`,
-      `{4,4,4,4}`, `{4,6,3,2}`) and uses `poisson.Shape` with `[]int` slice
-      semantics (passed directly as `radices []int` to `ndMultiIndex`/`ndIncrement`).
-      Unifying into the ≤3D value struct would cap ND at 3D; unifying into a
-      slice-backed type would force per-Solve heap allocation on the 2D/3D hot
-      path (`Plan.shape()`) and pervasive dimension-generic rewrites of the
-      fixed-3-slot code (fd, boundary\_\*, iterators, `applyEigenvalues`). Both
-      violate the "no new per-Solve allocs / no risky churn" constraint, so
-      `poisson.Shape` is intentionally kept as the ND representation.)
+      (→ DONE — `poisson.Shape` and `shape_nd.go` are deleted; a single
+      slice-backed `grid.Shape struct { dims []int }` now serves every package.
+      `Dim()` returns `len(dims)`; `N(axis)` returns `dims[axis]` or **1** for
+      `axis >= len(dims)` (preserving the trailing-axis-is-1 semantics the ≤3D
+      indexing helpers rely on); `Size()` is the product; `Dims()` exposes the
+      backing slice read-only for the N-D `periodic_nd` iteration; the ≤3D
+      helpers (`RowMajorStride`, `Index3D`, `FromIndex3D`) and the
+      `Line`/`PlaneIterator`s were rewritten to drive off `N(axis)`.
+      Constructors `NewShape1D/2D/3D` still panic on a negative extent
+      (`mustNonNegative`), and a new `NewShapeND(dims ...int)` / `NewShapeN([]int)`
+      builds the N-D path. `NewPlanNDPeriodic` now takes a `grid.Shape` and
+      `PlanNDPeriodic` still solves >3D (4D tests unchanged). Zero-alloc
+      mitigation: a slice-backed Shape allocates on construction, so the general
+      `Plan` builds its shape ONCE at construction and stores it in `Plan.shp`;
+      `Plan.shape()` returns the cached value, keeping the 2D/3D Solve path at
+      its prior allocs/op (2D-Dirichlet workers=1 stays 5 allocs/op — a per-Solve
+      rebuild would make it 6). `PlanNDPeriodic` already held its shape built
+      once. Shape is no longer comparable (slice field); nothing compared it with
+      `==` or used it as a map key, so no call sites changed on that account.)
 - [ ] Deduplicate the pow2/non-pow2 strided-transform logic copy-pasted
       between `periodic_nd.go:263` and `fft_plan.go:120-157`.
 - [ ] Delete dead code: `isZeroMode` (`plan.go:258`), the unreachable

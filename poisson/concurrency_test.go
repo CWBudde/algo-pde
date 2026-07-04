@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MeKo-Tech/algo-pde/grid"
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
 
@@ -146,7 +147,7 @@ func TestConcurrentSolve_Periodic3D_RealFFT(t *testing.T) {
 }
 
 func TestConcurrentSolve_PeriodicND(t *testing.T) {
-	shape := poisson.Shape{4, 6, 3, 2} // non-power-of-two axes exercise scratch paths
+	shape := grid.NewShapeND(4, 6, 3, 2) // non-power-of-two axes exercise scratch paths
 	h := []float64{0.25, 1.0 / 6.0, 1.0 / 3.0, 0.5}
 	plan, err := poisson.NewPlanNDPeriodic(shape, h, poisson.WithSubtractMean())
 	if err != nil {

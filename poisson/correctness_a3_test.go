@@ -7,6 +7,7 @@ import (
 
 	"github.com/MeKo-Tech/algo-pde/bc"
 	"github.com/MeKo-Tech/algo-pde/fd"
+	"github.com/MeKo-Tech/algo-pde/grid"
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
 
@@ -93,7 +94,7 @@ func TestConstructors_RejectNonFiniteSpacing(t *testing.T) {
 			"NewPlan1DPeriodic": errOf(poisson.NewPlan1DPeriodic(16, h)),
 			"NewPlan2DPeriodic": errOf(poisson.NewPlan2DPeriodic(16, 16, h, 0.1)),
 			"NewPlan3DPeriodic": errOf(poisson.NewPlan3DPeriodic(8, 8, 8, 0.1, h, 0.1)),
-			"NewPlanNDPeriodic": errOf(poisson.NewPlanNDPeriodic(poisson.Shape{8, 8}, []float64{0.1, h})),
+			"NewPlanNDPeriodic": errOf(poisson.NewPlanNDPeriodic(grid.NewShapeND(8, 8), []float64{0.1, h})),
 		}
 		for name, err := range constructors {
 			if !errors.Is(err, poisson.ErrInvalidSpacing) {
@@ -311,7 +312,7 @@ func TestNullspaceError_RejectedAtConstruction(t *testing.T) {
 		"NewPlan1DPeriodic": errOf(poisson.NewPlan1DPeriodic(16, 0.1, errOpt)),
 		"NewPlan2DPeriodic": errOf(poisson.NewPlan2DPeriodic(16, 16, 0.1, 0.1, errOpt)),
 		"NewPlan3DPeriodic": errOf(poisson.NewPlan3DPeriodic(8, 8, 8, 0.1, 0.1, 0.1, errOpt)),
-		"NewPlanNDPeriodic": errOf(poisson.NewPlanNDPeriodic(poisson.Shape{8, 8}, []float64{0.1, 0.1}, errOpt)),
+		"NewPlanNDPeriodic": errOf(poisson.NewPlanNDPeriodic(grid.NewShapeND(8, 8), []float64{0.1, 0.1}, errOpt)),
 		// Core Plan with a pure-Neumann axis also carries the nullspace.
 		"NewPlan(Neumann)": errOf(poisson.NewPlan(1, []int{16}, []float64{0.1}, []poisson.BCType{poisson.Neumann}, errOpt)),
 	}

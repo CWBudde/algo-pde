@@ -36,6 +36,10 @@ type Plan struct {
 	// reject it when imag != 0. The complex path (SolveComplex) divides by it and
 	// can carry a damping shift.
 	alphaComplex complex128
+	// shp is the grid.Shape built once at construction and returned by shape().
+	// A slice-backed grid.Shape allocates on construction, so caching it keeps
+	// the per-Solve hot path allocation-free.
+	shp grid.Shape
 }
 
 // NewPlan creates a new Poisson plan with per-axis boundary conditions.
@@ -179,6 +183,18 @@ func newPlanCore(dim int, n []int, h []float64, bcs []BCType, alphaC complex128,
 	plan.complexSize = size
 	plan.work = newWorkspacePool(realSize, size)
 
+	// Build the grid.Shape once here so the per-Solve shape() accessor returns a
+	// cached value: a slice-backed grid.Shape allocates on construction, so
+	// rebuilding it every Solve would put an allocation on the hot path.
+	switch dim {
+	case 1:
+		plan.shp = grid.NewShape1D(plan.n[0])
+	case 2:
+		plan.shp = grid.NewShape2D(plan.n[0], plan.n[1])
+	default:
+		plan.shp = grid.NewShape3D(plan.n[0], plan.n[1], plan.n[2])
+	}
+
 	return plan, nil
 }
 
@@ -266,15 +282,11 @@ func (p *Plan) solve(dst, rhs []float64, workspace *Workspace) error {
 	return nil
 }
 
+// shape returns the plan's grid shape. It is built once at construction (see
+// newPlanCore) and cached, so this accessor never allocates on the Solve
+// hot path.
 func (p *Plan) shape() grid.Shape {
-	switch p.dim {
-	case 1:
-		return grid.NewShape1D(p.n[0])
-	case 2:
-		return grid.NewShape2D(p.n[0], p.n[1])
-	default:
-		return grid.NewShape3D(p.n[0], p.n[1], p.n[2])
-	}
+	return p.shp
 }
 
 func (p *Plan) size() int {
