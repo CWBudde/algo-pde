@@ -42,9 +42,11 @@ func TestPlan3D_AllBCCombinations(t *testing.T) {
 				}
 
 				rhs := make([]float64, len(u))
-				fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+				if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 					bcx, bcy, bcz,
-				})
+				}); err != nil {
+					t.Fatal(err)
+				}
 
 				got := make([]float64, len(u))
 				if err := plan.Solve(got, rhs); err != nil {
@@ -88,9 +90,11 @@ func TestPlan3D_DirichletDirichletDirichlet(t *testing.T) {
 	}
 
 	rhs := make([]float64, len(u))
-	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 		poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, len(u))
 	if err := plan.Solve(got, rhs); err != nil {
@@ -131,9 +135,11 @@ func TestPlan3D_NeumannNeumannNeumann(t *testing.T) {
 	}
 
 	rhs := make([]float64, len(u))
-	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 		poisson.Neumann, poisson.Neumann, poisson.Neumann,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, len(u))
 	if err := plan.Solve(got, rhs); err != nil {
@@ -174,9 +180,11 @@ func TestPlan3D_PeriodicDirichletNeumann(t *testing.T) {
 	}
 
 	rhs := make([]float64, len(u))
-	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 		poisson.Periodic, poisson.Dirichlet, poisson.Neumann,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, len(u))
 	if err := plan.Solve(got, rhs); err != nil {
@@ -217,9 +225,11 @@ func TestPlan3D_DirichletPeriodicNeumann(t *testing.T) {
 	}
 
 	rhs := make([]float64, len(u))
-	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 		poisson.Dirichlet, poisson.Periodic, poisson.Neumann,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, len(u))
 	if err := plan.Solve(got, rhs); err != nil {
@@ -292,9 +302,11 @@ func benchmarkPlan3DSolve(b *testing.B, n int, bc [3]poisson.BCType) {
 	}
 
 	rhs := make([]float64, len(u))
-	fd.Apply3D(rhs, u, grid.NewShape3D(n, n, n), [3]float64{hx, hy, hz}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(n, n, n), [3]float64{hx, hy, hz}, [3]poisson.BCType{
 		bc[0], bc[1], bc[2],
-	})
+	}); err != nil {
+		b.Fatal(err)
+	}
 
 	dst := make([]float64, len(u))
 	b.ReportAllocs()

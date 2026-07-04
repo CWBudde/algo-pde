@@ -43,6 +43,12 @@ func (s Shape) N(axis int) int {
 	return s[axis]
 }
 
+// hasZeroExtent reports whether any axis has a zero extent, in which case the
+// grid is empty (no lines or planes to iterate).
+func (s Shape) hasZeroExtent() bool {
+	return s[0] == 0 || s[1] == 0 || s[2] == 0
+}
+
 // Stride represents the memory strides for an N-dimensional grid.
 // stride[i] is the number of elements to skip to advance one step along axis i.
 type Stride [3]int
@@ -104,7 +110,8 @@ type LineIterator struct {
 	max   [2]int // max values for those dimensions
 	other [2]int // which axes are the "other" ones
 
-	done bool
+	empty bool
+	done  bool
 }
 
 // NewLineIterator creates an iterator over lines along the given axis.
@@ -142,6 +149,13 @@ func NewLineIterator(shape Shape, axis int) *LineIterator {
 		it.max[0] = 1 // Only iterate once for 1D
 	}
 
+	// A zero-extent shape has no lines at all: mark the iterator empty and done
+	// so it yields nothing (rather than a phantom line for the collapsed dim).
+	if shape.hasZeroExtent() {
+		it.empty = true
+		it.done = true
+	}
+
 	return it
 }
 
@@ -168,7 +182,7 @@ func (it *LineIterator) Next() bool {
 // Reset resets the iterator to the beginning.
 func (it *LineIterator) Reset() {
 	it.pos = [2]int{}
-	it.done = false
+	it.done = it.empty
 }
 
 // StartIndex returns the starting linear index for the current line.
@@ -192,8 +206,13 @@ func (it *LineIterator) LineLength() int {
 	return it.shape[it.axis]
 }
 
-// NumLines returns the total number of lines.
+// NumLines returns the total number of lines. A shape with any zero extent has
+// no lines and returns 0.
 func (it *LineIterator) NumLines() int {
+	if it.empty {
+		return 0
+	}
+
 	total := 1
 
 	for d := range 3 {
@@ -240,7 +259,8 @@ type PlaneIterator struct {
 	max   int
 	other [2]int
 
-	done bool
+	empty bool
+	done  bool
 }
 
 // NewPlaneIterator creates an iterator over planes orthogonal to the given axis.
@@ -265,6 +285,12 @@ func NewPlaneIterator(shape Shape, axis int) *PlaneIterator {
 		}
 	}
 
+	// A zero-extent shape has no planes at all.
+	if shape.hasZeroExtent() {
+		it.empty = true
+		it.done = true
+	}
+
 	return it
 }
 
@@ -286,7 +312,7 @@ func (it *PlaneIterator) Next() bool {
 // Reset resets the iterator to the beginning.
 func (it *PlaneIterator) Reset() {
 	it.pos = 0
-	it.done = false
+	it.done = it.empty
 }
 
 // StartIndex returns the starting linear index for the current plane.
@@ -320,9 +346,10 @@ func (it *PlaneIterator) PlaneSize1() int {
 	return it.shape[it.other[1]]
 }
 
-// NumPlanes returns the total number of planes.
+// NumPlanes returns the total number of planes. A shape with any zero extent has
+// no planes and returns 0.
 func (it *PlaneIterator) NumPlanes() int {
-	if it.max < 1 {
+	if it.empty || it.max < 1 {
 		return 0
 	}
 

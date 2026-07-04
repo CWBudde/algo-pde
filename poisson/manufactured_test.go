@@ -363,7 +363,9 @@ func solveAndCompare1D(
 	}
 
 	rhs := make([]float64, n)
-	fd.Apply1D(rhs, u, h, bc)
+	if err := fd.Apply1D(rhs, u, h, bc); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, n)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -400,7 +402,9 @@ func solveAndCompare2D(
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, bc)
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, bc); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -439,7 +443,9 @@ func solveAndCompare3D(
 	}
 
 	rhs := make([]float64, nx*ny*nz)
-	fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, bc)
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(nx, ny, nz), [3]float64{hx, hy, hz}, bc); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny*nz)
 	if err := plan.Solve(got, rhs); err != nil {

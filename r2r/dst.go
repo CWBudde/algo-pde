@@ -310,24 +310,6 @@ func (p *DST2Plan) Inverse(dst, src []float64) error {
 	return nil
 }
 
-// NormalizationFactor returns the factor by which values are scaled
-// after a Forward followed by Inverse transform.
-// For DST-I: Forward * Inverse = (N+1)/2 * I.
-func (p *DSTPlan) NormalizationFactor() float64 {
-	if p.opts.Normalization == NormOrtho {
-		return 1.0
-	}
-
-	return float64(p.n+1) / 2.0
-}
-
-// NormalizationFactor returns the factor by which values are scaled
-// after a Forward followed by Inverse transform.
-// For DST-II: Forward followed by Inverse returns the original signal.
-func (p *DST2Plan) NormalizationFactor() float64 {
-	return 1.0
-}
-
 // Bytes returns the memory used by the plan in bytes.
 func (p *DSTPlan) Bytes() int {
 	return len(p.fftIn)*16 + len(p.fftOut)*16

@@ -328,6 +328,58 @@ func TestForwardLines_SizeMismatch(t *testing.T) {
 	}
 }
 
+func TestForwardLines_ShortBuffer(t *testing.T) {
+	shape := grid.NewShape2D(8, 6) // Size 48, axis 0 has extent 8
+
+	plan, err := NewDSTPlan(8)
+	if err != nil {
+		t.Fatalf("NewDSTPlan failed: %v", err)
+	}
+
+	// Buffer shorter than shape.Size() must be rejected before any access.
+	if err := plan.ForwardLines(make([]float64, 40), shape, 0); !errors.Is(err, ErrSizeMismatch) {
+		t.Errorf("short buffer forward: got %v, want ErrSizeMismatch", err)
+	}
+	if err := plan.InverseLines(make([]float64, 40), shape, 0); !errors.Is(err, ErrSizeMismatch) {
+		t.Errorf("short buffer inverse: got %v, want ErrSizeMismatch", err)
+	}
+}
+
+func TestForwardLines_BadAxis(t *testing.T) {
+	shape := grid.NewShape2D(8, 6)
+
+	plan, err := NewDSTPlan(8)
+	if err != nil {
+		t.Fatalf("NewDSTPlan failed: %v", err)
+	}
+
+	data := make([]float64, shape.Size())
+	for _, axis := range []int{-1, 3, 100} {
+		if err := plan.ForwardLines(data, shape, axis); !errors.Is(err, ErrInvalidAxis) {
+			t.Errorf("axis %d forward: got %v, want ErrInvalidAxis", axis, err)
+		}
+		if err := plan.InverseLines(data, shape, axis); !errors.Is(err, ErrInvalidAxis) {
+			t.Errorf("axis %d inverse: got %v, want ErrInvalidAxis", axis, err)
+		}
+	}
+}
+
+func TestForwardLines_ZeroExtent(t *testing.T) {
+	shape := grid.Shape{8, 0, 1} // Zero extent on axis 1
+
+	plan, err := NewDSTPlan(8)
+	if err != nil {
+		t.Fatalf("NewDSTPlan failed: %v", err)
+	}
+
+	if err := plan.ForwardLines(nil, shape, 0); !errors.Is(err, ErrInvalidSize) {
+		t.Errorf("zero-extent forward: got %v, want ErrInvalidSize", err)
+	}
+	if err := plan.InverseLines(nil, shape, 0); !errors.Is(err, ErrInvalidSize) {
+		t.Errorf("zero-extent inverse: got %v, want ErrInvalidSize", err)
+	}
+}
+
 func BenchmarkDSTPlan_ForwardLines_2D(b *testing.B) {
 	sizes := []struct{ nx, ny int }{
 		{64, 64},

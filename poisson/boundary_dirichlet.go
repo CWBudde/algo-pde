@@ -110,7 +110,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 			}
 
 		default:
-			return &ValidationError{Field: fieldFace, Message: "unknown boundary face"}
+			return &ValidationError{Field: fieldFace, Message: msgUnknownFace}
 		}
 	}
 

@@ -135,6 +135,21 @@ func newPlanWithAlpha(dim int, n []int, h []float64, bc []BCType, alpha float64,
 		return nil, ErrNullspace
 	}
 
+	// WithSolutionMean only has meaning when the operator has a nullspace: a
+	// unique-solution plan ignores it, so reject it rather than silently drop it.
+	if !plan.hasNullspace() && options.SolutionMean != nil {
+		return nil, ErrSolutionMeanRequiresNullspace
+	}
+
+	// The general Plan (which also serves the SolveWithBC path) never runs the
+	// real-FFT path — only the dedicated all-periodic plans (NewPlan2DPeriodic /
+	// NewPlan3DPeriodic) do. Reject WithRealFFT/WithFloat32 here rather than
+	// silently ignoring it, even when every axis is periodic (a general all-
+	// periodic Plan still uses the complex pipeline).
+	if options.UseRealFFT {
+		return nil, ErrRealFFTUnsupported
+	}
+
 	realSize := 0
 	if !options.InPlace {
 		realSize = size

@@ -160,7 +160,10 @@ func TestEigenvaluesGeneric(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		generic := Eigenvalues(n, h, tt.bc)
+		generic, err := Eigenvalues(n, h, tt.bc)
+		if err != nil {
+			t.Fatalf("%v: Eigenvalues failed: %v", tt.bc, err)
+		}
 		if len(generic) != len(tt.specific) {
 			t.Errorf("%v: length mismatch: %d vs %d", tt.bc, len(generic), len(tt.specific))
 			continue

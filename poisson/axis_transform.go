@@ -32,10 +32,6 @@ func (t *fftAxisTransform) Length() int {
 	return t.plan.Len()
 }
 
-func (t *fftAxisTransform) NormalizationFactor() float64 {
-	return 1.0
-}
-
 // realLinePlan is the subset of the r2r type-I/II plan API used to transform a
 // single real line in place. Both *r2r.DSTPlan (DST-I) and *r2r.DCT2Plan
 // (DCT-II) satisfy it, letting DST and DCT axis transforms share one generic
@@ -43,7 +39,6 @@ func (t *fftAxisTransform) NormalizationFactor() float64 {
 type realLinePlan interface {
 	Forward(dst, src []float64) error
 	Inverse(dst, src []float64) error
-	NormalizationFactor() float64
 }
 
 // realLineWorker bundles a real-line plan with scratch buffers for one
@@ -61,7 +56,6 @@ type realLineWorker[P realLinePlan] struct {
 type realAxisTransform[P realLinePlan] struct {
 	n       int
 	workers int
-	norm    float64
 	label   string
 	newPlan func(n int) (P, error)
 	pool    *residentPool[realLineWorker[P]]
@@ -81,11 +75,12 @@ func newRealAxisTransform[P realLinePlan](
 		pool:    newResidentPool[realLineWorker[P]](workers),
 	}
 
+	// Construct one worker up front to surface plan-creation errors at
+	// construction time and to prime the pool.
 	worker, err := transform.newWorker()
 	if err != nil {
 		return nil, err
 	}
-	transform.norm = worker.plan.NormalizationFactor()
 	transform.pool.put(worker)
 
 	return transform, nil
@@ -113,10 +108,6 @@ func (t *realAxisTransform[P]) Inverse(data []complex128, shape grid.Shape, axis
 
 func (t *realAxisTransform[P]) Length() int {
 	return t.n
-}
-
-func (t *realAxisTransform[P]) NormalizationFactor() float64 {
-	return t.norm
 }
 
 func (t *realAxisTransform[P]) newWorker() (*realLineWorker[P], error) {

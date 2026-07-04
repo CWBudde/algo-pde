@@ -20,17 +20,12 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 		return p.Solve(dst, rhs)
 	}
 
+	// Validate everything (faces, types, duplicate faces, and value sizes) before
+	// touching any data. In the InPlace path buf aliases the caller's rhs, so a
+	// mid-loop error after partial mutation would corrupt it; full up-front
+	// validation guarantees rhs is untouched whenever an error is returned.
 	if err := p.validateBoundaryConditions(bc); err != nil {
 		return err
-	}
-
-	workspace := p.work.get()
-	defer p.work.put(workspace)
-
-	buf := rhs
-	if !p.opts.InPlace {
-		buf = workspace.Real[:size]
-		copy(buf, rhs)
 	}
 
 	var dirichlet, neumann BoundaryConditions
@@ -46,6 +41,15 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 				Message: "unsupported boundary condition",
 			}
 		}
+	}
+
+	workspace := p.work.get()
+	defer p.work.put(workspace)
+
+	buf := rhs
+	if !p.opts.InPlace {
+		buf = workspace.Real[:size]
+		copy(buf, rhs)
 	}
 
 	shape := p.shape()
@@ -65,6 +69,7 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 }
 
 func (p *Plan) validateBoundaryConditions(bc BoundaryConditions) error {
+	seen := make(map[BoundaryFace]bool, len(bc))
 	for _, data := range bc {
 		axis, ok := faceAxis(data.Face)
 		if !ok || axis >= p.dim {
@@ -73,6 +78,11 @@ func (p *Plan) validateBoundaryConditions(bc BoundaryConditions) error {
 				Message: "boundary face not valid for plan dimension",
 			}
 		}
+
+		if seen[data.Face] {
+			return fmt.Errorf("%w: %v", ErrDuplicateFace, data.Face)
+		}
+		seen[data.Face] = true
 
 		if p.bc[axis] == Periodic {
 			return &ValidationError{
@@ -86,6 +96,40 @@ func (p *Plan) validateBoundaryConditions(bc BoundaryConditions) error {
 				Field:   fieldType,
 				Message: fmt.Sprintf("boundary type %s does not match plan axis %s", data.Type, p.bc[axis]),
 			}
+		}
+
+		if err := p.validateFaceValues(data); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateFaceValues checks that a boundary face carries the correct number of
+// values for the plan's shape, matching what ApplyDirichletRHS/ApplyNeumannRHS
+// expect. Doing this up front lets SolveWithBC reject bad input before mutating
+// the caller's rhs.
+func (p *Plan) validateFaceValues(data BoundaryData) error {
+	nx, ny, nz := p.n[0], p.n[1], p.n[2]
+
+	var expected int
+	switch data.Face {
+	case XLow, XHigh:
+		expected = ny * nz
+	case YLow, YHigh:
+		expected = nx * nz
+	case ZLow, ZHigh:
+		expected = nx * ny
+	default:
+		return &ValidationError{Field: fieldFace, Message: msgUnknownFace}
+	}
+
+	if len(data.Values) != expected {
+		return &SizeError{
+			Expected: expected,
+			Got:      len(data.Values),
+			Context:  fmt.Sprintf("%v face values", data.Face),
 		}
 	}
 

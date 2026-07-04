@@ -38,7 +38,9 @@ func TestPlan1DPeriodic_Solve_Manufactured(t *testing.T) {
 	}
 
 	rhs := make([]float64, n)
-	fd.Apply1D(rhs, u, h, poisson.Periodic)
+	if err := fd.Apply1D(rhs, u, h, poisson.Periodic); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, n)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -67,7 +69,9 @@ func TestPlan1DPeriodic_SolveInPlace(t *testing.T) {
 	}
 
 	buf := make([]float64, n)
-	fd.Apply1D(buf, u, h, poisson.Periodic)
+	if err := fd.Apply1D(buf, u, h, poisson.Periodic); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := plan.SolveInPlace(buf); err != nil {
 		t.Fatalf("SolveInPlace failed: %v", err)
@@ -142,7 +146,9 @@ func TestPlan1DPeriodic_SetSolutionMean(t *testing.T) {
 	}
 
 	rhs := make([]float64, n)
-	fd.Apply1D(rhs, u, h, poisson.Periodic)
+	if err := fd.Apply1D(rhs, u, h, poisson.Periodic); err != nil {
+		t.Fatal(err)
+	}
 
 	dst := make([]float64, n)
 	if err := plan.Solve(dst, rhs); err != nil {

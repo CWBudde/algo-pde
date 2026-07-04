@@ -97,17 +97,7 @@ func FuzzPlanSolveBasic(f *testing.F) {
 			}
 		}
 
-		residual := make([]float64, size)
-		switch dim {
-		case 1:
-			fd.Apply1D(residual, dst, h[0], bc[0])
-		case 2:
-			fd.Apply2D(residual, dst, grid.NewShape2D(n[0], n[1]),
-				[2]float64{h[0], h[1]}, [2]poisson.BCType{bc[0], bc[1]})
-		case 3:
-			fd.Apply3D(residual, dst, grid.NewShape3D(n[0], n[1], n[2]),
-				[3]float64{h[0], h[1], h[2]}, [3]poisson.BCType{bc[0], bc[1], bc[2]})
-		}
+		residual := fuzzResidual(t, dim, size, dst, n, h, bc)
 
 		scale := 0.0
 		for _, v := range want {
@@ -133,6 +123,31 @@ func FuzzPlanSolveBasic(f *testing.F) {
 
 // clampDim folds an arbitrary fuzz integer into the small extent range [2, 10].
 // The lower bound of 2 satisfies the DCT-I minimum used for Neumann axes.
+// fuzzResidual applies the negative-Laplacian stencil to dst for the given
+// dimension, returning -Δ(dst). It fails the test if the stencil rejects its
+// (always well-formed) arguments.
+func fuzzResidual(t *testing.T, dim, size int, dst []float64, n []int, h []float64, bc []poisson.BCType) []float64 {
+	t.Helper()
+
+	residual := make([]float64, size)
+	var err error
+	switch dim {
+	case 1:
+		err = fd.Apply1D(residual, dst, h[0], bc[0])
+	case 2:
+		err = fd.Apply2D(residual, dst, grid.NewShape2D(n[0], n[1]),
+			[2]float64{h[0], h[1]}, [2]poisson.BCType{bc[0], bc[1]})
+	case 3:
+		err = fd.Apply3D(residual, dst, grid.NewShape3D(n[0], n[1], n[2]),
+			[3]float64{h[0], h[1], h[2]}, [3]poisson.BCType{bc[0], bc[1], bc[2]})
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return residual
+}
+
 func clampDim(v int) int {
 	// Reduce first, then take the absolute value: negating before the modulo
 	// would overflow for v == math.MinInt and leave the result negative.

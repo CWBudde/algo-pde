@@ -33,6 +33,26 @@ var (
 
 	// ErrResonant is returned when the Helmholtz operator is singular.
 	ErrResonant = errors.New("helmholtz operator is singular: alpha cancels eigenvalue")
+
+	// ErrSolutionMeanRequiresNullspace is returned when WithSolutionMean is set
+	// on a plan whose operator has no nullspace, where the requested mean would
+	// otherwise be silently ignored.
+	ErrSolutionMeanRequiresNullspace = errors.New(
+		"WithSolutionMean requires a plan with a nullspace (all-periodic or all-Neumann, alpha==0)",
+	)
+
+	// ErrRealFFTUnsupported is returned when WithRealFFT/WithFloat32 is set on a
+	// plan type that never runs the real-FFT path. Only the dedicated all-periodic
+	// plans (NewPlan2DPeriodic / NewPlan3DPeriodic) honor it; the general Plan —
+	// including the SolveWithBC path, even with all-periodic BCs — always uses the
+	// complex pipeline, so the option would otherwise be a silent no-op there.
+	ErrRealFFTUnsupported = errors.New(
+		"WithRealFFT/WithFloat32 is only supported by NewPlan2DPeriodic/NewPlan3DPeriodic",
+	)
+
+	// ErrDuplicateFace is returned when SolveWithBC receives more than one
+	// boundary entry for the same face, which would double that contribution.
+	ErrDuplicateFace = errors.New("duplicate boundary face in boundary conditions")
 )
 
 // Field and message strings reused across validation errors.
@@ -40,6 +60,7 @@ const (
 	fieldType          = "Type"
 	fieldFace          = "Face"
 	msgLenMustMatchDim = "length must match dim"
+	msgUnknownFace     = "unknown boundary face"
 )
 
 // SizeError provides details about a size mismatch.

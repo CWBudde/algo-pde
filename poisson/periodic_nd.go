@@ -2,15 +2,13 @@ package poisson
 
 import (
 	"fmt"
-	"log"
 )
 
 // ndWorkspace holds the per-solve buffers for PlanNDPeriodic: the complex
-// working grid plus an index slice reused as the odometer counter by the
-// (sequential) eigenvalue and axis-transform loops.
+// working grid. The eigenvalue and axis-transform loops derive their per-line
+// multi-indices locally so they can run across multiple workers.
 type ndWorkspace struct {
 	complexBuf []complex128
-	idx        []int
 }
 
 // PlanNDPeriodic is a reusable plan for solving N-dimensional periodic Poisson problems.
@@ -54,6 +52,7 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 	}
 
 	options := ApplyOptions(DefaultOptions(), opts)
+	options.Workers = effectiveWorkers(options.Workers)
 
 	// A periodic problem always carries the constant nullspace, so
 	// NullspaceError can never yield a usable Solve. Reject it up front.
@@ -61,9 +60,8 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 		return nil, ErrNullspace
 	}
 
-	if options.UseRealFFT {
-		log.Printf("poisson: real FFT disabled for ND plan: not supported for arbitrary dimensions")
-	}
+	// Real FFT is not supported for arbitrary dimensions; the plan runs the
+	// float64 complex path. UsedRealFFT reports this (always false for ND).
 
 	dims := make(Shape, len(shape))
 	copy(dims, shape)
@@ -78,8 +76,9 @@ func NewPlanNDPeriodic(shape Shape, h []float64, opts ...Option) (*PlanNDPeriodi
 
 	pools := make([]*fftWorkerPool, len(dims))
 	for i, n := range dims {
-		// The ND line loop is sequential, so one resident worker per axis.
-		pool, err := newFFTWorkerPool(n, 1)
+		// The line loop runs across options.Workers goroutines, so keep that
+		// many resident FFT workers per axis.
+		pool, err := newFFTWorkerPool(n, options.Workers)
 		if err != nil {
 			return nil, fmt.Errorf("creating FFT plan for axis %d: %w", i, err)
 		}
@@ -154,15 +153,17 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 	}
 
 	for axis := range p.fft {
-		if err := p.transformAxis(axis, false, workspace.complexBuf, workspace.idx); err != nil {
+		if err := p.transformAxis(axis, false, workspace.complexBuf); err != nil {
 			return fmt.Errorf("FFT forward axis %d: %w", axis, err)
 		}
 	}
 
-	p.applyEigenvalues(workspace.complexBuf, workspace.idx)
+	if err := p.applyEigenvalues(workspace.complexBuf); err != nil {
+		return err
+	}
 
 	for axis := len(p.fft) - 1; axis >= 0; axis-- {
-		if err := p.transformAxis(axis, true, workspace.complexBuf, workspace.idx); err != nil {
+		if err := p.transformAxis(axis, true, workspace.complexBuf); err != nil {
 			return fmt.Errorf("FFT inverse axis %d: %w", axis, err)
 		}
 	}
@@ -180,8 +181,18 @@ func (p *PlanNDPeriodic) Solve(dst, rhs []float64) error {
 }
 
 // SolveInPlace solves the system in-place, overwriting buf with the solution.
+// PlanNDPeriodic reads the whole RHS into an internal complex workspace before
+// writing any output, so passing the same slice as dst and rhs (as Solve does
+// here) is always safe regardless of the WithInPlace option.
 func (p *PlanNDPeriodic) SolveInPlace(buf []float64) error {
 	return p.Solve(buf, buf)
+}
+
+// UsedRealFFT reports whether the plan runs the single-precision real-FFT path.
+// PlanNDPeriodic never uses real FFT (it is not supported for arbitrary
+// dimensions), so this is always false.
+func (p *PlanNDPeriodic) UsedRealFFT() bool {
+	return false
 }
 
 func (p *PlanNDPeriodic) getWorkspace() *ndWorkspace {
@@ -190,74 +201,87 @@ func (p *PlanNDPeriodic) getWorkspace() *ndWorkspace {
 	}
 	return &ndWorkspace{
 		complexBuf: make([]complex128, p.shape.Size()),
-		idx:        make([]int, len(p.shape)),
 	}
 }
 
-func (p *PlanNDPeriodic) applyEigenvalues(data []complex128, idx []int) {
-	indices := idx[:len(p.shape)]
-	for i := range indices {
-		indices[i] = 0
+// ndMultiIndex fills indices with the mixed-radix decomposition of the flat
+// index flat over the given radices (rightmost varying fastest).
+func ndMultiIndex(indices, radices []int, flat int) {
+	for d := len(radices) - 1; d >= 0; d-- {
+		indices[d] = flat % radices[d]
+		flat /= radices[d]
 	}
+}
 
-	for i := range data {
-		denom := 0.0
-		for d, eig := range p.eig {
-			denom += eig[indices[d]]
+// ndIncrement advances the mixed-radix odometer indices by one step.
+func ndIncrement(indices, radices []int) {
+	for d := len(indices) - 1; d >= 0; d-- {
+		indices[d]++
+		if indices[d] < radices[d] {
+			break
 		}
+		indices[d] = 0
+	}
+}
 
-		if denom == 0 {
-			data[i] = 0
-		} else {
-			data[i] /= complex(denom, 0)
-		}
+func (p *PlanNDPeriodic) applyEigenvalues(data []complex128) error {
+	size := p.shape.Size()
+	workers := clampWorkers(p.opts.Workers, size)
 
-		for d := len(indices) - 1; d >= 0; d-- {
-			indices[d]++
-			if indices[d] < p.shape[d] {
-				break
+	return parallelFor(workers, size, func(_ int, start, end int) error {
+		indices := make([]int, len(p.shape))
+		ndMultiIndex(indices, p.shape, start)
+
+		for i := start; i < end; i++ {
+			denom := 0.0
+			for d, eig := range p.eig {
+				denom += eig[indices[d]]
 			}
-			indices[d] = 0
+
+			if denom == 0 {
+				data[i] = 0
+			} else {
+				data[i] /= complex(denom, 0)
+			}
+
+			ndIncrement(indices, p.shape)
 		}
-	}
+		return nil
+	})
 }
 
-func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, data []complex128, idx []int) error {
+func (p *PlanNDPeriodic) transformAxis(axis int, inverse bool, data []complex128) error {
 	lineLen := p.shape[axis]
 	lineStride := p.stride[axis]
 	totalLines := p.shape.Size() / lineLen
 
 	reducedDims := p.axisDims[axis]
-	indices := idx[:len(reducedDims)]
-	for i := range indices {
-		indices[i] = 0
-	}
 	otherAxes := p.axisOther[axis]
+	workers := clampWorkers(p.opts.Workers, totalLines)
 
-	worker, err := p.fft[axis].get()
-	if err != nil {
-		return err
-	}
-	defer p.fft[axis].put(worker)
-
-	for range totalLines {
-		start := 0
-		for i, d := range otherAxes {
-			start += indices[i] * p.stride[d]
-		}
-
-		if err := fftTransformLine(worker, lineLen, data, start, lineStride, inverse); err != nil {
+	return parallelFor(workers, totalLines, func(_ int, startLine, endLine int) error {
+		worker, err := p.fft[axis].get()
+		if err != nil {
 			return err
 		}
+		defer p.fft[axis].put(worker)
 
-		for i := len(indices) - 1; i >= 0; i-- {
-			indices[i]++
-			if indices[i] < reducedDims[i] {
-				break
+		indices := make([]int, len(reducedDims))
+		ndMultiIndex(indices, reducedDims, startLine)
+
+		for line := startLine; line < endLine; line++ {
+			start := 0
+			for i, d := range otherAxes {
+				start += indices[i] * p.stride[d]
 			}
-			indices[i] = 0
-		}
-	}
 
-	return nil
+			if err := fftTransformLine(worker, lineLen, data, start, lineStride, inverse); err != nil {
+				return err
+			}
+
+			ndIncrement(indices, reducedDims)
+		}
+
+		return nil
+	})
 }

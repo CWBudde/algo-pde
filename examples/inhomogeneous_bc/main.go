@@ -36,9 +36,11 @@ func main() {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Dirichlet, poisson.Dirichlet,
-	})
+	}); err != nil {
+		panic(err)
+	}
 
 	xLow := make([]float64, ny)
 	xHigh := make([]float64, ny)

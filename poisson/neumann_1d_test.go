@@ -29,7 +29,9 @@ func TestPlan1DNeumann_Solve_Mode1(t *testing.T) {
 	checkNeumannDerivative(t, u, h)
 
 	rhs := make([]float64, n)
-	fd.Apply1D(rhs, u, h, poisson.Neumann)
+	if err := fd.Apply1D(rhs, u, h, poisson.Neumann); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, n)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -59,7 +61,9 @@ func TestPlan1DNeumann_Solve_Mode2(t *testing.T) {
 	checkNeumannDerivative(t, u, h)
 
 	rhs := make([]float64, n)
-	fd.Apply1D(rhs, u, h, poisson.Neumann)
+	if err := fd.Apply1D(rhs, u, h, poisson.Neumann); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, n)
 	if err := plan.Solve(got, rhs); err != nil {

@@ -36,9 +36,11 @@ func TestPlan2D_DirichletDirichlet(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Dirichlet, poisson.Dirichlet,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -75,9 +77,11 @@ func TestPlan2D_NeumannNeumann(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Neumann, poisson.Neumann,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -114,9 +118,11 @@ func TestPlan2D_PeriodicDirichlet(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Periodic, poisson.Dirichlet,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny)
 	if err := plan.Solve(got, rhs); err != nil {
@@ -153,9 +159,11 @@ func TestPlan2D_DirichletNeumann(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Dirichlet, poisson.Neumann,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	got := make([]float64, nx*ny)
 	if err := plan.Solve(got, rhs); err != nil {

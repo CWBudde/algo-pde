@@ -29,9 +29,11 @@ func TestWithInPlace_MatchesDefault(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Dirichlet, poisson.Dirichlet,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	ref, err := poisson.NewPlan(2, []int{nx, ny}, []float64{hx, hy},
 		[]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet})
@@ -101,7 +103,9 @@ func TestWithNullspace_Functional(t *testing.T) {
 			want[i] -= mean
 		}
 		residual := make([]float64, n)
-		fd.Apply1D(residual, got, h, poisson.Neumann)
+		if err := fd.Apply1D(residual, got, h, poisson.Neumann); err != nil {
+			t.Fatal(err)
+		}
 		if e := relResidualError(residual, want); e > randomResidualRelTol {
 			t.Fatalf("residual rel error %g exceeds tol %g", e, randomResidualRelTol)
 		}
@@ -126,7 +130,9 @@ func TestWithNullspace_Functional(t *testing.T) {
 			t.Fatalf("Solve failed: %v", err)
 		}
 		residual := make([]float64, n)
-		fd.Apply1D(residual, got, h, poisson.Neumann)
+		if err := fd.Apply1D(residual, got, h, poisson.Neumann); err != nil {
+			t.Fatal(err)
+		}
 		if e := relResidualError(residual, rhs); e > randomResidualRelTol {
 			t.Fatalf("residual rel error %g exceeds tol %g", e, randomResidualRelTol)
 		}
@@ -157,9 +163,11 @@ func TestPlan2DPeriodic_SolveInPlace_Correctness(t *testing.T) {
 	}
 
 	rhs := make([]float64, nx*ny)
-	fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
+	if err := fd.Apply2D(rhs, u, grid.NewShape2D(nx, ny), [2]float64{hx, hy}, [2]poisson.BCType{
 		poisson.Periodic, poisson.Periodic,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	ref := make([]float64, nx*ny)
 	if err := plan.Solve(ref, rhs); err != nil {
@@ -207,9 +215,11 @@ func TestPlan3DPeriodic_SolveInPlace_Correctness(t *testing.T) {
 	}
 
 	rhs := make([]float64, n*n*n)
-	fd.Apply3D(rhs, u, grid.NewShape3D(n, n, n), [3]float64{h, h, h}, [3]poisson.BCType{
+	if err := fd.Apply3D(rhs, u, grid.NewShape3D(n, n, n), [3]float64{h, h, h}, [3]poisson.BCType{
 		poisson.Periodic, poisson.Periodic, poisson.Periodic,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	ref := make([]float64, n*n*n)
 	if err := plan.Solve(ref, rhs); err != nil {

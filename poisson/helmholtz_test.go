@@ -34,7 +34,9 @@ func TestHelmholtzPlan1D_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, n)
-	fd.Apply1D(lap, u, h, poisson.Dirichlet)
+	if err := fd.Apply1D(lap, u, h, poisson.Dirichlet); err != nil {
+		t.Fatal(err)
+	}
 
 	rhs := make([]float64, n)
 	for i := range n {
@@ -92,7 +94,9 @@ func TestHelmholtzPlan2D_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny)
-	fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet})
+	if err := fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+		t.Fatal(err)
+	}
 
 	rhs := make([]float64, nx*ny)
 	for i := range rhs {
@@ -129,7 +133,9 @@ func TestHelmholtzPlan1D_Neumann_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, n)
-	fd.Apply1D(lap, u, h, poisson.Neumann)
+	if err := fd.Apply1D(lap, u, h, poisson.Neumann); err != nil {
+		t.Fatal(err)
+	}
 
 	rhs := make([]float64, n)
 	for i := range n {
@@ -164,7 +170,9 @@ func TestHelmholtzPlan1D_Periodic_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, n)
-	fd.Apply1D(lap, u, h, poisson.Periodic)
+	if err := fd.Apply1D(lap, u, h, poisson.Periodic); err != nil {
+		t.Fatal(err)
+	}
 
 	rhs := make([]float64, n)
 	for i := range n {
@@ -205,7 +213,9 @@ func TestHelmholtzPlan2D_Neumann_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny)
-	fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Neumann, poisson.Neumann})
+	if err := fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Neumann, poisson.Neumann}); err != nil {
+		t.Fatal(err)
+	}
 
 	rhs := make([]float64, nx*ny)
 	for i := range rhs {
@@ -246,7 +256,9 @@ func TestHelmholtzPlan2D_Periodic_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny)
-	fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic})
+	if err := fd.Apply2D(lap, u, grid.Shape{nx, ny}, [2]float64{hx, hy}, [2]poisson.BCType{poisson.Periodic, poisson.Periodic}); err != nil {
+		t.Fatal(err)
+	}
 
 	rhs := make([]float64, nx*ny)
 	for i := range rhs {
@@ -293,7 +305,9 @@ func TestHelmholtzPlan3D_PositiveAlpha(t *testing.T) {
 	}
 
 	lap := make([]float64, nx*ny*nz)
-	fd.Apply3D(lap, u, grid.Shape{nx, ny, nz}, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet})
+	if err := fd.Apply3D(lap, u, grid.Shape{nx, ny, nz}, [3]float64{hx, hy, hz}, [3]poisson.BCType{poisson.Dirichlet, poisson.Dirichlet, poisson.Dirichlet}); err != nil {
+		t.Fatal(err)
+	}
 
 	rhs := make([]float64, nx*ny*nz)
 	for i := range rhs {

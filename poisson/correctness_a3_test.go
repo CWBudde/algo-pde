@@ -57,7 +57,9 @@ func TestHelmholtz_NegativeNonResonantSolves(t *testing.T) {
 		u[i] = math.Sin(math.Pi*x/L) + 0.25*math.Sin(4.0*math.Pi*x/L)
 	}
 	lap := make([]float64, n)
-	fd.Apply1D(lap, u, h, poisson.Dirichlet)
+	if err := fd.Apply1D(lap, u, h, poisson.Dirichlet); err != nil {
+		t.Fatal(err)
+	}
 	rhs := make([]float64, n)
 	for i := range n {
 		rhs[i] = lap[i] + alpha*u[i]
@@ -139,7 +141,9 @@ func TestNeumann_DefaultZeroModeAcceptsQuadratureMean(t *testing.T) {
 	// discrete operator to the solution reproduces f up to a constant vector,
 	// so residual := A*got - f must be (numerically) constant.
 	residual := make([]float64, n)
-	fd.Apply1D(residual, got, h, poisson.Neumann)
+	if err := fd.Apply1D(residual, got, h, poisson.Neumann); err != nil {
+		t.Fatal(err)
+	}
 	for i := range residual {
 		residual[i] -= f[i]
 	}
