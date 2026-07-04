@@ -10,6 +10,13 @@ type transformFunc func(dst, src []float64) error
 // shapes, plan/axis size mismatches, and buffers that are too short, so that no
 // bad input reaches the (panicking) iterator or transform kernels.
 func validateLineArgs(data []float64, shape grid.Shape, axis, n int) error {
+	// The line transforms use grid's row-major line iteration, which supports at
+	// most 3 dimensions. Reject higher-dimensional shapes here so the API returns
+	// an error rather than panicking in the iterator.
+	if shape.Dim() > 3 {
+		return ErrInvalidAxis
+	}
+
 	if axis < 0 || axis >= shape.Dim() {
 		return ErrInvalidAxis
 	}
