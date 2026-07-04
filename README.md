@@ -142,4 +142,4 @@ just wasm       # Build WebAssembly demo module
 
 ## License
 
-TBD.
+[MIT](LICENSE) © 2026 Christian Budde.
