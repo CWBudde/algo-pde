@@ -381,7 +381,7 @@ Either fix all of the below or pull it from the README until fixed.
       "reflections").
       → `demo/README.md` and the root `README.md` were rewritten for the accurate
       acoustic room-modes description; the live-demo link points at
-      `https://meko-tech.github.io/algo-pde/` and the stale synthesis/FPS/timing
+      `https://cwbudde.github.io/algo-pde/` and the stale synthesis/FPS/timing
       claims are gone.
 - [x] Modern build constraint (`//go:build js && wasm`), `Release()` strategy /
       comment for `js.FuncOf`, note the single-threaded `planCache` assumption.
