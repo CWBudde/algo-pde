@@ -487,8 +487,22 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
       real-path agreement, damping-vs-resonance, validation, alloc parity).
 - [ ] Robin / per-face asymmetric BCs (the `AxisBC` promise, currently dead
       code — implement or drop).
-- [ ] Pressure projection API for incompressible flow (divergence, gradient,
+- [x] Pressure projection API for incompressible flow (divergence, gradient,
       Navier–Stokes projection example).
+      → `poisson/projection.go` adds `ProjectionPlan2D`/`ProjectionPlan3D`:
+      `Project` performs the Helmholtz–Hodge decomposition `u = u* − ∇φ` with
+      `Δφ = ∇·u*`, and `Divergence` exposes the discrete operator it drives to
+      zero. The gradient uses forward differences and the divergence backward
+      differences on the collocated periodic grid, so their composition D∘G is
+      exactly the second-order periodic Laplacian the internal spectral plan
+      inverts (the collocated analogue of MAC staggering). The projected field
+      is therefore divergence-free to solver round-off, not just to truncation
+      order — `examples/projection` drops max|div| from ~3e2 to ~2e-13, and
+      `projection_test.go` pins divergence-free output, pure-gradient removal,
+      idempotency, validation, and concurrent-Project agreement (under -race).
+      The plan runs the inner solve with `WithSubtractMean` (the periodic
+      divergence telescopes to an analytically zero mean) and reuses per-call
+      scratch from a pool so `Project` stays allocation-free and concurrency-safe.
 - [ ] Variable coefficients: spectral solve as preconditioner for an
       iterative method.
 - [ ] Non-rectangular domains via immersed-boundary / masking, using the
