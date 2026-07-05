@@ -114,6 +114,60 @@
       transform: scale(0.95);
     }
 
+    .mode-btn.active {
+      background: rgba(255, 255, 255, 0.85);
+      color: #000;
+      border-color: #fff;
+    }
+
+    .mode-btn.active:hover {
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .depth-control {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .depth-control.active {
+      display: flex;
+    }
+
+    #depthSlider {
+      width: 400px;
+      max-width: 80vw;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.3);
+      outline: none;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    #depthSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+    }
+
+    #depthSlider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+    }
+
     #freqSlider {
       width: 400px;
       max-width: 80vw;
@@ -176,10 +230,20 @@
   </div>
 
   <div id="controls">
+    <div class="button-row">
+      <button id="mode2dBtn" class="mode-btn active" type="button">2D room</button>
+      <button id="mode3dBtn" class="mode-btn" type="button">3D box</button>
+    </div>
     <div class="time-display">
       Drive frequency: <span id="freqDisplay">120 Hz</span>
     </div>
     <input type="range" id="freqSlider" min="40" max="600" value="120" step="1">
+    <div id="depthControl" class="depth-control">
+      <div class="time-display">
+        Z-slice (depth): <span id="depthDisplay">0.0 m</span>
+      </div>
+      <input type="range" id="depthSlider" min="0" max="47" value="24" step="1">
+    </div>
   </div>
 
   <div id="info">
