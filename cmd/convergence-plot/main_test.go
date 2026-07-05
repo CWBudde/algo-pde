@@ -18,9 +18,9 @@ func TestConvergenceFunctionsAreSecondOrder(t *testing.T) {
 		name string
 		fn   func([]int) ([]float64, []float64, error)
 	}{
-		{"Dirichlet", convergeDirichlet2D},
-		{"Neumann", convergeNeumann2D},
-		{"Periodic", convergePeriodic2D},
+		{bcDirichlet, convergeDirichlet2D},
+		{bcNeumann, convergeNeumann2D},
+		{bcPeriodic, convergePeriodic2D},
 	}
 
 	for _, c := range cases {
@@ -48,7 +48,7 @@ func TestRenderSVGWellFormed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	svg := renderSVG([]series{{name: "Dirichlet", color: "#2563eb", hs: hs, errs: errs}}, sizes)
+	svg := renderSVG([]series{{name: bcDirichlet, color: "#2563eb", hs: hs, errs: errs}}, sizes)
 
 	if !strings.HasPrefix(svg, "<svg") {
 		t.Fatalf("output does not start with <svg: %.40q", svg)
@@ -56,7 +56,7 @@ func TestRenderSVGWellFormed(t *testing.T) {
 	if !strings.HasSuffix(strings.TrimSpace(svg), "</svg>") {
 		t.Fatal("output is not closed with </svg>")
 	}
-	if !strings.Contains(svg, "Dirichlet") {
+	if !strings.Contains(svg, bcDirichlet) {
 		t.Error("series label missing from SVG")
 	}
 	if !strings.Contains(svg, "slope 2") {

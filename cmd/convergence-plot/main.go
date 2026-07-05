@@ -24,6 +24,14 @@ import (
 	"github.com/MeKo-Tech/algo-pde/poisson"
 )
 
+// Boundary-condition names, shared across the series table, the dispatch switch,
+// and the tests.
+const (
+	bcDirichlet = "Dirichlet"
+	bcNeumann   = "Neumann"
+	bcPeriodic  = "Periodic"
+)
+
 // series is one boundary-condition convergence curve: the per-grid spacings and
 // the corresponding max-abs errors against the manufactured analytic solution.
 type series struct {
@@ -40,20 +48,20 @@ func main() {
 	sizes := []int{16, 32, 64, 128}
 
 	all := []series{
-		{name: "Dirichlet", color: "#2563eb", hs: nil, errs: nil},
-		{name: "Neumann", color: "#059669", hs: nil, errs: nil},
-		{name: "Periodic", color: "#d97706", hs: nil, errs: nil},
+		{name: bcDirichlet, color: "#2563eb", hs: nil, errs: nil},
+		{name: bcNeumann, color: "#059669", hs: nil, errs: nil},
+		{name: bcPeriodic, color: "#d97706", hs: nil, errs: nil},
 	}
 
 	for i := range all {
 		var hs, errs []float64
 		var err error
 		switch all[i].name {
-		case "Dirichlet":
+		case bcDirichlet:
 			hs, errs, err = convergeDirichlet2D(sizes)
-		case "Neumann":
+		case bcNeumann:
 			hs, errs, err = convergeNeumann2D(sizes)
-		case "Periodic":
+		case bcPeriodic:
 			hs, errs, err = convergePeriodic2D(sizes)
 		}
 		if err != nil {
@@ -68,17 +76,17 @@ func main() {
 		log.Fatalf("writing %s: %v", *out, err)
 	}
 
-	fmt.Printf("wrote %s\n", *out)
+	fmt.Fprintf(os.Stdout, "wrote %s\n", *out)
 	for _, s := range all {
-		fmt.Printf("  %-10s", s.name)
+		fmt.Fprintf(os.Stdout, "  %-10s", s.name)
 		for k := range s.hs {
-			fmt.Printf(" h=%.4g err=%.3e", s.hs[k], s.errs[k])
+			fmt.Fprintf(os.Stdout, " h=%.4g err=%.3e", s.hs[k], s.errs[k])
 			if k+1 < len(s.hs) {
 				rate := math.Log(s.errs[k+1]/s.errs[k]) / math.Log(s.hs[k+1]/s.hs[k])
-				fmt.Printf(" (rate %.2f)", rate)
+				fmt.Fprintf(os.Stdout, " (rate %.2f)", rate)
 			}
 		}
-		fmt.Println()
+		fmt.Fprintln(os.Stdout)
 	}
 }
 
