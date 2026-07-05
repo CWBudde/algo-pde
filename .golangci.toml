@@ -8,6 +8,8 @@ disable = [
     'exhaustruct',
     'godoclint',
     'gomoddirectives',
+    # gomodguard is deprecated (v2.12.0); replaced by gomodguard_v2, enabled below.
+    'gomodguard',
     'gosec',
     'ireturn',
     'musttag',
@@ -39,6 +41,7 @@ disable = [
 ]
 enable = [
     "revive",
+    "gomodguard_v2",
 ]
 
 [linters.settings.revive]
