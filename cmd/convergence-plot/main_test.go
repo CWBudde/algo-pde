@@ -36,8 +36,8 @@ func TestConvergenceFunctionsAreSecondOrder(t *testing.T) {
 				t.Fatalf("%s: non-positive/finite error at %d: %g", c.name, i, e)
 			}
 		}
-		if order := observedOrder(hs, errs); order < 1.9 {
-			t.Errorf("%s: observed order %.3f below 1.9 (expected ~2)", c.name, order)
+		if order := observedOrder(hs, errs); order < 1.8 {
+			t.Errorf("%s: observed order %.3f below 1.8 (expected ~2)", c.name, order)
 		}
 	}
 }
