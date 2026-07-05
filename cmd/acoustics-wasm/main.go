@@ -119,6 +119,11 @@ func SolveAcoustic(_ js.Value, args []js.Value) interface{} {
 	sy := args[10].Float()
 	srcRadius := args[11].Float()
 
+	if !allFinite(dx, dy, freqHz, soundSpeed, eta, sx, sy, srcRadius) {
+		// NaN/±Inf slip past the sign checks below (e.g. NaN <= 0 is false) and
+		// would otherwise poison the plan or produce an all-NaN field.
+		return jsError("numeric arguments must be finite")
+	}
 	if nx < 1 || ny < 1 {
 		return jsError("grid dimensions must be positive")
 	}
@@ -299,6 +304,11 @@ func SolveAcoustic3D(_ js.Value, args []js.Value) interface{} {
 	sz := args[14].Float()
 	srcRadius := args[15].Float()
 
+	if !allFinite(dx, dy, dz, freqHz, soundSpeed, eta, sx, sy, sz, srcRadius) {
+		// NaN/±Inf slip past the sign checks below (e.g. NaN <= 0 is false) and
+		// would otherwise poison the plan or produce an all-NaN field.
+		return jsError("numeric arguments must be finite")
+	}
 	if nx < 1 || ny < 1 || nz < 1 {
 		return jsError("grid dimensions must be positive")
 	}
@@ -427,6 +437,16 @@ func fieldToRGBA(u []complex128) []byte {
 		rgba[i*4+3] = 255
 	}
 	return rgba
+}
+
+// allFinite reports whether every value is a finite number (not NaN or ±Inf).
+func allFinite(vs ...float64) bool {
+	for _, v := range vs {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return false
+		}
+	}
+	return true
 }
 
 // twoPiOver returns 2π/k (the wavelength) or 0 when k is ~0.

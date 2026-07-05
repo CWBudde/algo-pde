@@ -71,6 +71,10 @@ interface AppState {
   // solve, and the currently displayed Z-slice.
   volume: Uint8ClampedArray | null;
   slice: number;
+  // Monotonic id of the most recent solve request. A worker reply is only
+  // applied if it still matches; a mode switch or newer request invalidates
+  // any solve still in flight.
+  reqId: number;
 }
 
 const state: AppState = {
@@ -82,6 +86,7 @@ const state: AppState = {
   freqHz: FREQ.fDefault,
   volume: null,
   slice: Math.floor(CONFIG_3D.nz / 2),
+  reqId: 0,
 };
 
 // Active-mode grid dimensions used for canvas sizing and coordinate mapping.
@@ -118,6 +123,10 @@ function resizeCanvas() {
   // changes dimensions (including a 2D⇄3D mode switch).
   state.imageData = ctx.createImageData(w, h);
   clearCanvas();
+
+  // A window resize recreates (and blanks) the ImageData; in 3D re-blit the
+  // cached slice so the field doesn't vanish until the depth slider moves.
+  if (state.mode === '3d' && state.volume) blitSlice();
 }
 
 function clearCanvas() {
@@ -211,7 +220,10 @@ function handlePixels(data: {
   height: number;
   freqHz: number;
   lambda: number;
+  reqId: number;
 }) {
+  // Drop a reply that a later request or a mode switch has superseded.
+  if (data.reqId !== state.reqId) return;
   if (state.mode !== '2d' || !state.imageData) return;
   state.imageData.data.set(data.data);
   ctx.putImageData(state.imageData, 0, 0);
@@ -230,7 +242,10 @@ function handleVolume(data: {
   depth: number;
   freqHz: number;
   lambda: number;
+  reqId: number;
 }) {
+  // Drop a volume that a later request or a mode switch has superseded.
+  if (data.reqId !== state.reqId) return;
   if (state.mode !== '3d') return;
   state.volume = data.data;
   blitSlice();
@@ -239,11 +254,15 @@ function handleVolume(data: {
   updateDebugInfo(data.lambda);
 }
 
-// Copy one Z-plane out of the cached volume into the canvas.
+// Copy one Z-plane out of the cached volume into the canvas. Plane size and
+// count are derived from the live ImageData and volume length rather than
+// CONFIG_3D, so a mismatched buffer is caught instead of copying wrong offsets.
 function blitSlice() {
   if (!state.imageData || !state.volume) return;
-  const planeLen = CONFIG_3D.nx * CONFIG_3D.ny * 4;
-  const z = Math.min(CONFIG_3D.nz - 1, Math.max(0, state.slice));
+  const planeLen = state.imageData.width * state.imageData.height * 4;
+  const planes = Math.floor(state.volume.length / planeLen);
+  if (planes < 1) return;
+  const z = Math.min(planes - 1, Math.max(0, state.slice));
   const start = z * planeLen;
   state.imageData.data.set(state.volume.subarray(start, start + planeLen));
   ctx.putImageData(state.imageData, 0, 0);
@@ -278,12 +297,15 @@ function updateDebugInfo(lambda?: number) {
 function requestSolve() {
   if (!state.isReady || !state.worker || !state.source) return;
 
+  const reqId = ++state.reqId;
+
   if (state.mode === '2d') {
     state.worker.postMessage({
       type: 'solve',
       sx: state.source.sx,
       sy: state.source.sy,
       freqHz: state.freqHz,
+      reqId,
     });
     return;
   }
@@ -303,6 +325,7 @@ function requestSolve() {
     sy: state.source.sy,
     sz: state.source.sz,
     freqHz: state.freqHz,
+    reqId,
   });
 }
 
@@ -310,9 +333,11 @@ function setMode(mode: Mode) {
   if (mode === state.mode) return;
   state.mode = mode;
 
-  // A new geometry invalidates any cached field and the source placement.
+  // A new geometry invalidates any cached field and the source placement, and
+  // bumps reqId so a solve still in flight for the old mode is dropped on reply.
   state.source = null;
   state.volume = null;
+  state.reqId++;
 
   mode2dBtn.classList.toggle('active', mode === '2d');
   mode3dBtn.classList.toggle('active', mode === '3d');
