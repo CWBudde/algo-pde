@@ -193,6 +193,11 @@ async function initWorker() {
   state.worker.onerror = (error) => {
     console.error('Worker error:', error);
     statusEl.textContent = `Worker error: ${error.message}`;
+    // A hard worker failure never posts an 'error' message, so release the
+    // in-flight guard here too; otherwise busy stays set and every later solve
+    // just coalesces forever.
+    state.busy = false;
+    state.pending = false;
   };
 
   // Resolve the WASM asset URLs against the HTML document, not the worker
@@ -330,40 +335,52 @@ function requestSolve() {
   // handler will re-fire requestSolve with the current source & frequency.
   if (state.busy) {
     state.pending = true;
+    // Bump reqId so the in-flight solve's reply is dropped as stale rather than
+    // briefly rendered (with its now-obsolete frequency/lambda) before the
+    // coalesced solve replaces it.
+    state.reqId++;
     return;
   }
   state.busy = true;
 
   const reqId = ++state.reqId;
 
-  if (state.mode === '2d') {
-    state.worker.postMessage({
-      type: 'solve',
-      sx: state.source.sx,
-      sy: state.source.sy,
-      freqHz: state.freqHz,
-      reqId,
-    });
-    return;
-  }
+  const message =
+    state.mode === '2d'
+      ? {
+          type: 'solve',
+          sx: state.source.sx,
+          sy: state.source.sy,
+          freqHz: state.freqHz,
+          reqId,
+        }
+      : {
+          type: 'solve3d',
+          nx: CONFIG_3D.nx,
+          ny: CONFIG_3D.ny,
+          nz: CONFIG_3D.nz,
+          dx: CONFIG_3D.dx,
+          dy: CONFIG_3D.dy,
+          dz: CONFIG_3D.dz,
+          bcX: CONFIG_3D.bcX,
+          bcY: CONFIG_3D.bcY,
+          bcZ: CONFIG_3D.bcZ,
+          sx: state.source.sx,
+          sy: state.source.sy,
+          sz: state.source.sz,
+          freqHz: state.freqHz,
+          reqId,
+        };
 
-  state.worker.postMessage({
-    type: 'solve3d',
-    nx: CONFIG_3D.nx,
-    ny: CONFIG_3D.ny,
-    nz: CONFIG_3D.nz,
-    dx: CONFIG_3D.dx,
-    dy: CONFIG_3D.dy,
-    dz: CONFIG_3D.dz,
-    bcX: CONFIG_3D.bcX,
-    bcY: CONFIG_3D.bcY,
-    bcZ: CONFIG_3D.bcZ,
-    sx: state.source.sx,
-    sy: state.source.sy,
-    sz: state.source.sz,
-    freqHz: state.freqHz,
-    reqId,
-  });
+  try {
+    state.worker.postMessage(message);
+  } catch (err) {
+    // The worker is gone (terminated/crashed): release the guard so the UI
+    // isn't stuck coalescing forever, and surface the failure.
+    state.busy = false;
+    state.pending = false;
+    handleError({ message: err instanceof Error ? err.message : String(err) });
+  }
 }
 
 function setMode(mode: Mode) {
