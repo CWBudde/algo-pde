@@ -2,7 +2,7 @@
 
 Fast spectral Poisson and Helmholtz solvers for Go, built on top of `algo-fft`. The library uses plan-based APIs (like FFTW) to precompute eigenvalues and reuse transform plans for many solves on the same grid.
 
-🔊 **Interactive WebAssembly demo** — an [Acoustic Room Modes lab](https://meko-tech.github.io/algo-pde/) runs entirely in the browser: click to place a harmonic source and sweep the drive frequency to watch the rigid room's standing-wave (modal) pressure pattern form. It solves the driven acoustic Helmholtz equation (`(−k² − Δ)p = s`) with a small complex damping shift via the WASM-compiled solver. Source lives in [`demo/`](demo/); build and run locally with `just demo-dev` (see [demo/README.md](demo/README.md)).
+🔊 **Interactive WebAssembly demo** — an [Acoustic Room Modes lab](https://cwbudde.github.io/algo-pde/) runs entirely in the browser: click to place a harmonic source and sweep the drive frequency to watch the rigid room's standing-wave (modal) pressure pattern form. It solves the driven acoustic Helmholtz equation (`(−k² − Δ)p = s`) with a small complex damping shift via the WASM-compiled solver. Source lives in [`demo/`](demo/); build and run locally with `just demo-dev` (see [demo/README.md](demo/README.md)).
 
 ## Motivation
 
@@ -98,7 +98,7 @@ For an implicit Euler diffusion step `u^{n+1} - nu*dt*Delta u^{n+1} = u^n`, set
 
 ## Demo
 
-A WebAssembly-powered **Acoustic Room Modes** demo is included. [See it live](https://meko-tech.github.io/algo-pde/) or run locally:
+A WebAssembly-powered **Acoustic Room Modes** demo is included. [See it live](https://cwbudde.github.io/algo-pde/) or run locally:
 
 ```bash
 just demo-dev    # Build WASM and start dev server at http://localhost:5173

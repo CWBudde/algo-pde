@@ -27,6 +27,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          # Enable GitHub Pages (source: GitHub Actions) via the API on the
+          # first run, so deployment does not require a manual repo setting.
+          enablement: true
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
