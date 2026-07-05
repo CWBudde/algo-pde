@@ -45,6 +45,16 @@ type planKey struct {
 	alphaReBits, alphaImBits uint64
 }
 
+// planKey3D is the 3D analogue of planKey; it identifies a cached complex-
+// Helmholtz volume plan.
+type planKey3D struct {
+	nx, ny, nz    int
+	dx, dy, dz    float64
+	bcX, bcY, bcZ int
+	alphaReBits   uint64
+	alphaImBits   uint64
+}
+
 // planCache memoizes plans across Solve calls. WASM here is single-threaded (Go
 // scheduling inside one JS event loop, no SharedArrayBuffer / web-worker
 // concurrency touches this map), so a plain map without a mutex is safe.
@@ -56,6 +66,9 @@ const maxCachedPlans = 32
 
 var planCache = make(map[planKey]*poisson.Plan)
 
+// planCache3D is the 3D counterpart to planCache, bounded the same way.
+var planCache3D = make(map[planKey3D]*poisson.Plan)
+
 func main() {
 	// The callbacks below live for the entire lifetime of the program: main
 	// blocks on the channel forever and never returns, so the js.Func values are
@@ -63,6 +76,7 @@ func main() {
 	// this ever became a short-lived instance, each js.FuncOf would need a
 	// matching Release() to avoid leaking the Go-side callback.
 	js.Global().Set("goSolveAcoustic", js.FuncOf(SolveAcoustic))
+	js.Global().Set("goSolveAcoustic3D", js.FuncOf(SolveAcoustic3D))
 
 	// Signal to the JS side that exports are installed.
 	js.Global().Set("goReady", js.ValueOf(true))
@@ -199,6 +213,141 @@ func getPlan(nx, ny int, dx, dy float64, bcX, bcY int, alpha complex128) (*poiss
 	return plan, nil
 }
 
+// getPlan3D is the 3D counterpart to getPlan.
+func getPlan3D(nx, ny, nz int, dx, dy, dz float64, bcX, bcY, bcZ int, alpha complex128) (*poisson.Plan, error) {
+	key := planKey3D{
+		nx:          nx,
+		ny:          ny,
+		nz:          nz,
+		dx:          dx,
+		dy:          dy,
+		dz:          dz,
+		bcX:         bcX,
+		bcY:         bcY,
+		bcZ:         bcZ,
+		alphaReBits: math.Float64bits(real(alpha)),
+		alphaImBits: math.Float64bits(imag(alpha)),
+	}
+
+	if plan, ok := planCache3D[key]; ok {
+		return plan, nil
+	}
+
+	// Axis order must match the volume's memory layout. The source and rendered
+	// planes are laid out with x contiguous and z the slowest axis
+	// (index = z*ny*nx + y*nx + x), so the plan is built as {z, y, x}: extents
+	// {nz, ny, nx}, spacings {dz, dy, dx}, boundaries {bcZ, bcY, bcX}. Any other
+	// order transposes the operator relative to the buffer and aliases the FFT.
+	plan, err := poisson.NewComplexHelmholtzPlan(
+		3,
+		[]int{nz, ny, nx},
+		[]float64{dz, dy, dx},
+		[]poisson.BCType{poisson.BCType(bcZ), poisson.BCType(bcY), poisson.BCType(bcX)},
+		alpha,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(planCache3D) >= maxCachedPlans {
+		planCache3D = make(map[planKey3D]*poisson.Plan, maxCachedPlans)
+	}
+	planCache3D[key] = plan
+	return plan, nil
+}
+
+// SolveAcoustic3D is the volumetric analogue of SolveAcoustic: it solves the
+// driven acoustic Helmholtz problem on a rectangular box and returns an RGBA
+// image of the entire volume, stored plane-by-plane so the caller can slice it
+// cheaply (the browser demo shows one movable Z-slice without re-solving).
+//
+// Args (all numbers):
+//
+//	nx, ny, nz        grid dimensions (cells)
+//	dx, dy, dz        cell spacing (metres)
+//	bcX, bcY, bcZ     boundary codes: 0=Periodic, 1=Dirichlet, 2=Neumann
+//	freqHz            driving frequency (Hz)
+//	soundSpeed        speed of sound (m/s)
+//	eta               damping fraction (small positive, e.g. 0.03)
+//	sx, sy, sz        source centre in grid-cell coordinates
+//	srcRadius         Gaussian source radius (cells)
+//
+// Returns { success, error?, width, height, depth, k, lambda, rgba } where rgba
+// is a Uint8Array of length width*height*depth*4. Plane z occupies the byte
+// range [z*width*height*4, (z+1)*width*height*4); each plane is a row-major
+// width×height image identical in layout to the 2D result. The colour scale is
+// normalized once over the whole volume, so slices share a consistent mapping.
+func SolveAcoustic3D(_ js.Value, args []js.Value) interface{} {
+	if len(args) != 16 {
+		return jsError("SolveAcoustic3D requires 16 arguments: nx, ny, nz, dx, dy, dz, bcX, bcY, bcZ, freqHz, soundSpeed, eta, sx, sy, sz, srcRadius")
+	}
+
+	nx := args[0].Int()
+	ny := args[1].Int()
+	nz := args[2].Int()
+	dx := args[3].Float()
+	dy := args[4].Float()
+	dz := args[5].Float()
+	bcX := args[6].Int()
+	bcY := args[7].Int()
+	bcZ := args[8].Int()
+	freqHz := args[9].Float()
+	soundSpeed := args[10].Float()
+	eta := args[11].Float()
+	sx := args[12].Float()
+	sy := args[13].Float()
+	sz := args[14].Float()
+	srcRadius := args[15].Float()
+
+	if nx < 1 || ny < 1 || nz < 1 {
+		return jsError("grid dimensions must be positive")
+	}
+	if dx <= 0 || dy <= 0 || dz <= 0 {
+		return jsError("grid spacing must be positive")
+	}
+	if bcX < 0 || bcX > 2 || bcY < 0 || bcY > 2 || bcZ < 0 || bcZ > 2 {
+		return jsError("boundary conditions must be 0 (Periodic), 1 (Dirichlet), or 2 (Neumann)")
+	}
+	if soundSpeed <= 0 {
+		return jsError("sound speed must be positive")
+	}
+	if eta <= 0 {
+		return jsError("damping fraction eta must be positive")
+	}
+
+	omega := 2 * math.Pi * freqHz
+	k := omega / soundSpeed
+	alpha := complex(-k*k, k*k*eta)
+
+	plan, err := getPlan3D(nx, ny, nz, dx, dy, dz, bcX, bcY, bcZ, alpha)
+	if err != nil {
+		return jsError(fmt.Sprintf("failed to create plan: %v", err))
+	}
+
+	rhs := buildGaussianSource3D(nx, ny, nz, sx, sy, sz, srcRadius)
+
+	u := make([]complex128, nx*ny*nz)
+	if err := plan.SolveComplex(u, rhs); err != nil {
+		return jsError(fmt.Sprintf("solve failed: %v", err))
+	}
+
+	// fieldToRGBA maps every element to an RGBA quad, so for the flat volume it
+	// yields nz contiguous width×height planes normalized over the whole box.
+	rgba := fieldToRGBA(u)
+
+	jsBuf := js.Global().Get("Uint8Array").New(len(rgba))
+	js.CopyBytesToJS(jsBuf, rgba)
+
+	return jsSuccess(map[string]interface{}{
+		"width":  nx,
+		"height": ny,
+		"depth":  nz,
+		"k":      k,
+		"lambda": twoPiOver(k),
+		"rgba":   jsBuf,
+	})
+}
+
 // buildGaussianSource returns a narrow Gaussian bump centred at (sx, sy) in
 // grid-cell coordinates.
 func buildGaussianSource(nx, ny int, sx, sy, radius float64) []float64 {
@@ -213,6 +362,28 @@ func buildGaussianSource(nx, ny int, sx, sy, radius float64) []float64 {
 		for x := range nx {
 			dx := float64(x) - sx
 			rhs[y*nx+x] = math.Exp(-(dx*dx + dy*dy) / twoR2)
+		}
+	}
+	return rhs
+}
+
+// buildGaussianSource3D returns a narrow Gaussian bump centred at (sx, sy, sz)
+// in grid-cell coordinates, laid out with x contiguous and z slowest.
+func buildGaussianSource3D(nx, ny, nz int, sx, sy, sz, radius float64) []float64 {
+	if radius <= 0 {
+		radius = 1
+	}
+	rhs := make([]float64, nx*ny*nz)
+	twoR2 := 2.0 * radius * radius
+
+	for z := range nz {
+		dz := float64(z) - sz
+		for y := range ny {
+			dy := float64(y) - sy
+			for x := range nx {
+				dx := float64(x) - sx
+				rhs[z*ny*nx+y*nx+x] = math.Exp(-(dx*dx + dy*dy + dz*dz) / twoR2)
+			}
 		}
 	}
 	return rhs

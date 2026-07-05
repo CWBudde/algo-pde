@@ -21,6 +21,24 @@ declare global {
     sy: number,
     srcRadius: number,
   ): GoSolveResult;
+  function goSolveAcoustic3D(
+    nx: number,
+    ny: number,
+    nz: number,
+    dx: number,
+    dy: number,
+    dz: number,
+    bcX: number,
+    bcY: number,
+    bcZ: number,
+    freqHz: number,
+    soundSpeed: number,
+    eta: number,
+    sx: number,
+    sy: number,
+    sz: number,
+    srcRadius: number,
+  ): GoSolveResult;
 }
 
 interface GoInstance {
@@ -33,6 +51,7 @@ interface GoSolveResult {
   error?: string;
   width?: number;
   height?: number;
+  depth?: number;
   k?: number;
   lambda?: number;
   rgba?: Uint8Array;
@@ -74,6 +93,9 @@ self.onmessage = async (e: MessageEvent) => {
         break;
       case 'solve':
         handleSolve(data);
+        break;
+      case 'solve3d':
+        handleSolve3D(data);
         break;
       default:
         self.postMessage({ type: 'error', message: `Unknown message type: ${type}` });
@@ -184,5 +206,73 @@ function handleSolve(data: { sx: number; sy: number; freqHz: number }) {
       lambda: result.lambda,
     },
     [rgba.buffer],
+  );
+}
+
+// handleSolve3D solves the full 3D volume once and returns every Z-plane as one
+// RGBA buffer. The main thread caches it and blits individual slices without a
+// worker round-trip. Grid parameters travel in the message (rather than the
+// 2D init state) so the box geometry is independent of the room geometry.
+function handleSolve3D(data: {
+  nx: number;
+  ny: number;
+  nz: number;
+  dx: number;
+  dy: number;
+  dz: number;
+  bcX: number;
+  bcY: number;
+  bcZ: number;
+  sx: number;
+  sy: number;
+  sz: number;
+  freqHz: number;
+}) {
+  if (!wasmReady) {
+    throw new Error('WASM not initialized. Call init first.');
+  }
+
+  const result = goSolveAcoustic3D(
+    data.nx,
+    data.ny,
+    data.nz,
+    data.dx,
+    data.dy,
+    data.dz,
+    data.bcX,
+    data.bcY,
+    data.bcZ,
+    data.freqHz,
+    SPEED_OF_SOUND,
+    DAMPING_ETA,
+    data.sx,
+    data.sy,
+    data.sz,
+    SRC_RADIUS,
+  );
+
+  if (!result || typeof result !== 'object') {
+    throw new Error('goSolveAcoustic3D returned an invalid result');
+  }
+  if (!result.success) {
+    throw new Error(result.error || 'solve failed');
+  }
+  if (!result.rgba) {
+    throw new Error('no field returned from solver');
+  }
+
+  const volume = new Uint8ClampedArray(result.rgba.buffer, result.rgba.byteOffset, result.rgba.byteLength);
+
+  self.postMessage(
+    {
+      type: 'volume',
+      data: volume,
+      width: result.width,
+      height: result.height,
+      depth: result.depth,
+      freqHz: data.freqHz,
+      lambda: result.lambda,
+    },
+    [volume.buffer],
   );
 }
