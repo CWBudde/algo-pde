@@ -7,12 +7,17 @@
 // finite on resonance.
 //
 // In 2D the solver returns one image per solve. In 3D it returns the whole
-// volume as stacked Z-planes in a single solve; the depth slider then scrubs
-// through slices client-side with no further solves — only a frequency or
-// source change triggers a new solve.
+// volume as stacked Z-planes in a single solve. Two 3D views share that one
+// solve: "3D slices" scrubs through Z-planes on a 2D canvas (depth slider, no
+// re-solve), and "3D volume" ray-marches the whole volume as a rotatable
+// translucent glow on a WebGL canvas. Only a frequency or source change
+// triggers a new solve; switching between the two 3D views does not.
+
+import { VolumeRenderer } from './volume';
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d', { alpha: false })!;
+const glCanvas = document.getElementById('glCanvas') as HTMLCanvasElement;
 const statusEl = document.querySelector('#overlay .status') as HTMLDivElement;
 const hintEl = document.querySelector('#overlay .hint') as HTMLDivElement;
 const debugEl = document.querySelector('#overlay .debug') as HTMLDivElement;
@@ -20,12 +25,24 @@ const controlsEl = document.getElementById('controls') as HTMLDivElement;
 const freqSlider = document.getElementById('freqSlider') as HTMLInputElement;
 const freqDisplay = document.getElementById('freqDisplay') as HTMLSpanElement;
 const mode2dBtn = document.getElementById('mode2dBtn') as HTMLButtonElement;
-const mode3dBtn = document.getElementById('mode3dBtn') as HTMLButtonElement;
+const mode3dSliceBtn = document.getElementById('mode3dSliceBtn') as HTMLButtonElement;
+const mode3dVolBtn = document.getElementById('mode3dVolBtn') as HTMLButtonElement;
 const depthControl = document.getElementById('depthControl') as HTMLDivElement;
 const depthSlider = document.getElementById('depthSlider') as HTMLInputElement;
 const depthDisplay = document.getElementById('depthDisplay') as HTMLSpanElement;
+const densityControl = document.getElementById('densityControl') as HTMLDivElement;
+const densitySlider = document.getElementById('densitySlider') as HTMLInputElement;
+const densityDisplay = document.getElementById('densityDisplay') as HTMLSpanElement;
 
+// The solve geometry is 2D or 3D; the view chooses how that geometry is shown.
+// Both 3D views run the identical volume solve, so `mode` (derived from `view`)
+// keys everything solver-related while `view` keys the display.
 type Mode = '2d' | '3d';
+type View = '2d' | '3d-slice' | '3d-volume';
+
+function modeForView(view: View): Mode {
+  return view === '2d' ? '2d' : '3d';
+}
 
 // 2D room / grid configuration (unchanged from the original demo).
 const CONFIG_2D = {
@@ -61,6 +78,7 @@ const FREQ = {
 interface AppState {
   worker: Worker | null;
   isReady: boolean;
+  view: View;
   mode: Mode;
   imageData: ImageData | null;
   // Last source placement in grid-cell coordinates (null until first click).
@@ -82,11 +100,20 @@ interface AppState {
   // flooding the worker's message queue with every slider step.
   busy: boolean;
   pending: boolean;
+  // 3D volume view: the WebGL ray-march renderer (null if WebGL2 is
+  // unavailable), the orbit camera, and the opacity multiplier.
+  renderer: VolumeRenderer | null;
+  camera: { azimuthDeg: number; elevationDeg: number; distance: number };
+  density: number;
+  // A single scheduled animation frame; render-on-demand rather than a
+  // continuous loop so an idle volume view costs nothing.
+  renderPending: boolean;
 }
 
 const state: AppState = {
   worker: null,
   isReady: false,
+  view: '2d',
   mode: '2d',
   imageData: null,
   source: null,
@@ -96,7 +123,15 @@ const state: AppState = {
   reqId: 0,
   busy: false,
   pending: false,
+  renderer: null,
+  camera: { azimuthDeg: -35, elevationDeg: 22, distance: 2.6 },
+  density: 1.0,
+  renderPending: false,
 };
+
+// Opacity gamma for the volume render: < 1 lifts faint lobes so nodes read as
+// gaps rather than the whole box washing out. Fixed (not user-facing).
+const VOLUME_GAMMA = 0.8;
 
 // Active-mode grid dimensions used for canvas sizing and coordinate mapping.
 function gridW(): number {
@@ -279,10 +314,78 @@ function handleVolume(data: {
   if (data.reqId !== state.reqId) return;
   if (state.mode !== '3d') return;
   state.volume = data.data;
-  blitSlice();
+  // Route the fresh volume to whichever 3D view is active. The volume slider
+  // view blits a Z-plane; the volume render uploads the whole box to the GPU.
+  if (state.view === '3d-volume') {
+    uploadVolume();
+    requestRender();
+  } else {
+    blitSlice();
+  }
 
   statusEl.textContent = `Driven at ${data.freqHz.toFixed(0)} Hz — steady-state box response`;
   updateDebugInfo(data.lambda);
+}
+
+// ---- 3D volume render (WebGL) ----------------------------------------------
+
+// Create the WebGL renderer once. If WebGL2 is unavailable the volume view is
+// disabled (the button is dimmed) and everything else keeps working.
+function initRenderer() {
+  try {
+    state.renderer = new VolumeRenderer(glCanvas);
+  } catch (err) {
+    console.warn('3D volume render unavailable:', err);
+    state.renderer = null;
+    mode3dVolBtn.disabled = true;
+    mode3dVolBtn.title = 'WebGL2 not available in this browser';
+  }
+}
+
+// Size the WebGL drawing buffer to its CSS box (× devicePixelRatio, capped) so
+// the render stays crisp without over-allocating on hi-DPI displays.
+function resizeGL() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cssW = Math.floor(window.innerWidth * 0.9);
+  const cssH = Math.floor(window.innerHeight * 0.9);
+  glCanvas.style.width = cssW + 'px';
+  glCanvas.style.height = cssH + 'px';
+  glCanvas.width = Math.max(1, Math.floor(cssW * dpr));
+  glCanvas.height = Math.max(1, Math.floor(cssH * dpr));
+  if (state.renderer) state.renderer.resize(glCanvas.width, glCanvas.height);
+}
+
+// Push the cached RGBA volume to the GPU as a 3D texture, with the box's
+// physical extents so proportions are right.
+function uploadVolume() {
+  if (!state.renderer || !state.volume) return;
+  state.renderer.setVolume(
+    state.volume,
+    CONFIG_3D.nx,
+    CONFIG_3D.ny,
+    CONFIG_3D.nz,
+    CONFIG_3D.nx * CONFIG_3D.dx,
+    CONFIG_3D.ny * CONFIG_3D.dy,
+    CONFIG_3D.nz * CONFIG_3D.dz,
+  );
+}
+
+// Schedule one animation frame. Render-on-demand: a camera drag or a fresh
+// volume calls this; an untouched volume view draws nothing further.
+function requestRender() {
+  if (state.renderPending || state.view !== '3d-volume' || !state.renderer) return;
+  state.renderPending = true;
+  requestAnimationFrame(() => {
+    state.renderPending = false;
+    if (state.view !== '3d-volume' || !state.renderer) return;
+    state.renderer.render({
+      azimuthDeg: state.camera.azimuthDeg,
+      elevationDeg: state.camera.elevationDeg,
+      distance: state.camera.distance,
+      density: state.density,
+      gamma: VOLUME_GAMMA,
+    });
+  });
 }
 
 // Copy one Z-plane out of the cached volume into the canvas. Plane size and
@@ -317,11 +420,28 @@ function updateDebugInfo(lambda?: number) {
       lines.push(`src = (${state.source.sx.toFixed(0)}, ${state.source.sy.toFixed(0)}, ${state.source.sz.toFixed(0)})`);
     }
   }
-  if (state.mode === '3d') {
+  if (state.view === '3d-slice') {
     const zMetres = (state.slice * CONFIG_3D.dz).toFixed(2);
     lines.push(`z = ${state.slice}/${CONFIG_3D.nz - 1} (${zMetres} m)`);
+  } else if (state.view === '3d-volume') {
+    lines.push(`density = ${state.density.toFixed(1)}×`);
   }
   debugEl.textContent = lines.join(' | ');
+}
+
+// Hint text for the active view.
+function updateHint() {
+  switch (state.view) {
+    case '2d':
+      hintEl.textContent = 'Click to place the driving source, then sweep the frequency slider';
+      break;
+    case '3d-slice':
+      hintEl.textContent = 'Click to place the source in this slice; drag the depth slider to move through Z';
+      break;
+    case '3d-volume':
+      hintEl.textContent = 'Drag to orbit the box; density slider fades the field; sweep frequency to change the mode';
+      break;
+  }
 }
 
 // Ask the worker for a fresh steady-state solve at the current source & freq.
@@ -383,30 +503,65 @@ function requestSolve() {
   }
 }
 
-function setMode(mode: Mode) {
-  if (mode === state.mode) return;
+function setView(view: View) {
+  if (view === state.view) return;
   const prevMode = state.mode;
-  state.mode = mode;
+  const newMode = modeForView(view);
+  const geometryChanged = newMode !== prevMode;
 
-  // The frequency slider is shared across modes, so the drive frequency carries
-  // over untouched. Carry the source over too: remap its position into the new
-  // grid (same relative spot in the room face) rather than forcing a fresh
-  // click, so the switch immediately re-solves the new geometry at the current
-  // source & frequency.
+  state.view = view;
+  state.mode = newMode;
+
+  // Button, control, and canvas visibility for the new view.
+  mode2dBtn.classList.toggle('active', view === '2d');
+  mode3dSliceBtn.classList.toggle('active', view === '3d-slice');
+  mode3dVolBtn.classList.toggle('active', view === '3d-volume');
+  depthControl.classList.toggle('active', view === '3d-slice');
+  densityControl.classList.toggle('active', view === '3d-volume');
+  // The 2D canvas backs the room and the slice viewer; the WebGL canvas backs
+  // the volume render. Only one is visible at a time.
+  canvas.style.display = view === '3d-volume' ? 'none' : 'block';
+  glCanvas.style.display = view === '3d-volume' ? 'block' : 'none';
+
+  // Switching between the two 3D views is pure display: same geometry, same
+  // cached volume, no re-solve — just re-target it.
+  if (!geometryChanged) {
+    if (view === '3d-volume') {
+      resizeGL();
+      if (state.volume) {
+        uploadVolume();
+        requestRender();
+      }
+    } else {
+      // Back to the slice canvas: resizeCanvas rebuilds the ImageData at 3D
+      // dimensions and re-blits the cached slice.
+      resizeCanvas();
+    }
+    updateStatusReady();
+    updateHint();
+    updateDebugInfo();
+    return;
+  }
+
+  // Geometry change (2D ⇄ 3D). The frequency slider is shared, so the drive
+  // frequency carries over untouched. Carry the source over too: remap its
+  // position into the new grid (same relative spot in the room face) rather
+  // than forcing a fresh click, so the switch immediately re-solves the new
+  // geometry at the current source & frequency.
   if (state.source) {
     const from = dimsFor(prevMode);
-    const to = dimsFor(mode);
+    const to = dimsFor(newMode);
     // Map cell centres proportionally, then clamp back into [0, n-1].
     const sx = Math.min(to.w - 1, Math.max(0, ((state.source.sx + 0.5) / from.w) * to.w - 0.5));
     const sy = Math.min(to.h - 1, Math.max(0, ((state.source.sy + 0.5) / from.h) * to.h - 0.5));
     // Entering 3D, drop the source onto the current Z-slice; leaving 3D, z is
     // dropped (sz is ignored by the 2D solver).
-    const sz = mode === '3d' ? state.slice : 0;
+    const sz = newMode === '3d' ? state.slice : 0;
     state.source = { sx, sy, sz };
   }
 
   // A new geometry invalidates any cached volume, and bumps reqId so a solve
-  // still in flight for the old mode is dropped on reply.
+  // still in flight for the old geometry is dropped on reply.
   state.volume = null;
   state.reqId++;
   // Drop any coalesced request queued for the old geometry. `busy` is left as
@@ -414,16 +569,10 @@ function setMode(mode: Mode) {
   // the guard, and requestSolve below re-arms one for the new geometry.
   state.pending = false;
 
-  mode2dBtn.classList.toggle('active', mode === '2d');
-  mode3dBtn.classList.toggle('active', mode === '3d');
-  depthControl.classList.toggle('active', mode === '3d');
-
-  resizeCanvas();
+  if (view === '3d-volume') resizeGL();
+  else resizeCanvas();
   updateStatusReady();
-  hintEl.textContent =
-    mode === '3d'
-      ? 'Click to place the source in this slice; drag the depth slider to move through Z'
-      : 'Click to place the driving source, then sweep the frequency slider';
+  updateHint();
   updateDebugInfo();
 
   // Re-solve the new geometry at the carried-over source & frequency. No source
@@ -466,10 +615,68 @@ depthSlider.addEventListener('input', () => {
   updateDebugInfo();
 });
 
-mode2dBtn.addEventListener('click', () => setMode('2d'));
-mode3dBtn.addEventListener('click', () => setMode('3d'));
+mode2dBtn.addEventListener('click', () => setView('2d'));
+mode3dSliceBtn.addEventListener('click', () => setView('3d-slice'));
+mode3dVolBtn.addEventListener('click', () => setView('3d-volume'));
 
-window.addEventListener('resize', resizeCanvas);
+// Density slider only fades the volume render — no solve, no re-upload.
+densitySlider.addEventListener('input', () => {
+  state.density = parseFloat(densitySlider.value);
+  densityDisplay.textContent = state.density.toFixed(1) + '×';
+  updateDebugInfo();
+  requestRender();
+});
+
+// Drag on the WebGL canvas orbits the camera. Pointer capture keeps the drag
+// alive if the cursor leaves the canvas mid-rotate.
+let dragging = false;
+let lastX = 0;
+let lastY = 0;
+glCanvas.addEventListener('pointerdown', (e) => {
+  dragging = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  glCanvas.setPointerCapture(e.pointerId);
+});
+glCanvas.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  state.camera.azimuthDeg -= dx * 0.4;
+  // Clamp elevation just shy of the poles so the orbit never gimbal-flips.
+  state.camera.elevationDeg = Math.min(89, Math.max(-89, state.camera.elevationDeg + dy * 0.4));
+  requestRender();
+});
+const endDrag = (e: PointerEvent) => {
+  if (!dragging) return;
+  dragging = false;
+  if (glCanvas.hasPointerCapture(e.pointerId)) glCanvas.releasePointerCapture(e.pointerId);
+};
+glCanvas.addEventListener('pointerup', endDrag);
+glCanvas.addEventListener('pointercancel', endDrag);
+
+// Wheel zooms the volume camera (clamped to a sensible range).
+glCanvas.addEventListener(
+  'wheel',
+  (e) => {
+    if (state.view !== '3d-volume') return;
+    e.preventDefault();
+    state.camera.distance = Math.min(6, Math.max(1.3, state.camera.distance * (1 + e.deltaY * 0.001)));
+    requestRender();
+  },
+  { passive: false },
+);
+
+window.addEventListener('resize', () => {
+  if (state.view === '3d-volume') {
+    resizeGL();
+    requestRender();
+  } else {
+    resizeCanvas();
+  }
+});
 
 // Initialize.
 freqSlider.min = String(FREQ.fMin);
@@ -482,5 +689,12 @@ depthSlider.max = String(CONFIG_3D.nz - 1);
 depthSlider.value = String(state.slice);
 depthDisplay.textContent = (state.slice * CONFIG_3D.dz).toFixed(1) + ' m';
 
+densitySlider.min = '0.2';
+densitySlider.max = '3';
+densitySlider.step = '0.1';
+densitySlider.value = String(state.density);
+densityDisplay.textContent = state.density.toFixed(1) + '×';
+
 resizeCanvas();
+initRenderer();
 initWorker();

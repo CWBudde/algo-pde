@@ -21,18 +21,32 @@ mode.
   imaginary shift keeps `|α + λ|` bounded away from zero, so a mode driven at
   resonance yields a finite field instead of blowing up.
 - **Click-to-place-source**: a narrow Gaussian source at the clicked point.
-- **2D room or 3D box.** The **2D room / 3D box** toggle switches between a
-  256×192 rectangular room and a 96×72×48 box, both with rigid (Neumann) walls.
-  The same complex Helmholtz solver runs at `dim = 2` or `dim = 3`.
+- **2D room or 3D box.** The **2D room / 3D slices / 3D volume** toggle switches
+  between a 256×192 rectangular room and a 96×72×48 box, both with rigid
+  (Neumann) walls. The same complex Helmholtz solver runs at `dim = 2` or
+  `dim = 3`. The two 3D views share one solve and differ only in how the volume
+  is drawn.
 
 ### The 3D case
 
 In 3D the solver returns the **entire volume** in a single solve (stacked
 `nz` planes of RGBA, normalized once over the whole box so slices share a
-colour scale). A **Z-slice** slider then scrubs through the volume entirely
-client-side — moving it re-blits a cached plane with no extra solve. Only a
-change of frequency or source position triggers a new solve. Clicking places
-the source on the currently displayed slice.
+colour scale). Two views present that one volume:
+
+- **3D slices** — a **Z-slice** slider scrubs through the volume entirely
+  client-side; moving it re-blits a cached plane with no extra solve. Clicking
+  places the source on the currently displayed slice.
+- **3D volume** — a WebGL2 ray-marched render of the whole box as a rotatable
+  translucent glow. Antinodes glow red/blue while nodes stay transparent, so the
+  full standing-wave shape reads at once. Drag to orbit, scroll to zoom, and use
+  the **density** slider to fade the field. The render needs no extra solver
+  data: the diverging colour map is invertible, so a voxel's amplitude is
+  `1 − min(r,g,b)` and its sign is the red/blue side — the cached RGBA volume is
+  uploaded straight to the GPU as a 3D texture. It falls back gracefully (the
+  button is disabled) if WebGL2 is unavailable.
+
+Only a change of frequency or source position triggers a new solve; switching
+between the two 3D views does not.
 
 ## Quick Start
 
