@@ -19,7 +19,7 @@
       font-family: 'Courier New', monospace;
     }
 
-    canvas {
+    #canvas {
       display: block;
       position: absolute;
       top: 50%;
@@ -33,6 +33,21 @@
       image-rendering: crisp-edges;
       cursor: crosshair;
       object-fit: contain;
+    }
+
+    /* WebGL volume render: smooth (not pixelated), grab cursor for orbiting. */
+    #glCanvas {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #glCanvas:active {
+      cursor: grabbing;
     }
 
     #overlay {
@@ -124,18 +139,31 @@
       background: rgba(255, 255, 255, 0.95);
     }
 
-    .depth-control {
+    #controls button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #controls button:disabled:hover {
+      background: rgba(0, 0, 0, 0.8);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .depth-control,
+    .density-control {
       display: none;
       flex-direction: column;
       align-items: center;
       gap: 8px;
     }
 
-    .depth-control.active {
+    .depth-control.active,
+    .density-control.active {
       display: flex;
     }
 
-    #depthSlider {
+    #depthSlider,
+    #densitySlider {
       width: 400px;
       max-width: 80vw;
       height: 4px;
@@ -147,7 +175,8 @@
       cursor: pointer;
     }
 
-    #depthSlider::-webkit-slider-thumb {
+    #depthSlider::-webkit-slider-thumb,
+    #densitySlider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
       width: 14px;
@@ -158,7 +187,8 @@
       box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
     }
 
-    #depthSlider::-moz-range-thumb {
+    #depthSlider::-moz-range-thumb,
+    #densitySlider::-moz-range-thumb {
       width: 14px;
       height: 14px;
       background: #fff;
@@ -222,6 +252,7 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <canvas id="glCanvas"></canvas>
 
   <div id="overlay">
     <div class="status">Loading WASM module...</div>
@@ -232,7 +263,8 @@
   <div id="controls">
     <div class="button-row">
       <button id="mode2dBtn" class="mode-btn active" type="button">2D room</button>
-      <button id="mode3dBtn" class="mode-btn" type="button">3D box</button>
+      <button id="mode3dSliceBtn" class="mode-btn" type="button">3D slices</button>
+      <button id="mode3dVolBtn" class="mode-btn" type="button">3D volume</button>
     </div>
     <div class="time-display">
       Drive frequency: <span id="freqDisplay">120 Hz</span>
@@ -243,6 +275,12 @@
         Z-slice (depth): <span id="depthDisplay">0.0 m</span>
       </div>
       <input type="range" id="depthSlider" min="0" max="47" value="24" step="1">
+    </div>
+    <div id="densityControl" class="density-control">
+      <div class="time-display">
+        Volume density: <span id="densityDisplay">1.0×</span>
+      </div>
+      <input type="range" id="densitySlider" min="0.2" max="3" value="1" step="0.1">
     </div>
   </div>
 

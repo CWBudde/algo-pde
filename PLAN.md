@@ -388,6 +388,20 @@ Either fix all of the below or pull it from the README until fixed.
       → `main.go` starts with `//go:build js && wasm`; the callback lives for the
       program lifetime (main blocks forever), documented with why no `Release()`
       is needed; the plan-cache comment notes the single-threaded assumption.
+- [x] **3D volumetric render.** The 3D box previously only offered a movable
+      Z-slice. Added a **3D volume** view: a WebGL2 ray-marched render of the
+      whole box as a rotatable translucent glow (antinodes opaque, nodes clear),
+      with drag-to-orbit, scroll-to-zoom, and a density slider.
+      → New `demo/volume.ts` (`VolumeRenderer`): uploads the cached RGBA volume
+      as a `TEXTURE_3D` and front-to-back composites it with premultiplied alpha,
+      plus a faint wireframe box for reference. No solver/WASM change was needed —
+      the diverging colour map is invertible, so per-voxel amplitude is
+      `1 − min(r,g,b)` and sign is the red/blue side, read straight from the
+      texel. `main.ts` grew a three-way **2D room / 3D slices / 3D volume**
+      toggle; both 3D views share the single volume solve, so switching between
+      them never re-solves. Degrades gracefully (button disabled) without WebGL2.
+      Verified end-to-end in headless Chromium (software WebGL): the box solves,
+      renders the glowing modal field, and orbits on drag.
 
 ---
 
