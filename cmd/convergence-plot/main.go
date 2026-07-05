@@ -302,18 +302,19 @@ func renderSVG(all []series, sizes []int) string {
 			`baseline-shift="super" font-size="9">%d</tspan></text>`+"\n", x0-8, yy+4, k)
 	}
 
-	// Vertical gridlines + x labels at each grid spacing (labeled by n = 1/h-ish).
-	for i, n := range sizes {
-		// Use the Dirichlet series h (they are all close); label by grid size n.
+	// Vertical gridlines + x labels at each grid spacing, labeled by the actual h
+	// value the tick sits at (the axis is scaled in log10(h), not grid size).
+	for i := range sizes {
+		// Use the Dirichlet series h (they are all close) for tick placement.
 		h := all[0].hs[i]
 		xx := sx(math.Log10(h))
 		fmt.Fprintf(&b, `<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#eef2f7"/>`+"\n", xx, y0, xx, y1)
-		fmt.Fprintf(&b, `<text x="%.1f" y="%.1f" font-size="12" text-anchor="middle" fill="#475569">%d²</text>`+"\n",
-			xx, y1+20, n)
+		fmt.Fprintf(&b, `<text x="%.1f" y="%.1f" font-size="12" text-anchor="middle" fill="#475569">%.3g</text>`+"\n",
+			xx, y1+20, h)
 	}
 
 	// Axis titles.
-	fmt.Fprintf(&b, `<text x="%.1f" y="%.1f" font-size="13" text-anchor="middle" fill="#334155">grid size</text>`+"\n",
+	fmt.Fprintf(&b, `<text x="%.1f" y="%.1f" font-size="13" text-anchor="middle" fill="#334155">grid spacing h</text>`+"\n",
 		(x0+x1)/2, y1+44)
 	fmt.Fprintf(&b, `<text x="20" y="%.1f" font-size="13" text-anchor="middle" fill="#334155" `+
 		`transform="rotate(-90 20 %.1f)">max abs error</text>`+"\n", (y0+y1)/2, (y0+y1)/2)
