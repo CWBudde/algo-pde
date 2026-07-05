@@ -75,6 +75,13 @@ interface AppState {
   // applied if it still matches; a mode switch or newer request invalidates
   // any solve still in flight.
   reqId: number;
+  // The worker is single-threaded and a 3D solve is expensive, so at most one
+  // solve runs at a time. `busy` is true while a solve is in flight; `pending`
+  // records that a newer solve was requested meanwhile so we can fire it (with
+  // the latest source & frequency) once the current one returns, rather than
+  // flooding the worker's message queue with every slider step.
+  busy: boolean;
+  pending: boolean;
 }
 
 const state: AppState = {
@@ -87,6 +94,8 @@ const state: AppState = {
   volume: null,
   slice: Math.floor(CONFIG_3D.nz / 2),
   reqId: 0,
+  busy: false,
+  pending: false,
 };
 
 // Active-mode grid dimensions used for canvas sizing and coordinate mapping.
@@ -161,6 +170,17 @@ async function initWorker() {
       case 'error':
         handleError(data);
         break;
+    }
+
+    // Any solve reply — even one dropped as stale — means the worker is idle
+    // again. Release the in-flight guard and, if a newer solve was requested
+    // while it was busy, fire it now (picking up the latest source & freq).
+    if (type === 'pixels' || type === 'volume' || type === 'error') {
+      state.busy = false;
+      if (state.pending) {
+        state.pending = false;
+        requestSolve();
+      }
     }
   };
 
@@ -297,6 +317,17 @@ function updateDebugInfo(lambda?: number) {
 function requestSolve() {
   if (!state.isReady || !state.worker || !state.source) return;
 
+  statusEl.textContent = 'Solving…';
+
+  // Keep at most one solve in flight. If the worker is still busy (a 3D solve
+  // can take a while), just note that a fresh solve is wanted; the reply
+  // handler will re-fire requestSolve with the current source & frequency.
+  if (state.busy) {
+    state.pending = true;
+    return;
+  }
+  state.busy = true;
+
   const reqId = ++state.reqId;
 
   if (state.mode === '2d') {
@@ -338,6 +369,10 @@ function setMode(mode: Mode) {
   state.source = null;
   state.volume = null;
   state.reqId++;
+  // Drop any coalesced request queued for the old geometry. `busy` is left as
+  // is: if a solve is genuinely still running in the worker, its reply clears
+  // the guard (and, with source now null, fires no stale re-solve).
+  state.pending = false;
 
   mode2dBtn.classList.toggle('active', mode === '2d');
   mode3dBtn.classList.toggle('active', mode === '3d');
@@ -367,7 +402,6 @@ canvas.addEventListener('click', (e) => {
   const sz = state.mode === '3d' ? state.slice : 0;
   state.source = { sx, sy, sz };
 
-  statusEl.textContent = 'Solving…';
   requestSolve();
 });
 
