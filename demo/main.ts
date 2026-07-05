@@ -107,6 +107,12 @@ function gridH(): number {
   return state.mode === '2d' ? CONFIG_2D.ny : CONFIG_3D.ny;
 }
 
+// Grid dimensions for a given mode (not necessarily the active one), used to
+// remap the source position when switching modes.
+function dimsFor(mode: Mode): { w: number; h: number } {
+  return mode === '2d' ? { w: CONFIG_2D.nx, h: CONFIG_2D.ny } : { w: CONFIG_3D.nx, h: CONFIG_3D.ny };
+}
+
 function resizeCanvas() {
   const w = gridW();
   const h = gridH();
@@ -362,16 +368,33 @@ function requestSolve() {
 
 function setMode(mode: Mode) {
   if (mode === state.mode) return;
+  const prevMode = state.mode;
   state.mode = mode;
 
-  // A new geometry invalidates any cached field and the source placement, and
-  // bumps reqId so a solve still in flight for the old mode is dropped on reply.
-  state.source = null;
+  // The frequency slider is shared across modes, so the drive frequency carries
+  // over untouched. Carry the source over too: remap its position into the new
+  // grid (same relative spot in the room face) rather than forcing a fresh
+  // click, so the switch immediately re-solves the new geometry at the current
+  // source & frequency.
+  if (state.source) {
+    const from = dimsFor(prevMode);
+    const to = dimsFor(mode);
+    // Map cell centres proportionally, then clamp back into [0, n-1].
+    const sx = Math.min(to.w - 1, Math.max(0, ((state.source.sx + 0.5) / from.w) * to.w - 0.5));
+    const sy = Math.min(to.h - 1, Math.max(0, ((state.source.sy + 0.5) / from.h) * to.h - 0.5));
+    // Entering 3D, drop the source onto the current Z-slice; leaving 3D, z is
+    // dropped (sz is ignored by the 2D solver).
+    const sz = mode === '3d' ? state.slice : 0;
+    state.source = { sx, sy, sz };
+  }
+
+  // A new geometry invalidates any cached volume, and bumps reqId so a solve
+  // still in flight for the old mode is dropped on reply.
   state.volume = null;
   state.reqId++;
   // Drop any coalesced request queued for the old geometry. `busy` is left as
   // is: if a solve is genuinely still running in the worker, its reply clears
-  // the guard (and, with source now null, fires no stale re-solve).
+  // the guard, and requestSolve below re-arms one for the new geometry.
   state.pending = false;
 
   mode2dBtn.classList.toggle('active', mode === '2d');
@@ -385,6 +408,11 @@ function setMode(mode: Mode) {
       ? 'Click to place the source in this slice; drag the depth slider to move through Z'
       : 'Click to place the driving source, then sweep the frequency slider';
   updateDebugInfo();
+
+  // Re-solve the new geometry at the carried-over source & frequency. No source
+  // yet (nothing ever placed) → requestSolve is a no-op and the status stays
+  // "Ready".
+  requestSolve();
 }
 
 // Event handlers.
