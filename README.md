@@ -134,6 +134,25 @@ just wasm       # Build WebAssembly demo module
 - Use `poisson.WithWorkers(n)` to control solver parallelism (line-wise transforms and eigenvalue division); `n=0` uses `GOMAXPROCS`.
 - Scaling improves with larger grids but is typically limited by memory bandwidth and transform setup overhead for small problems.
 
+## Accuracy
+
+The solver is second-order accurate: the discretization error of the 5-/7-point
+stencil decreases as O(h²) as the grid is refined, for every boundary condition.
+The plot below (`docs/convergence-2d.svg`) shows the max-abs error of a
+manufactured 2D solution versus grid spacing on log-log axes; all three BC
+families track the dashed slope-2 reference.
+
+![2D Poisson convergence](docs/convergence-2d.svg)
+
+Regenerate it (and print the measured per-refinement rates) with:
+
+```bash
+go generate ./docs/...
+```
+
+The same manufactured-solution studies are asserted, with a strict rate ≥ 1.8
+gate, by `poisson/convergence_test.go`.
+
 ## Comparison with alternatives
 
 - Iterative sparse solvers (CG/GMRES) are more flexible for irregular domains and variable coefficients, but require preconditioning and more tuning.
