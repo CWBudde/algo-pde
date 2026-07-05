@@ -67,14 +67,6 @@ func NewProjectionPlan2D(nx, ny int, hx, hy float64, opts ...Option) (*Projectio
 	return &ProjectionPlan2D{nx: nx, ny: ny, hx: hx, hy: hy, plan: plan, pool: pool}, nil
 }
 
-func (p *ProjectionPlan2D) getScratch() *projScratch {
-	if s := p.pool.get(); s != nil {
-		return s
-	}
-	n := p.nx * p.ny
-	return &projScratch{rhs: make([]float64, n), phi: make([]float64, n)}
-}
-
 // Project makes the velocity field (u, v) divergence-free in place. u and v are
 // row-major nx×ny grids (index i*ny+j; u is the x-component, v the y-component).
 func (p *ProjectionPlan2D) Project(u, v []float64) error {
@@ -119,6 +111,14 @@ func (p *ProjectionPlan2D) Divergence(out, u, v []float64) error {
 
 	p.divergence(out, u, v)
 	return nil
+}
+
+func (p *ProjectionPlan2D) getScratch() *projScratch {
+	if s := p.pool.get(); s != nil {
+		return s
+	}
+	n := p.nx * p.ny
+	return &projScratch{rhs: make([]float64, n), phi: make([]float64, n)}
 }
 
 func (p *ProjectionPlan2D) divergence(out, u, v []float64) {
@@ -187,14 +187,6 @@ func NewProjectionPlan3D(nx, ny, nz int, hx, hy, hz float64, opts ...Option) (*P
 	}, nil
 }
 
-func (p *ProjectionPlan3D) getScratch() *projScratch {
-	if s := p.pool.get(); s != nil {
-		return s
-	}
-	n := p.nx * p.ny * p.nz
-	return &projScratch{rhs: make([]float64, n), phi: make([]float64, n)}
-}
-
 // Project makes the velocity field (u, v, w) divergence-free in place. Each
 // component is a row-major nx×ny×nz grid (index (i*ny+j)*nz+k).
 func (p *ProjectionPlan3D) Project(u, v, w []float64) error {
@@ -237,6 +229,14 @@ func (p *ProjectionPlan3D) Divergence(out, u, v, w []float64) error {
 
 	p.divergence(out, u, v, w)
 	return nil
+}
+
+func (p *ProjectionPlan3D) getScratch() *projScratch {
+	if s := p.pool.get(); s != nil {
+		return s
+	}
+	n := p.nx * p.ny * p.nz
+	return &projScratch{rhs: make([]float64, n), phi: make([]float64, n)}
 }
 
 func (p *ProjectionPlan3D) divergence(out, u, v, w []float64) {
