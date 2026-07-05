@@ -148,6 +148,13 @@ function dimsFor(mode: Mode): { w: number; h: number } {
   return mode === '2d' ? { w: CONFIG_2D.nx, h: CONFIG_2D.ny } : { w: CONFIG_3D.nx, h: CONFIG_3D.ny };
 }
 
+// A default 3D source at the box centre (on the current Z-slice). The volume
+// view has no click-to-place affordance — the GL canvas drag orbits the camera
+// — so entering it with nothing placed seeds this so the box isn't blank.
+function centeredSource3D(): { sx: number; sy: number; sz: number } {
+  return { sx: (CONFIG_3D.nx - 1) / 2, sy: (CONFIG_3D.ny - 1) / 2, sz: state.slice };
+}
+
 function resizeCanvas() {
   const w = gridW();
   const h = gridH();
@@ -528,9 +535,16 @@ function setView(view: View) {
   if (!geometryChanged) {
     if (view === '3d-volume') {
       resizeGL();
+      // Seed a default source if none was ever placed, so the volume view is
+      // never a blank box with no way to start a solve.
+      if (!state.source) state.source = centeredSource3D();
       if (state.volume) {
         uploadVolume();
         requestRender();
+      } else {
+        // No cached volume (freshly seeded source, or an in-flight/failed
+        // solve): kick a solve; handleVolume uploads and renders on reply.
+        requestSolve();
       }
     } else {
       // Back to the slice canvas: resizeCanvas rebuilds the ImageData at 3D
@@ -559,6 +573,10 @@ function setView(view: View) {
     const sz = newMode === '3d' ? state.slice : 0;
     state.source = { sx, sy, sz };
   }
+
+  // Entering the volume view with nothing ever placed: seed a default source so
+  // it renders a field rather than an empty box (the GL canvas can't place one).
+  if (view === '3d-volume' && !state.source) state.source = centeredSource3D();
 
   // A new geometry invalidates any cached volume, and bumps reqId so a solve
   // still in flight for the old geometry is dropped on reply.
