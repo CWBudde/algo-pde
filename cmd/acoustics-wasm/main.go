@@ -173,11 +173,19 @@ func getPlan(nx, ny int, dx, dy float64, bcX, bcY int, alpha complex128) (*poiss
 		return plan, nil
 	}
 
+	// Axis order must match the field's memory layout. The source and the
+	// rendered image are row-major with x contiguous (index = y*nx+x), so y is
+	// the outer/slow axis and x the inner/contiguous one. The solver reads dim 0
+	// as the outer axis and the last dim as contiguous, so the plan is built as
+	// {y, x}: extents {ny, nx}, spacings {dy, dx}, boundaries {bcY, bcX}.
+	// Passing {nx, ny} instead transposes the operator relative to the buffer;
+	// with nx != ny the resulting stride mismatch aliases the FFT and renders as
+	// a tiled, striped field rather than the true room response.
 	plan, err := poisson.NewComplexHelmholtzPlan(
 		2,
-		[]int{nx, ny},
-		[]float64{dx, dy},
-		[]poisson.BCType{poisson.BCType(bcX), poisson.BCType(bcY)},
+		[]int{ny, nx},
+		[]float64{dy, dx},
+		[]poisson.BCType{poisson.BCType(bcY), poisson.BCType(bcX)},
 		alpha,
 	)
 	if err != nil {
