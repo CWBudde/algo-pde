@@ -175,9 +175,12 @@ async function handleInit(data: {
   self.postMessage({ type: 'ready', nx, ny });
 }
 
-function handleSolve(data: { sx: number; sy: number; freqHz: number }) {
+function handleSolve(data: { sx: number; sy: number; freqHz: number; reqId: number }) {
   if (!wasmReady) {
     throw new Error('WASM not initialized. Call init first.');
+  }
+  if (typeof goSolveAcoustic === 'undefined') {
+    throw new Error('goSolveAcoustic export missing (stale or failed WASM load)');
   }
 
   const result = goSolveAcoustic(nx, ny, dx, dy, bcX, bcY, data.freqHz, SPEED_OF_SOUND, DAMPING_ETA, data.sx, data.sy, SRC_RADIUS);
@@ -204,6 +207,7 @@ function handleSolve(data: { sx: number; sy: number; freqHz: number }) {
       height: result.height,
       freqHz: data.freqHz,
       lambda: result.lambda,
+      reqId: data.reqId,
     },
     [rgba.buffer],
   );
@@ -227,9 +231,13 @@ function handleSolve3D(data: {
   sy: number;
   sz: number;
   freqHz: number;
+  reqId: number;
 }) {
   if (!wasmReady) {
     throw new Error('WASM not initialized. Call init first.');
+  }
+  if (typeof goSolveAcoustic3D === 'undefined') {
+    throw new Error('goSolveAcoustic3D export missing (stale or failed WASM load)');
   }
 
   const result = goSolveAcoustic3D(
@@ -272,6 +280,7 @@ function handleSolve3D(data: {
       depth: result.depth,
       freqHz: data.freqHz,
       lambda: result.lambda,
+      reqId: data.reqId,
     },
     [volume.buffer],
   );
