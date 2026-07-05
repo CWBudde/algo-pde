@@ -41,9 +41,12 @@ colour scale). Two views present that one volume:
   full standing-wave shape reads at once. Drag to orbit, scroll to zoom, and use
   the **density** slider to fade the field. The render needs no extra solver
   data: the diverging colour map is invertible, so a voxel's amplitude is
-  `1 − min(r,g,b)` and its sign is the red/blue side — the cached RGBA volume is
-  uploaded straight to the GPU as a 3D texture. It falls back gracefully (the
-  button is disabled) if WebGL2 is unavailable.
+  `1 − min(r,g,b)` and its sign is the red/blue side. The cached RGBA is
+  transcoded to a signed scalar field, uploaded to the GPU as a single-channel
+  3D texture, and the colour map is re-applied in the shader — so `LINEAR`
+  filtering interpolates the field (transparent through a node) rather than the
+  encoded colour (which would blend adjacent lobes to opaque purple). It falls
+  back gracefully (the button is disabled) if WebGL2 is unavailable.
 
 Only a change of frequency or source position triggers a new solve; switching
 between the two 3D views does not.

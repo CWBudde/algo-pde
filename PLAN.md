@@ -392,12 +392,15 @@ Either fix all of the below or pull it from the README until fixed.
       Z-slice. Added a **3D volume** view: a WebGL2 ray-marched render of the
       whole box as a rotatable translucent glow (antinodes opaque, nodes clear),
       with drag-to-orbit, scroll-to-zoom, and a density slider.
-      → New `demo/volume.ts` (`VolumeRenderer`): uploads the cached RGBA volume
-      as a `TEXTURE_3D` and front-to-back composites it with premultiplied alpha,
-      plus a faint wireframe box for reference. No solver/WASM change was needed —
-      the diverging colour map is invertible, so per-voxel amplitude is
-      `1 − min(r,g,b)` and sign is the red/blue side, read straight from the
-      texel. `main.ts` grew a three-way **2D room / 3D slices / 3D volume**
+      → New `demo/volume.ts` (`VolumeRenderer`): front-to-back ray-marches the
+      volume with premultiplied alpha, plus a faint wireframe box for reference.
+      No solver/WASM change was needed — the diverging colour map is invertible
+      (per-voxel amplitude `1 − min(r,g,b)`, sign from the red/blue side), so the
+      cached RGBA is transcoded on the JS side to a signed scalar `R8`
+      `TEXTURE_3D` and the colour map is re-applied in the shader. Filtering the
+      signed field (not the encoded colour) is what keeps nodal zero-crossings
+      transparent under `LINEAR` interpolation instead of blending to opaque
+      purple. `main.ts` grew a three-way **2D room / 3D slices / 3D volume**
       toggle; both 3D views share the single volume solve, so switching between
       them never re-solves. Degrades gracefully (button disabled) without WebGL2.
       Verified end-to-end in headless Chromium (software WebGL): the box solves,

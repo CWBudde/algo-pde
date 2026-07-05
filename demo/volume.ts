@@ -6,10 +6,20 @@
 // (blue→white→red diverging map of the pressure field, normalized once over the
 // box). That colour map is invertible, so this renderer needs no extra data: a
 // voxel's amplitude is `1 − min(r,g,b)` (white = node = 0, saturated =
-// antinode = 1) and its sign is the red/blue side. We upload the RGBA volume as
-// a single `TEXTURE_3D` and ray-march it: colour comes straight from the texel,
-// opacity from the amplitude. Antinodes glow, nodes stay transparent, and the
-// whole standing-wave shape reads as one translucent cloud you can orbit.
+// antinode = 1) and its sign is the red/blue side.
+//
+// We transcode that to a single signed scalar per voxel (−1 = full blue, 0 =
+// node, +1 = full red) and upload it as a one-channel `R8` `TEXTURE_3D`, then
+// re-apply the diverging colour map in the shader. The transcode matters: with
+// hardware `LINEAR` filtering on the *encoded* RGBA, a sample between a red (+)
+// and a blue (−) lobe blends to dark/purple, which `1 − min(r,g,b)` would read
+// as opaque — so nodal zero-crossings would glow instead of vanish. Filtering a
+// signed scalar instead passes cleanly through zero (white, transparent) at a
+// node, keeping LINEAR's smoothness without the artefact.
+//
+// The volume is ray-marched: colour from the re-applied map, opacity from the
+// amplitude. Antinodes glow, nodes stay transparent, and the whole standing-
+// wave shape reads as one translucent cloud you can orbit.
 //
 // Compositing is front-to-back with premultiplied alpha, so the WebGL canvas
 // composites correctly over the black page. A faint wireframe box is drawn first
@@ -146,10 +156,15 @@ void main() {
     vec3 p = ro + t * dir;
     vec3 uvw = (p + uBoxHalf) / (2.0 * uBoxHalf);
     uvw.y = 1.0 - uvw.y; // match the top-down orientation of the slice viewer
-    vec4 tex = texture(uVolume, uvw);
-    float amp = 1.0 - min(tex.r, min(tex.g, tex.b)); // |field| from the diverging map
+    // Signed scalar in [0,1]: 0.5 is a node, 0/1 are the blue/red extremes.
+    float sv = texture(uVolume, uvw).r * 2.0 - 1.0; // → [-1, 1]
+    float amp = abs(sv);
+    // Re-apply the blue↔white↔red diverging map after interpolation.
+    vec3 col = sv >= 0.0
+      ? mix(vec3(1.0), vec3(1.0, 0.0, 0.0), amp)
+      : mix(vec3(1.0), vec3(0.0, 0.0, 1.0), amp);
     float a = clamp(pow(amp, uGamma) * uDensity * dt * ABSORB, 0.0, 1.0);
-    acc.rgb += (1.0 - acc.a) * a * tex.rgb;
+    acc.rgb += (1.0 - acc.a) * a * col;
     acc.a   += (1.0 - acc.a) * a;
     if (acc.a > 0.995) break;
   }
@@ -191,9 +206,17 @@ function compile(gl: WebGL2RenderingContext, type: number, src: string): WebGLSh
 
 function link(gl: WebGL2RenderingContext, vs: string, fs: string): WebGLProgram {
   const p = gl.createProgram()!;
-  gl.attachShader(p, compile(gl, gl.VERTEX_SHADER, vs));
-  gl.attachShader(p, compile(gl, gl.FRAGMENT_SHADER, fs));
+  const v = compile(gl, gl.VERTEX_SHADER, vs);
+  const f = compile(gl, gl.FRAGMENT_SHADER, fs);
+  gl.attachShader(p, v);
+  gl.attachShader(p, f);
   gl.linkProgram(p);
+  // Once linked, the program keeps its own copy — detach and delete the shader
+  // objects so they don't leak if the renderer is re-created (reload / HMR).
+  gl.detachShader(p, v);
+  gl.detachShader(p, f);
+  gl.deleteShader(v);
+  gl.deleteShader(f);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
     const log = gl.getProgramInfoLog(p);
     gl.deleteProgram(p);
@@ -208,6 +231,7 @@ export class VolumeRenderer {
   private wireProg: WebGLProgram;
   private quadVao: WebGLVertexArrayObject;
   private wireVao: WebGLVertexArrayObject;
+  private wireBuf: WebGLBuffer;
   private wireCount: number;
   private tex: WebGLTexture;
   private hasVolume = false;
@@ -237,9 +261,16 @@ export class VolumeRenderer {
     gl.enableVertexAttribArray(aPosRay);
     gl.vertexAttribPointer(aPosRay, 2, gl.FLOAT, false, 0, 0);
 
-    // Unit-cube wireframe (12 edges); scaled to the box half-extents in-shader
-    // via the corner positions we upload in setVolume.
+    // Box wireframe (12 edges). The VAO and its VBO are created once here;
+    // setVolume only refills the buffer's contents (bufferData) when the box
+    // extents change, so no GL buffer is allocated per solve.
     this.wireVao = gl.createVertexArray()!;
+    this.wireBuf = gl.createBuffer()!;
+    gl.bindVertexArray(this.wireVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.wireBuf);
+    const aPosWire = gl.getAttribLocation(this.wireProg, 'aPos');
+    gl.enableVertexAttribArray(aPosWire);
+    gl.vertexAttribPointer(aPosWire, 3, gl.FLOAT, false, 0, 0);
     this.wireCount = 0;
     this.tex = gl.createTexture()!;
 
@@ -251,6 +282,22 @@ export class VolumeRenderer {
   // correct. Extents are normalized so the longest axis spans 1 world unit.
   setVolume(data: Uint8ClampedArray, nx: number, ny: number, nz: number, ex: number, ey: number, ez: number) {
     const gl = this.gl;
+
+    // Transcode the encoded RGBA to a signed scalar per voxel so the GPU
+    // interpolates the field itself (through zero at a node), not its colour.
+    //   amplitude = 1 − min(r,g,b)/255   sign = red side (+) vs blue side (−)
+    // packed into a byte as 128 + 127·signed (128 = node).
+    const voxels = nx * ny * nz;
+    const scalar = new Uint8Array(voxels);
+    for (let i = 0; i < voxels; i++) {
+      const r = data[i * 4];
+      const g = data[i * 4 + 1];
+      const b = data[i * 4 + 2];
+      const amp = 1 - Math.min(r, g, b) / 255; // |field|, gamma-encoded, in [0,1]
+      const signed = r >= b ? amp : -amp; // red side positive, blue side negative
+      scalar[i] = Math.max(0, Math.min(255, Math.round(128 + 127 * signed)));
+    }
+
     gl.bindTexture(gl.TEXTURE_3D, this.tex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -258,7 +305,7 @@ export class VolumeRenderer {
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
-    gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGBA8, nx, ny, nz, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+    gl.texImage3D(gl.TEXTURE_3D, 0, gl.R8, nx, ny, nz, 0, gl.RED, gl.UNSIGNED_BYTE, scalar);
 
     const maxExtent = Math.max(ex, ey, ez) || 1;
     this.boxHalf = [(0.5 * ex) / maxExtent, (0.5 * ey) / maxExtent, (0.5 * ez) / maxExtent];
@@ -283,14 +330,10 @@ export class VolumeRenderer {
     for (const [a, b] of edges) verts.push(...c[a], ...c[b]);
     this.wireCount = edges.length * 2;
 
-    gl.bindVertexArray(this.wireVao);
-    const buf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    // Refill the persistent VBO (created once in the constructor); the VAO's
+    // attribute already points at it, so no new buffer or attrib setup here.
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.wireBuf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
-    const aPos = gl.getAttribLocation(this.wireProg, 'aPos');
-    gl.enableVertexAttribArray(aPos);
-    gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
-    gl.bindVertexArray(null);
   }
 
   // Match the drawing-buffer viewport after the caller resizes the canvas.
