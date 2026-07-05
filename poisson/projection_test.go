@@ -1,6 +1,7 @@
 package poisson
 
 import (
+	"errors"
 	"math"
 	"math/rand"
 	"sync"
@@ -179,20 +180,20 @@ func TestProjection_Validation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProjectionPlan2D: %v", err)
 	}
-	if err := p2.Project(nil, make([]float64, 64)); err != ErrNilBuffer {
+	if err := p2.Project(nil, make([]float64, 64)); !errors.Is(err, ErrNilBuffer) {
 		t.Fatalf("nil u: got %v want ErrNilBuffer", err)
 	}
-	if err := p2.Project(make([]float64, 10), make([]float64, 64)); err != ErrSizeMismatch {
+	if err := p2.Project(make([]float64, 10), make([]float64, 64)); !errors.Is(err, ErrSizeMismatch) {
 		t.Fatalf("bad size: got %v want ErrSizeMismatch", err)
 	}
-	if err := p2.Divergence(make([]float64, 64), make([]float64, 64), nil); err != ErrNilBuffer {
+	if err := p2.Divergence(make([]float64, 64), make([]float64, 64), nil); !errors.Is(err, ErrNilBuffer) {
 		t.Fatalf("nil v in Divergence: got %v want ErrNilBuffer", err)
 	}
 
-	if _, err := NewProjectionPlan2D(0, 8, 0.1, 0.1); err != ErrInvalidSize {
+	if _, err := NewProjectionPlan2D(0, 8, 0.1, 0.1); !errors.Is(err, ErrInvalidSize) {
 		t.Fatalf("bad nx: got %v want ErrInvalidSize", err)
 	}
-	if _, err := NewProjectionPlan3D(8, 8, 8, 0.1, math.NaN(), 0.1); err != ErrInvalidSpacing {
+	if _, err := NewProjectionPlan3D(8, 8, 8, 0.1, math.NaN(), 0.1); !errors.Is(err, ErrInvalidSpacing) {
 		t.Fatalf("NaN spacing: got %v want ErrInvalidSpacing", err)
 	}
 }
