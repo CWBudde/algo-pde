@@ -323,19 +323,31 @@ one contract (errors) and enforce it.
       rebuild would make it 6). `PlanNDPeriodic` already held its shape built
       once. Shape is no longer comparable (slice field); nothing compared it with
       `==` or used it as a map key, so no call sites changed on that account.)
-- [ ] Deduplicate the pow2/non-pow2 strided-transform logic copy-pasted
+- [x] Deduplicate the pow2/non-pow2 strided-transform logic copy-pasted
       between `periodic_nd.go:263` and `fft_plan.go:120-157`.
-- [ ] Delete dead code: `isZeroMode` (`plan.go:258`), the unreachable
+      → Resolved by the Phase A concurrency refactor: the single
+      `fftTransformLine` helper (`fft_plan.go`) now owns the pow2
+      (`TransformStrided`) vs. non-pow2 (gather → `Forward`/`Inverse` →
+      scatter) branching, and both `PlanNDPeriodic.transformAxis` and
+      `FFTPlan.TransformLines` call it. The periodic 2D/3D solvers route through
+      `TransformLines`, so there is exactly one copy of the strided logic.
+- [x] Delete dead code: `isZeroMode` (`plan.go:258`), the unreachable
       lazy-grow in `plan_bc.go`. (Done: `AxisBC`/`NewAxisBC`,
       `Index1D`/`FromIndex1D`, and `fd.HasZeroEigenvalue` — the last now lives
       only as `bc.HasZeroEigenvalue`/`BCType.HasNullspace`.)
-- [ ] Parallel layer polish: lazy per-worker FFT plan allocation in
+      → `isZeroMode` and the `plan_bc.go` lazy-grow are both gone; the
+      per-mode divide checks `denom == 0` inline.
+- [x] Parallel layer polish: lazy per-worker FFT plan allocation in
       `NewFFTPlanWithWorkers` (currently eager GOMAXPROCS × plans+scratch).
       (Done: `parallelFor` now cancels remaining workers on the first error via
       a per-call `context.WithCancel`, still returning the first error;
       `periodic_2d.go` now partitions the spectral divide over the larger of the
       two axes. The 1D-threshold-gate claim was inaccurate — 1D already clamps
       workers to the task count.)
+      → Lazy allocation landed too: `newFFTWorkerPool` seeds a single worker
+      into a `residentPool` of capacity `workers`; further workers are built
+      on demand in `get()` only under real concurrency, so plan construction
+      no longer eagerly allocates GOMAXPROCS × (plan + scratch).
 - [x] Fix `sizeStr` benchmark labels (`fd/eigenvalues_test.go` — used
       `string(rune(...))`, broke for n ≥ 10240; now `strconv`-based) and
       size-brittle absolute tolerances in `fd/laplacian_test.go` (now scaled to
@@ -458,8 +470,13 @@ Either fix all of the below or pull it from the README until fixed.
       (Periodic/Dirichlet/Neumann) at 256²/512²/1024², a single-machine caveat,
       and notes on the now-linearithmic Neumann path and the Bluestein FFT-size
       penalty on the Dirichlet path.
-- [ ] Convergence log-log plots in docs (carried over).
-      → Deferred: not part of this hygiene PR.
+- [x] Convergence log-log plots in docs (carried over).
+      → `cmd/convergence-plot` runs the manufactured-solution studies for
+      Dirichlet/Neumann/Periodic 2D and emits a self-contained log-log SVG
+      (`docs/convergence-2d.svg`, no external plotting dependency) with a
+      slope-2 reference guide; all three BCs measure order ≈ 2.00. Wired into
+      the README's new Accuracy section and regenerated via
+      `go generate ./docs/...` (`docs/doc.go`).
 
 ---
 
