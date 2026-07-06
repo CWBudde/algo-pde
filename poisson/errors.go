@@ -58,6 +58,20 @@ var (
 	// ErrDuplicateFace is returned when SolveWithBC receives more than one
 	// boundary entry for the same face, which would double that contribution.
 	ErrDuplicateFace = errors.New("duplicate boundary face in boundary conditions")
+
+	// ErrInvalidCoefficient is returned by NewVariableCoeffPlan when the
+	// coefficient field a(x) is the wrong length or contains a non-finite or
+	// non-positive value. Strict positivity is required for ellipticity (the
+	// operator is only SPD when a > 0) and for the harmonic face average.
+	ErrInvalidCoefficient = errors.New(
+		"invalid variable coefficient: length must match the grid and every value must be finite and positive",
+	)
+
+	// ErrNotConverged is returned by VariableCoeffPlan.Solve when the
+	// preconditioned conjugate gradient iteration does not reach the requested
+	// tolerance within the maximum number of iterations. The returned SolveStats
+	// still reports how far it got.
+	ErrNotConverged = errors.New("variable-coefficient solve did not converge within the iteration limit")
 )
 
 // Field and message strings reused across validation errors.
