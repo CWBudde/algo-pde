@@ -149,6 +149,36 @@
 // damped acoustic room at wavenumber k (standing-wave room modes). A purely
 // real α behaves like NewHelmholtzPlan and still guards genuine resonances.
 //
+// # Variable Coefficients
+//
+// NewVariableCoeffPlan solves the variable-coefficient elliptic equation
+//
+//	−∇·(a(x)∇u) = f
+//
+// for a fixed, strictly positive coefficient field a(x). A spatially varying
+// coefficient makes the operator non-separable, so the spectral transforms can
+// no longer diagonalize it. Instead the discrete operator L_a is inverted by
+// preconditioned conjugate gradient (PCG), using the fast spectral solve of the
+// nearby constant-coefficient operator −c̄·Δ (c̄ = mean(a) by default) as the
+// preconditioner. Because that preconditioner removes the grid-dependence of the
+// conditioning, the iteration count depends on the coefficient contrast
+// max(a)/min(a), not on N — a handful of iterations for modest contrast.
+//
+// L_a is the standard second-order flux discretization: along one axis
+//
+//	(L_a u)_i = [ a_{i+½}(u_i − u_{i+1}) + a_{i−½}(u_i − u_{i−1}) ] / h²,
+//
+// where a_{i+½} is the coefficient averaged onto the cell face (harmonic by
+// default, arithmetic via WithArithmeticAveraging). It reuses the same per-face
+// ghost rule as fd.Apply for every boundary condition — so with a ≡ 1 it is
+// exactly the constant-coefficient stencil — and is symmetric positive
+// (semi)definite, which is what makes CG applicable. Sample a(x) at the same
+// node coordinates as f (see Grid Conventions). Solve returns SolveStats
+// (iteration count and final relative residual) and ErrNotConverged if the
+// tolerance is not reached within the iteration limit; ApplyOperator exposes L_a
+// for residual checks. All five boundary conditions are supported and mixable
+// per axis; true Robin conditions remain out of scope.
+//
 // # Performance
 //
 // The solver has O(N log N) complexity where N is the total number of grid points.

@@ -542,8 +542,33 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
       The plan runs the inner solve with `WithSubtractMean` (the periodic
       divergence telescopes to an analytically zero mean) and reuses per-call
       scratch from a pool so `Project` stays allocation-free and concurrency-safe.
-- [ ] Variable coefficients: spectral solve as preconditioner for an
+- [x] Variable coefficients: spectral solve as preconditioner for an
       iterative method.
+      → `poisson/varcoeff.go` adds `NewVariableCoeffPlan(dim, n, h, bcs, a, opts…)`
+      solving `−∇·(a(x)∇u) = f` for a fixed, strictly positive coefficient field
+      by preconditioned conjugate gradient. The SPD operator `L_a` is the
+      second-order flux stencil with face coefficients averaged from `a` (harmonic
+      by default, `WithArithmeticAveraging` for arithmetic); it reuses fd's exact
+      per-face ghost rule for all five BC types, so with `a≡1` it equals
+      `fd.Apply{1,2,3}D`. The preconditioner is the fast spectral solve of the
+      nearby constant-coefficient `−c̄·Δ` (`c̄ = mean(a)` by default, overridable),
+      applied by one inner `Plan.Solve` per CG iteration — so the iteration count
+      tracks the coefficient contrast, not the grid (mesh-independent: the
+      `examples/varcoeff` 128² solve at 55× contrast converges in 79 iters).
+      `Solve` returns `SolveStats{Iterations, Residual}` and `ErrNotConverged` on
+      budget exhaustion; `ApplyOperator` exposes `L_a` for residual checks. The
+      plan is immutable + `residentPool`-backed, so the PCG wrapper adds zero
+      allocations over the inner solves and is concurrency-safe (both pinned by
+      tests). `varcoeff_test.go` covers the fd-reduction, random-RHS residuals for
+      every BC in 1D/2D/3D (nullspace cases mean-projected), operator symmetry +
+      manufactured-solution recovery, the exact-preconditioner one-iteration
+      property, high-contrast convergence, `-race` concurrency, and validation;
+      `varcoeff_alloc_test.go` (`!race`) pins the wrapper's zero-alloc contract.
+      **Follow-up:** only the spectral solve is used as a preconditioner here (the
+      elliptic inner solve for an outer Newton/Picard loop on a nonlinear or
+      strongly variable problem is the natural next step); `c̄` defaults to the
+      arithmetic mean — a geometric-mean or two-sided choice could cut iterations
+      further on exponential-contrast fields.
 - [ ] Non-rectangular domains via immersed-boundary / masking, using the
       spectral solver as the fast inner solve.
 
