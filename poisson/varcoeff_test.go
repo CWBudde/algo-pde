@@ -118,6 +118,34 @@ func TestVariableCoeff_ReducesToFDApply(t *testing.T) {
 	})
 }
 
+// TestVariableCoeff_ApplyOperatorAliased checks that ApplyOperator produces the
+// same result whether or not dst aliases src (the aliased path copies src into
+// pooled scratch first).
+func TestVariableCoeff_ApplyOperatorAliased(t *testing.T) {
+	const nx, ny = 12, 14
+	size := nx * ny
+	bcs := []poisson.BCType{poisson.Dirichlet, poisson.Neumann}
+	a := positiveCoeff(31, size)
+	plan, err := poisson.NewVariableCoeffPlan(2, []int{nx, ny}, []float64{0.1, 0.13}, bcs, a)
+	if err != nil {
+		t.Fatalf("NewVariableCoeffPlan: %v", err)
+	}
+
+	src := randomField(41, size)
+	want := make([]float64, size)
+	if err := plan.ApplyOperator(want, src); err != nil {
+		t.Fatalf("ApplyOperator: %v", err)
+	}
+
+	buf := append([]float64(nil), src...)
+	if err := plan.ApplyOperator(buf, buf); err != nil {
+		t.Fatalf("ApplyOperator (aliased): %v", err)
+	}
+	if d := maxAbsDiff(buf, want); d > 0 {
+		t.Fatalf("aliased ApplyOperator differs from non-aliased: max diff %.3e", d)
+	}
+}
+
 // solveResidual solves L_a u = f and returns the relative residual of the
 // reapplied operator, projecting the mean out for nullspace problems.
 func solveResidual(t *testing.T, plan *poisson.VariableCoeffPlan, bcs []poisson.BCType, raw []float64) float64 {
