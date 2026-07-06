@@ -49,6 +49,24 @@ func TestEigenvaluesMatchStencil(t *testing.T) {
 				return math.Cos(math.Pi * float64(k) * (float64(i) + 0.5) / float64(n))
 			},
 		},
+		{
+			// Dirichlet low / Neumann high: DST-IV eigenvector on the
+			// quarter-wave grid (nodes at (i+½)·h).
+			name: "DirichletNeumann",
+			bc:   bc.DirichletNeumann,
+			vec: func(i, k int) float64 {
+				return math.Sin(math.Pi * (float64(k) + 0.5) * (float64(i) + 0.5) / float64(n))
+			},
+		},
+		{
+			// Neumann low / Dirichlet high: DCT-IV eigenvector on the
+			// quarter-wave grid.
+			name: "NeumannDirichlet",
+			bc:   bc.NeumannDirichlet,
+			vec: func(i, k int) float64 {
+				return math.Cos(math.Pi * (float64(k) + 0.5) * (float64(i) + 0.5) / float64(n))
+			},
+		},
 	}
 
 	for _, tc := range cases {

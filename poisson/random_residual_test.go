@@ -90,12 +90,27 @@ func bcName(bc poisson.BCType) string {
 		return "Dirichlet"
 	case poisson.Neumann:
 		return "Neumann"
+	case poisson.DirichletNeumann:
+		return "DirichletNeumann"
+	case poisson.NeumannDirichlet:
+		return "NeumannDirichlet"
 	default:
 		return "Unknown"
 	}
 }
 
-var residualBCTypes = []poisson.BCType{poisson.Periodic, poisson.Dirichlet, poisson.Neumann}
+// residualBCTypes covers all five per-axis boundary conditions, so the 1D/2D/3D
+// loops below exercise every single-axis case, every 2D pair, and every 3D
+// triple — including the mixed Dirichlet/Neumann axes. Grid extents are chosen
+// FFT-sound for every transform (in particular no extent is divisible by 5, so
+// the quarter-wave 4N FFT avoids algo-fft's factor-5 mixed-radix defect).
+var residualBCTypes = []poisson.BCType{
+	poisson.Periodic,
+	poisson.Dirichlet,
+	poisson.Neumann,
+	poisson.DirichletNeumann,
+	poisson.NeumannDirichlet,
+}
 
 func residualOpts(bcs []poisson.BCType) []poisson.Option {
 	if allNullspace(bcs) {
@@ -141,8 +156,9 @@ func TestRandomRHSResidual1D(t *testing.T) {
 
 func TestRandomRHSResidual2D(t *testing.T) {
 	// Distinct extents and spacings per axis catch axis-swapped indexing and
-	// eigenvalue mix-ups that equal-sized grids would hide.
-	const nx, ny = 20, 24
+	// eigenvalue mix-ups that equal-sized grids would hide. Extents avoid a
+	// factor of 5 so the quarter-wave 4N FFT is sound.
+	const nx, ny = 18, 22
 	hx, hy := 1.0/float64(nx), 0.75/float64(ny)
 
 	seed := int64(100)
@@ -192,7 +208,8 @@ func TestRandomRHSResidual2D(t *testing.T) {
 }
 
 func TestRandomRHSResidual3D(t *testing.T) {
-	const nx, ny, nz = 12, 16, 10
+	// Extents avoid a factor of 5 so the quarter-wave 4N FFT is sound.
+	const nx, ny, nz = 12, 16, 14
 	hx, hy, hz := 1.0/float64(nx), 0.6/float64(ny), 1.3/float64(nz)
 
 	seed := int64(1000)

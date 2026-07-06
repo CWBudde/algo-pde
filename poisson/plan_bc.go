@@ -34,11 +34,20 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 		return err
 	}
 
-	var dirichlet, neumann BoundaryConditions
+	// Faces are grouped by the lift they need. A Dirichlet face on a mixed
+	// quarter-wave axis reflects as u₋₁ = 2g − u₀, so it lifts with twice the
+	// vertex-centered contribution; its Neumann face uses the same ∓g/h lift as a
+	// pure Neumann axis, so mixed and pure Neumann faces share one group.
+	var dirichlet, mixedDirichlet, neumann BoundaryConditions
 	for _, data := range bc {
+		axis, _ := faceAxis(data.Face)
 		switch data.Type {
 		case Dirichlet:
-			dirichlet = append(dirichlet, data)
+			if isMixedAxisBC(p.bc[axis]) {
+				mixedDirichlet = append(mixedDirichlet, data)
+			} else {
+				dirichlet = append(dirichlet, data)
+			}
 		case Neumann:
 			neumann = append(neumann, data)
 		default:
@@ -62,6 +71,11 @@ func (p *Plan) SolveWithBC(dst, rhs []float64, bc BoundaryConditions) error {
 	h := p.h
 	if len(dirichlet) > 0 {
 		if err := ApplyDirichletRHS(buf, shape, h, dirichlet); err != nil {
+			return err
+		}
+	}
+	if len(mixedDirichlet) > 0 {
+		if err := applyDirichletRHS(buf, shape, h, mixedDirichlet, 2.0); err != nil {
 			return err
 		}
 	}
@@ -90,17 +104,19 @@ func (p *Plan) validateBoundaryConditions(bc BoundaryConditions) error {
 		}
 		seen[data.Face] = true
 
-		if p.bc[axis] == Periodic {
+		want, ok := expectedFaceType(p.bc[axis], data.Face)
+		if !ok {
 			return &ValidationError{
 				Field:   fieldFace,
 				Message: "boundary data not allowed for periodic axis",
 			}
 		}
 
-		if p.bc[axis] != data.Type {
+		if want != data.Type {
 			return &ValidationError{
-				Field:   fieldType,
-				Message: fmt.Sprintf("boundary type %s does not match plan axis %s", data.Type, p.bc[axis]),
+				Field: fieldType,
+				Message: fmt.Sprintf("boundary type %s does not match %v face of plan axis %s",
+					data.Type, data.Face, p.bc[axis]),
 			}
 		}
 
@@ -140,6 +156,48 @@ func (p *Plan) validateFaceValues(data BoundaryData) error {
 	}
 
 	return nil
+}
+
+// isMixedAxisBC reports whether an axis carries a per-face-asymmetric
+// (quarter-wave) boundary condition.
+func isMixedAxisBC(b BCType) bool {
+	return b == DirichletNeumann || b == NeumannDirichlet
+}
+
+// isLowFace reports whether a face is the low (index-0) face of its axis.
+func isLowFace(face BoundaryFace) bool {
+	switch face {
+	case XLow, YLow, ZLow:
+		return true
+	case XHigh, YHigh, ZHigh:
+		return false
+	default:
+		return false
+	}
+}
+
+// expectedFaceType returns the BoundaryData.Type a face must carry for the given
+// axis BC, and whether that axis accepts boundary data at all (Periodic does
+// not). For a mixed axis the low and high faces require different types.
+func expectedFaceType(axisBC BCType, face BoundaryFace) (BCType, bool) {
+	switch axisBC {
+	case Dirichlet, Neumann:
+		return axisBC, true
+	case DirichletNeumann:
+		if isLowFace(face) {
+			return Dirichlet, true
+		}
+		return Neumann, true
+	case NeumannDirichlet:
+		if isLowFace(face) {
+			return Neumann, true
+		}
+		return Dirichlet, true
+	case Periodic:
+		return Periodic, false
+	default:
+		return axisBC, false
+	}
 }
 
 func faceAxis(face BoundaryFace) (int, bool) {

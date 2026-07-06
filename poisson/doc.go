@@ -13,13 +13,24 @@
 //
 // # Boundary Conditions
 //
-// The solver supports three types of boundary conditions:
+// The solver supports these boundary conditions:
 //
 //   - Periodic: u(0) = u(L), useful for problems with periodic symmetry
 //   - Dirichlet: u = 0 at boundaries, models fixed-value boundaries
 //   - Neumann: ∂u/∂n = 0 at boundaries, models no-flux boundaries
+//   - DirichletNeumann / NeumannDirichlet: a single axis with a Dirichlet
+//     condition on one face and a Neumann condition on the other (per-face
+//     asymmetric)
 //
-// Mixed boundary conditions (different BC per axis) are also supported.
+// Mixed boundary conditions (different BC per axis) are also supported: pass a
+// per-axis BCType slice to NewPlan.
+//
+// True Robin conditions (a·u + b·∂u/∂n = g with a,b ≠ 0) are intentionally not
+// supported: their eigenvectors are phase-shifted sinusoids whose wavenumbers
+// solve a transcendental equation, so they have neither a closed-form
+// eigenvalue nor a DFT-based fast transform — they do not fit this solver's
+// O(N log N) design. The DirichletNeumann / NeumannDirichlet axes are the
+// per-face-asymmetric cases that *do* admit a fast quarter-wave transform.
 //
 // # Grid Conventions
 //
@@ -31,10 +42,12 @@
 // (Inhomogeneous boundary data passed to SolveWithBC is sampled on the
 // boundary face instead; see below.)
 //
-//	BC          Transform  Node x_i (i = 0..n-1)  Domain length L
-//	Periodic    FFT        i·h                    n·h
-//	Dirichlet   DST-I      (i+1)·h                (n+1)·h
-//	Neumann     DCT-II     (i+½)·h                n·h
+//	BC                 Transform  Node x_i (i = 0..n-1)  Domain length L
+//	Periodic           FFT        i·h                    n·h
+//	Dirichlet          DST-I      (i+1)·h                (n+1)·h
+//	Neumann            DCT-II     (i+½)·h                n·h
+//	DirichletNeumann   DST-IV     (i+½)·h                n·h
+//	NeumannDirichlet   DCT-IV     (i+½)·h                n·h
 //
 // The physical boundaries lie off the grid for Dirichlet and Neumann axes:
 //
@@ -53,11 +66,24 @@
 //	     |----•---------•----- ... ------•----|
 //	         x_0       x_1             x_{n-1}
 //
+// DirichletNeumann and NeumannDirichlet share the Neumann cell-centered grid
+// (nodes at (i+½)·h, L = n·h) but pin different faces. On a DirichletNeumann
+// axis the low face (x=0) is Dirichlet and the high face (x=n·h) is Neumann;
+// NeumannDirichlet swaps them. Both use quarter-wave transforms (DST-IV / DCT-IV
+// respectively) and have strictly positive eigenvalues
+// λ_m = (2 − 2·cos(π(m+½)/n))/h², so a mixed axis contributes no nullspace:
+//
+//	DirichletNeumann (Dirichlet low, Neumann high):
+//	    x=0   ½h                          (n-½)h   L=n·h
+//	     |----•---------•----- ... ------•----|
+//	  u fixed x_0       x_1            x_{n-1}  ∂u/∂x=g
+//
 // Because each axis uses its own rule, a mixed-BC plan is a rectangle whose
 // side lengths follow different formulas per axis. To make each axis span the
 // unit interval, for example, choose hx = 1/(nx+1) on a Dirichlet axis but
-// hy = 1/ny on a Neumann or periodic axis. See the examples/ programs
-// (dirichlet2d, neumann2d, periodic2d, mixed2d) for worked samplings.
+// hy = 1/ny on a Neumann, periodic, or mixed quarter-wave axis. See the
+// examples/ programs (dirichlet2d, neumann2d, periodic2d, mixed2d, mixed_dn)
+// for worked samplings.
 //
 // Inhomogeneous boundary data supplied to SolveWithBC lives on the physical
 // boundary face, not at an interior node. A face's Values array is indexed by
@@ -134,12 +160,14 @@
 // Each axis diagonalizes the discrete second-order Laplacian in its own basis,
 // with eigenvalues (see also the fd package):
 //
-//	Periodic  (m = 0..n-1):  λ_m = (2 - 2·cos(2πm/n))     / h²
-//	Dirichlet (m = 1..n):    λ_m = (2 - 2·cos(πm/(n+1)))  / h²
-//	Neumann   (m = 0..n-1):  λ_m = (2 - 2·cos(πm/n))      / h²
+//	Periodic          (m = 0..n-1):  λ_m = (2 - 2·cos(2πm/n))      / h²
+//	Dirichlet         (m = 1..n):    λ_m = (2 - 2·cos(πm/(n+1)))   / h²
+//	Neumann           (m = 0..n-1):  λ_m = (2 - 2·cos(πm/n))       / h²
+//	DirichletNeumann  (m = 0..n-1):  λ_m = (2 - 2·cos(π(m+½)/n))   / h²
+//	NeumannDirichlet  (m = 0..n-1):  λ_m = (2 - 2·cos(π(m+½)/n))   / h²
 //
-// Periodic and Neumann have λ = 0 at m = 0 (the constant mode); Dirichlet does
-// not. In multiple dimensions the per-axis eigenvalues add, so the operator for
+// Periodic and Neumann have λ = 0 at m = 0 (the constant mode); Dirichlet and
+// the mixed Dirichlet/Neumann axes do not (a Dirichlet face pins the constant). In multiple dimensions the per-axis eigenvalues add, so the operator for
 // mode (i, j, k) of the Helmholtz form (α - Δ) is:
 //
 //	α + λ_x(i) + λ_y(j) + λ_z(k)

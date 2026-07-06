@@ -99,6 +99,22 @@ func newDCTAxisTransform(n int, workers int) (AxisTransform, error) {
 	})
 }
 
+// newDST4AxisTransform builds the axis transform for a DirichletNeumann axis
+// (Dirichlet low, Neumann high): the quarter-wave DST-IV.
+func newDST4AxisTransform(n int, workers int) (AxisTransform, error) {
+	return newRealAxisTransform(n, workers, "DST-IV", func(n int) (*r2r.DST4Plan, error) {
+		return r2r.NewDST4Plan(n)
+	})
+}
+
+// newDCT4AxisTransform builds the axis transform for a NeumannDirichlet axis
+// (Neumann low, Dirichlet high): the quarter-wave DCT-IV.
+func newDCT4AxisTransform(n int, workers int) (AxisTransform, error) {
+	return newRealAxisTransform(n, workers, "DCT-IV", func(n int) (*r2r.DCT4Plan, error) {
+		return r2r.NewDCT4Plan(n)
+	})
+}
+
 func (t *realAxisTransform[P]) Forward(data []complex128, shape grid.Shape, axis int) error {
 	return t.transformLines(data, shape, axis, false)
 }

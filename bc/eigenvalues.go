@@ -24,6 +24,7 @@ var ErrInvalidSize = errors.New("bc: number of grid points must be non-negative"
 //   - Periodic: n eigenvalues (m = 0..n-1)
 //   - Dirichlet: n eigenvalues (m = 1..n, but stored 0..n-1)
 //   - Neumann: n eigenvalues (m = 0..n-1)
+//   - DirichletNeumann / NeumannDirichlet: n eigenvalues (m = 0..n-1)
 //
 // It returns ErrInvalidBC if b is not a supported boundary condition.
 func Eigenvalues(n int, h float64, b BCType) ([]float64, error) {
@@ -38,6 +39,10 @@ func Eigenvalues(n int, h float64, b BCType) ([]float64, error) {
 		return EigenvaluesDirichlet(n, h), nil
 	case Neumann:
 		return EigenvaluesNeumann(n, h), nil
+	case DirichletNeumann:
+		return EigenvaluesDirichletNeumann(n, h), nil
+	case NeumannDirichlet:
+		return EigenvaluesNeumannDirichlet(n, h), nil
 	default:
 		// Wrap so the offending value survives for debugging (common when a
 		// caller passes an int cast) while errors.Is(err, ErrInvalidBC) holds.
@@ -76,6 +81,35 @@ func EigenvaluesNeumann(n int, h float64) []float64 {
 	h2 := h * h
 	for m := range n {
 		eig[m] = (2.0 - 2.0*math.Cos(math.Pi*float64(m)/float64(n))) / h2
+	}
+
+	return eig
+}
+
+// EigenvaluesDirichletNeumann computes eigenvalues for the mixed
+// Dirichlet-low/Neumann-high axis (diagonalised by DST-IV).
+// λ_m = (2 - 2*cos(π(m+½)/N)) / h² for m = 0..N-1.
+//
+// All eigenvalues are strictly positive (the m=0 mode gives 2-2cos(π/2N) > 0),
+// so this BC has no nullspace.
+func EigenvaluesDirichletNeumann(n int, h float64) []float64 {
+	return eigenvaluesQuarterWave(n, h)
+}
+
+// EigenvaluesNeumannDirichlet computes eigenvalues for the mixed
+// Neumann-low/Dirichlet-high axis (diagonalised by DCT-IV). By mirror symmetry
+// it shares the Dirichlet-Neumann spectrum: λ_m = (2 - 2*cos(π(m+½)/N)) / h².
+func EigenvaluesNeumannDirichlet(n int, h float64) []float64 {
+	return eigenvaluesQuarterWave(n, h)
+}
+
+// eigenvaluesQuarterWave is the shared quarter-wave spectrum for the mixed
+// Dirichlet/Neumann axes: λ_m = (2 - 2*cos(π(m+½)/N)) / h² for m = 0..N-1.
+func eigenvaluesQuarterWave(n int, h float64) []float64 {
+	eig := make([]float64, n)
+	h2 := h * h
+	for m := range n {
+		eig[m] = (2.0 - 2.0*math.Cos(math.Pi*(float64(m)+0.5)/float64(n))) / h2
 	}
 
 	return eig

@@ -193,6 +193,20 @@ func TestConcurrentSolve_Plan_Mixed3D(t *testing.T) {
 	runConcurrentSolves(t, nx*ny*nz, plan.Solve)
 }
 
+func TestConcurrentSolve_Plan_QuarterWave2D(t *testing.T) {
+	// Mixed DirichletNeumann × NeumannDirichlet axes (quarter-wave DST-IV/DCT-IV).
+	// Extents avoid a factor of 5 so the 4N FFT is sound.
+	nx, ny := 16, 24
+	plan, err := poisson.NewPlan(2,
+		[]int{nx, ny},
+		[]float64{1.0 / float64(nx), 0.8 / float64(ny)},
+		[]poisson.BCType{poisson.DirichletNeumann, poisson.NeumannDirichlet})
+	if err != nil {
+		t.Fatalf("NewPlan: %v", err)
+	}
+	runConcurrentSolves(t, nx*ny, plan.Solve)
+}
+
 func TestConcurrentSolve_Plan_Helmholtz2D(t *testing.T) {
 	nx, ny := 24, 24
 	plan, err := poisson.NewHelmholtzPlan(2,

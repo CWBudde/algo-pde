@@ -502,8 +502,30 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
       keeps the `ErrResonant` guard. Zero extra per-solve allocation vs the real
       path. `poisson/complex_helmholtz.go` + `_test.go` (residual for all BCs,
       real-path agreement, damping-vs-resonance, validation, alloc parity).
-- [ ] Robin / per-face asymmetric BCs (the `AxisBC` promise, currently dead
-      code — implement or drop).
+- [x] Robin / per-face asymmetric BCs.
+      → Decided: **implement the fast-transform-compatible subset, drop true
+      Robin.** Genuine Robin (a·u + b·∂u/∂n = g) is incompatible with this
+      solver — its eigenvectors are phase-shifted sinusoids with no closed-form
+      eigenvalue and no DFT-based fast transform — so it is documented as out of
+      scope in `poisson/doc.go`. The per-face-asymmetric case that *does* admit a
+      fast transform is now supported: two new BC types `DirichletNeumann`
+      (Dirichlet low / Neumann high) and `NeumannDirichlet` (Neumann low /
+      Dirichlet high), each a single axis diagonalised by a quarter-wave
+      transform (DST-IV / DCT-IV) on the cell-centred grid, with closed-form
+      eigenvalues λ_m = (2−2cos(π(m+½)/n))/h² and no nullspace. New
+      `r2r.DST4Plan`/`DCT4Plan` (4N real-input FFT embedding, self-inverse up to
+      2/N — no O(N²) inverse), `bc.EigenvaluesDirichletNeumann`/`…NeumannDirichlet`,
+      mixed-axis stencils in `fd.Apply1D/2D/3D`, and plan wiring in
+      `newPlanCore`. The stale `AxisBC` stub was already deleted in Phase D. The
+      inhomogeneous `SolveWithBC` path lifts each mixed face correctly
+      (quarter-wave Dirichlet ghost u₋₁=2g−u₀ ⇒ +2g/h², Neumann ⇒ ∓g/h) and
+      validates per-face types. Verified end-to-end: eigenvector–stencil identity
+      (`fd`), DST-IV/DCT-IV naive reference + involution (`r2r`), random-RHS
+      residual across all 1D/2D/3D mixed combinations, order-2 convergence,
+      dense-reference agreement (incl. Helmholtz α>0), a machine-precision planar
+      inhomogeneous test pinning the factor-2 lift, and a concurrent-Solve race
+      test. `examples/mixed_dn` demonstrates a 2D DirichletNeumann×NeumannDirichlet
+      solve.
 - [x] Pressure projection API for incompressible flow (divergence, gradient,
       Navier–Stokes projection example).
       → `poisson/projection.go` adds `ProjectionPlan2D`/`ProjectionPlan3D`:

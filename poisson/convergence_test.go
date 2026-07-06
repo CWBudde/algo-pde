@@ -204,6 +204,103 @@ func TestConvergence2D_Mixed_DirichletNeumann(t *testing.T) {
 	checkConvergenceRates(t, hs, errs)
 }
 
+func TestConvergence1D_DirichletNeumann(t *testing.T) {
+	// Quarter-wave grid (cell-centered, L = n·h). The lowest DirichletNeumann
+	// mode sin(πx/2L) is zero at the Dirichlet low face (x=0) and has zero slope
+	// at the Neumann high face (x=L).
+	sizes := []int{16, 32, 64}
+	errs := make([]float64, len(sizes))
+	hs := make([]float64, len(sizes))
+
+	for idx, n := range sizes {
+		h := 1.0 / float64(n)
+		hs[idx] = h
+		L := float64(n) * h
+
+		k := math.Pi / (2.0 * L)
+		lambda := k * k
+
+		u := make([]float64, n)
+		for i := range n {
+			x := (float64(i) + 0.5) * h
+			u[i] = math.Sin(k * x)
+		}
+
+		rhs := make([]float64, n)
+		for i := range rhs {
+			rhs[i] = lambda * u[i]
+		}
+
+		plan, err := poisson.NewPlan(1, []int{n}, []float64{h}, []poisson.BCType{poisson.DirichletNeumann})
+		if err != nil {
+			t.Fatalf("NewPlan failed: %v", err)
+		}
+
+		got := make([]float64, n)
+		if err := plan.Solve(got, rhs); err != nil {
+			t.Fatalf("Solve failed: %v", err)
+		}
+
+		errs[idx] = maxAbsDiff(got, u)
+	}
+
+	checkConvergenceRates(t, hs, errs)
+}
+
+func TestConvergence2D_Mixed_DNxND(t *testing.T) {
+	// x: DirichletNeumann (sin(πx/2Lx), Dirichlet low / Neumann high);
+	// y: NeumannDirichlet (cos(πy/2Ly), Neumann low / Dirichlet high).
+	// Both axes use the quarter-wave cell-centered grid.
+	sizes := []int{16, 32, 64}
+	errs := make([]float64, len(sizes))
+	hs := make([]float64, len(sizes))
+
+	for idx, n := range sizes {
+		hx := 1.0 / float64(n)
+		hy := 0.8 / float64(n)
+		hs[idx] = hx
+		Lx := float64(n) * hx
+		Ly := float64(n) * hy
+
+		kx := math.Pi / (2.0 * Lx)
+		ky := math.Pi / (2.0 * Ly)
+		lambda := kx*kx + ky*ky
+
+		u := make([]float64, n*n)
+		for i := range n {
+			x := (float64(i) + 0.5) * hx
+			for j := range n {
+				y := (float64(j) + 0.5) * hy
+				u[i*n+j] = math.Sin(kx*x) * math.Cos(ky*y)
+			}
+		}
+
+		rhs := make([]float64, n*n)
+		for i := range rhs {
+			rhs[i] = lambda * u[i]
+		}
+
+		plan, err := poisson.NewPlan(
+			2,
+			[]int{n, n},
+			[]float64{hx, hy},
+			[]poisson.BCType{poisson.DirichletNeumann, poisson.NeumannDirichlet},
+		)
+		if err != nil {
+			t.Fatalf("NewPlan failed: %v", err)
+		}
+
+		got := make([]float64, n*n)
+		if err := plan.Solve(got, rhs); err != nil {
+			t.Fatalf("Solve failed: %v", err)
+		}
+
+		errs[idx] = maxAbsDiff(got, u)
+	}
+
+	checkConvergenceRates(t, hs, errs)
+}
+
 func TestConvergence3D_Dirichlet(t *testing.T) {
 	sizes := []int{8, 16, 32}
 	errs := make([]float64, len(sizes))

@@ -121,7 +121,7 @@ func newPlanCore(dim int, n []int, h []float64, bcs []BCType, alphaC complex128,
 		}
 
 		switch bcs[axis] {
-		case Periodic, Dirichlet, Neumann:
+		case Periodic, Dirichlet, Neumann, DirichletNeumann, NeumannDirichlet:
 		default:
 			return nil, &ValidationError{
 				Field:   fmt.Sprintf("bc[%d]", axis),
@@ -147,6 +147,12 @@ func newPlanCore(dim int, n []int, h []float64, bcs []BCType, alphaC complex128,
 		case Neumann:
 			plan.eig[axis] = bc.EigenvaluesNeumann(plan.n[axis], plan.h[axis])
 			plan.tr[axis], err = newDCTAxisTransform(plan.n[axis], options.Workers)
+		case DirichletNeumann:
+			plan.eig[axis] = bc.EigenvaluesDirichletNeumann(plan.n[axis], plan.h[axis])
+			plan.tr[axis], err = newDST4AxisTransform(plan.n[axis], options.Workers)
+		case NeumannDirichlet:
+			plan.eig[axis] = bc.EigenvaluesNeumannDirichlet(plan.n[axis], plan.h[axis])
+			plan.tr[axis], err = newDCT4AxisTransform(plan.n[axis], options.Workers)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("axis %d: %w", axis, err)

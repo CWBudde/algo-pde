@@ -2,9 +2,18 @@ package poisson
 
 import "github.com/MeKo-Tech/algo-pde/grid"
 
-// ApplyDirichletRHS adds inhomogeneous Dirichlet boundary contributions to rhs.
-// The rhs slice is modified in-place and uses row-major ordering.
+// ApplyDirichletRHS adds inhomogeneous Dirichlet boundary contributions to rhs
+// for a vertex-centered Dirichlet axis (ghost = the boundary value). The rhs
+// slice is modified in-place and uses row-major ordering.
 func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryConditions) error {
+	return applyDirichletRHS(rhs, shape, h, bc, 1.0)
+}
+
+// applyDirichletRHS is the shared implementation. scale is the ghost-reflection
+// factor: 1 for a vertex-centered Dirichlet axis (ghost = g) and 2 for the
+// Dirichlet face of a mixed quarter-wave axis, whose ghost is u₋₁ = 2g − u₀, so
+// the boundary row gains 2g/h² instead of g/h².
+func applyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc BoundaryConditions, scale float64) error {
 	if rhs == nil {
 		return ErrNilBuffer
 	}
@@ -53,7 +62,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 				row := base + j*nz
 				valRow := j * nz
 				for k := range nz {
-					rhs[row+k] += data.Values[valRow+k] * invHx2
+					rhs[row+k] += data.Values[valRow+k] * invHx2 * scale
 				}
 			}
 
@@ -79,7 +88,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 				base := i*plane + j*nz
 				valRow := i * nz
 				for k := range nz {
-					rhs[base+k] += data.Values[valRow+k] * invHy2
+					rhs[base+k] += data.Values[valRow+k] * invHy2 * scale
 				}
 			}
 
@@ -105,7 +114,7 @@ func ApplyDirichletRHS(rhs []float64, shape grid.Shape, h [3]float64, bc Boundar
 				base := i * plane
 				valRow := i * ny
 				for j := range ny {
-					rhs[base+j*nz+k] += data.Values[valRow+j] * invHz2
+					rhs[base+j*nz+k] += data.Values[valRow+j] * invHz2 * scale
 				}
 			}
 

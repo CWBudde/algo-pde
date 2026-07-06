@@ -20,6 +20,13 @@ const (
 	// prescribed on the boundary. See package docs (Grid Conventions) and
 	// ApplyNeumannRHS.
 	Neumann = bc.Neumann
+
+	// DirichletNeumann is a mixed (per-face asymmetric) axis: Dirichlet on the
+	// low (index-0) face, Neumann on the high face (quarter-wave DST-IV grid).
+	DirichletNeumann = bc.DirichletNeumann
+
+	// NeumannDirichlet is the mirror: Neumann low, Dirichlet high (DCT-IV grid).
+	NeumannDirichlet = bc.NeumannDirichlet
 )
 
 // BoundaryFace identifies a specific boundary face of the domain.

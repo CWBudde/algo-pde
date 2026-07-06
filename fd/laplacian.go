@@ -14,10 +14,8 @@ import (
 // It returns ErrSizeMismatch if src is empty or dst does not have the same
 // length as src, and ErrInvalidBC if b is not a supported boundary condition.
 func Apply1D(dst, src []float64, h float64, b bc.BCType) error {
-	switch b {
-	case bc.Periodic, bc.Dirichlet, bc.Neumann:
-	default:
-		return fmt.Errorf("%w: %v", ErrInvalidBC, b)
+	if err := validBC(b); err != nil {
+		return err
 	}
 
 	n := len(src)
@@ -40,38 +38,25 @@ func Apply1D(dst, src []float64, h float64, b bc.BCType) error {
 			dst[i] = (2.0*src[i] - left - right) * invH2
 		}
 
-	case bc.Dirichlet:
-		for i := range n {
-			left := 0.0
-			if i > 0 {
-				left = src[i-1]
-			}
-
-			right := 0.0
-			if i+1 < n {
-				right = src[i+1]
-			}
-
-			dst[i] = (2.0*src[i] - left - right) * invH2
-		}
-
-	case bc.Neumann:
+	case bc.Dirichlet, bc.Neumann, bc.DirichletNeumann, bc.NeumannDirichlet:
+		// All non-periodic BCs share one loop: interior neighbours are read
+		// directly, and each boundary ghost is c·u_boundary where c is the
+		// per-face reflection coefficient (0 vertex-Dirichlet, +1 Neumann,
+		// -1 quarter-wave Dirichlet). This unifies pure and mixed axes.
+		cLow := lowGhostCoeff(b)
+		cHigh := highGhostCoeff(b)
 		for i := range n {
 			var left, right float64
-			switch i {
-			case 0:
-				left = src[0]
-				if n == 1 {
-					right = src[0]
-				} else {
-					right = src[1]
-				}
-			case n - 1:
-				left = src[n-2]
-				right = src[n-1]
-			default:
+			if i > 0 {
 				left = src[i-1]
+			} else {
+				left = cLow * src[0]
+			}
+
+			if i+1 < n {
 				right = src[i+1]
+			} else {
+				right = cHigh * src[n-1]
 			}
 
 			dst[i] = (2.0*src[i] - left - right) * invH2
@@ -124,10 +109,8 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bcs [2]bc.BCTyp
 				left = src[(i-1)*ny+j]
 			case bcs[0] == bc.Periodic:
 				left = src[(nx-1)*ny+j]
-			case bcs[0] == bc.Neumann:
-				left = src[idx]
 			default:
-				left = 0
+				left = lowGhostCoeff(bcs[0]) * src[idx]
 			}
 
 			switch {
@@ -135,10 +118,8 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bcs [2]bc.BCTyp
 				right = src[(i+1)*ny+j]
 			case bcs[0] == bc.Periodic:
 				right = src[j]
-			case bcs[0] == bc.Neumann:
-				right = src[idx]
 			default:
-				right = 0
+				right = highGhostCoeff(bcs[0]) * src[idx]
 			}
 
 			var down, up float64
@@ -147,10 +128,8 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bcs [2]bc.BCTyp
 				down = src[row+j-1]
 			case bcs[1] == bc.Periodic:
 				down = src[row+ny-1]
-			case bcs[1] == bc.Neumann:
-				down = src[idx]
 			default:
-				down = 0
+				down = lowGhostCoeff(bcs[1]) * src[idx]
 			}
 
 			switch {
@@ -158,10 +137,8 @@ func Apply2D(dst, src []float64, shape grid.Shape, h [2]float64, bcs [2]bc.BCTyp
 				up = src[row+j+1]
 			case bcs[1] == bc.Periodic:
 				up = src[row]
-			case bcs[1] == bc.Neumann:
-				up = src[idx]
 			default:
-				up = 0
+				up = highGhostCoeff(bcs[1]) * src[idx]
 			}
 
 			dst[idx] = (2.0*u-left-right)*invHx2 + (2.0*u-down-up)*invHy2
@@ -218,10 +195,8 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bcs [3]bc.BCTyp
 					left = src[idx-plane]
 				case bcs[0] == bc.Periodic:
 					left = src[idx+plane*(nx-1)]
-				case bcs[0] == bc.Neumann:
-					left = src[idx]
 				default:
-					left = 0
+					left = lowGhostCoeff(bcs[0]) * src[idx]
 				}
 
 				switch {
@@ -229,10 +204,8 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bcs [3]bc.BCTyp
 					right = src[idx+plane]
 				case bcs[0] == bc.Periodic:
 					right = src[idx-plane*(nx-1)]
-				case bcs[0] == bc.Neumann:
-					right = src[idx]
 				default:
-					right = 0
+					right = highGhostCoeff(bcs[0]) * src[idx]
 				}
 
 				var down, up float64
@@ -241,10 +214,8 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bcs [3]bc.BCTyp
 					down = src[idx-nz]
 				case bcs[1] == bc.Periodic:
 					down = src[row+(ny-1)*nz+k]
-				case bcs[1] == bc.Neumann:
-					down = src[idx]
 				default:
-					down = 0
+					down = lowGhostCoeff(bcs[1]) * src[idx]
 				}
 
 				switch {
@@ -252,10 +223,8 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bcs [3]bc.BCTyp
 					up = src[idx+nz]
 				case bcs[1] == bc.Periodic:
 					up = src[iPlane+k]
-				case bcs[1] == bc.Neumann:
-					up = src[idx]
 				default:
-					up = 0
+					up = highGhostCoeff(bcs[1]) * src[idx]
 				}
 
 				var back, front float64
@@ -264,10 +233,8 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bcs [3]bc.BCTyp
 					back = src[idx-1]
 				case bcs[2] == bc.Periodic:
 					back = src[row+nz-1]
-				case bcs[2] == bc.Neumann:
-					back = src[idx]
 				default:
-					back = 0
+					back = lowGhostCoeff(bcs[2]) * src[idx]
 				}
 
 				switch {
@@ -275,10 +242,8 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bcs [3]bc.BCTyp
 					front = src[idx+1]
 				case bcs[2] == bc.Periodic:
 					front = src[row]
-				case bcs[2] == bc.Neumann:
-					front = src[idx]
 				default:
-					front = 0
+					front = highGhostCoeff(bcs[2]) * src[idx]
 				}
 
 				dst[idx] = (2.0*u-left-right)*invHx2 +
@@ -294,9 +259,43 @@ func Apply3D(dst, src []float64, shape grid.Shape, h [3]float64, bcs [3]bc.BCTyp
 // validBC returns ErrInvalidBC if b is not a supported boundary condition.
 func validBC(b bc.BCType) error {
 	switch b {
-	case bc.Periodic, bc.Dirichlet, bc.Neumann:
+	case bc.Periodic, bc.Dirichlet, bc.Neumann, bc.DirichletNeumann, bc.NeumannDirichlet:
 		return nil
 	default:
 		return fmt.Errorf("%w: %v", ErrInvalidBC, b)
+	}
+}
+
+// lowGhostCoeff returns the reflection coefficient c for the ghost node just
+// outside the low (index-0) boundary of a non-periodic axis, so that the ghost
+// value is c·u_0. Even reflection (c=+1) enforces zero derivative (Neumann);
+// odd reflection about the half-cell boundary (c=−1) enforces zero value on the
+// quarter-wave grid (a Dirichlet face of a mixed axis); c=0 is the
+// vertex-centred homogeneous Dirichlet (the ghost is the boundary node, value
+// 0). Periodic axes are handled separately and never call this.
+func lowGhostCoeff(b bc.BCType) float64 {
+	switch b {
+	case bc.Neumann, bc.NeumannDirichlet:
+		return 1
+	case bc.DirichletNeumann:
+		return -1
+	case bc.Dirichlet, bc.Periodic:
+		return 0
+	default:
+		return 0
+	}
+}
+
+// highGhostCoeff is the low-face analogue for the high (index n-1) boundary.
+func highGhostCoeff(b bc.BCType) float64 {
+	switch b {
+	case bc.Neumann, bc.DirichletNeumann:
+		return 1
+	case bc.NeumannDirichlet:
+		return -1
+	case bc.Dirichlet, bc.Periodic:
+		return 0
+	default:
+		return 0
 	}
 }
