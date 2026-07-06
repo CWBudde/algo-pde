@@ -63,7 +63,10 @@ func TestRealFFT_Forward_MatchesReference(t *testing.T) {
 				dst1Reference(want, src)
 				assertClose(t, "DST-I", n, got, want)
 
-				dst2, _ := NewDST2Plan(n)
+				dst2, err := NewDST2Plan(n)
+				if err != nil {
+					t.Fatalf("NewDST2Plan(%d): %v", n, err)
+				}
 				got2 := make([]float64, n)
 				if err := dst2.Forward(got2, src); err != nil {
 					t.Fatalf("DST-II Forward n=%d: %v", n, err)
@@ -73,7 +76,10 @@ func TestRealFFT_Forward_MatchesReference(t *testing.T) {
 				assertClose(t, "DST-II", n, got2, want2)
 
 				if n >= 2 {
-					dct1, _ := NewDCTPlan(n)
+					dct1, err := NewDCTPlan(n)
+					if err != nil {
+						t.Fatalf("NewDCTPlan(%d): %v", n, err)
+					}
 					gotc := make([]float64, n)
 					if err := dct1.Forward(gotc, src); err != nil {
 						t.Fatalf("DCT-I Forward n=%d: %v", n, err)
@@ -83,7 +89,10 @@ func TestRealFFT_Forward_MatchesReference(t *testing.T) {
 					assertClose(t, "DCT-I", n, gotc, wantc)
 				}
 
-				dct2, _ := NewDCT2Plan(n)
+				dct2, err := NewDCT2Plan(n)
+				if err != nil {
+					t.Fatalf("NewDCT2Plan(%d): %v", n, err)
+				}
 				gotc2 := make([]float64, n)
 				if err := dct2.Forward(gotc2, src); err != nil {
 					t.Fatalf("DCT-II Forward n=%d: %v", n, err)
@@ -94,14 +103,20 @@ func TestRealFFT_Forward_MatchesReference(t *testing.T) {
 			}
 
 			// DST-IV / DCT-IV references cover both normalizations.
-			dst4, _ := NewDST4Plan(n, WithNormalization(norm))
+			dst4, err := NewDST4Plan(n, WithNormalization(norm))
+			if err != nil {
+				t.Fatalf("NewDST4Plan(%d): %v", n, err)
+			}
 			gots4 := make([]float64, n)
 			if err := dst4.Forward(gots4, src); err != nil {
 				t.Fatalf("DST-IV Forward n=%d: %v", n, err)
 			}
 			assertClose(t, "DST-IV", n, gots4, dst4Reference(src, ortho))
 
-			dct4, _ := NewDCT4Plan(n, WithNormalization(norm))
+			dct4, err := NewDCT4Plan(n, WithNormalization(norm))
+			if err != nil {
+				t.Fatalf("NewDCT4Plan(%d): %v", n, err)
+			}
 			gotc4 := make([]float64, n)
 			if err := dct4.Forward(gotc4, src); err != nil {
 				t.Fatalf("DCT-IV Forward n=%d: %v", n, err)
@@ -134,18 +149,41 @@ func TestRealFFT_RoundTrip(t *testing.T) {
 			assertClose(t, name+" round-trip", n, back, src)
 		}
 
-		dst1, _ := NewDSTPlan(n)
+		dst1, err := NewDSTPlan(n)
+		if err != nil {
+			t.Fatalf("NewDSTPlan(%d): %v", n, err)
+		}
 		roundTrip("DST-I", dst1, 1)
-		dst2, _ := NewDST2Plan(n)
+
+		dst2, err := NewDST2Plan(n)
+		if err != nil {
+			t.Fatalf("NewDST2Plan(%d): %v", n, err)
+		}
 		roundTrip("DST-II", dst2, 1)
-		dct2, _ := NewDCT2Plan(n)
+
+		dct2, err := NewDCT2Plan(n)
+		if err != nil {
+			t.Fatalf("NewDCT2Plan(%d): %v", n, err)
+		}
 		roundTrip("DCT-II", dct2, 1)
-		dst4, _ := NewDST4Plan(n)
+
+		dst4, err := NewDST4Plan(n)
+		if err != nil {
+			t.Fatalf("NewDST4Plan(%d): %v", n, err)
+		}
 		roundTrip("DST-IV", dst4, 1)
-		dct4, _ := NewDCT4Plan(n)
+
+		dct4, err := NewDCT4Plan(n)
+		if err != nil {
+			t.Fatalf("NewDCT4Plan(%d): %v", n, err)
+		}
 		roundTrip("DCT-IV", dct4, 1)
+
 		if n >= 2 {
-			dct1, _ := NewDCTPlan(n)
+			dct1, err := NewDCTPlan(n)
+			if err != nil {
+				t.Fatalf("NewDCTPlan(%d): %v", n, err)
+			}
 			roundTrip("DCT-I", dct1, 2)
 		}
 	}
