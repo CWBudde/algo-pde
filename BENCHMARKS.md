@@ -6,8 +6,8 @@ single `Solve` call on an already-constructed plan (plan setup is amortized, as
 it is in real use where one plan serves many solves).
 
 > **Caveat:** these are indicative numbers from a single machine and a single
-> run, not guarantees. They were produced with `go1.25.0` (linux/amd64) on an
-> `Intel(R) Xeon(R) Processor @ 2.80GHz` with `GOMAXPROCS=4`. Absolute timings
+> run, not guarantees. They were produced with `go1.26.1` (linux/amd64) on a
+> `12th Gen Intel(R) Core(TM) i7-1255U` with `GOMAXPROCS=4`. Absolute timings
 > will differ substantially on other hardware, Go versions, and load; treat
 > them as relative comparisons between boundary conditions and sizes.
 
@@ -25,25 +25,25 @@ The benchmarks live in `poisson/bc_scaling_bench_test.go`.
 
 | Grid  | ns/op      | allocs/op |
 | ----- | ---------- | --------- |
-| 256²  | 1,986,716  | 88        |
-| 512²  | 6,770,841  | 90        |
-| 1024² | 33,577,569 | 91        |
+| 256²  | 1,493,823  | 88        |
+| 512²  | 7,259,626  | 89        |
+| 1024² | 36,608,177 | 91        |
 
 ### Dirichlet (DST-I)
 
 | Grid  | ns/op       | allocs/op |
 | ----- | ----------- | --------- |
-| 256²  | 55,020,468  | 82        |
-| 512²  | 231,230,540 | 79        |
-| 1024² | 986,844,856 | 77        |
+| 256²  | 26,074,400  | 81        |
+| 512²  | 133,387,917 | 80        |
+| 1024² | 538,223,043 | 78        |
 
 ### Neumann (DCT-II)
 
 | Grid  | ns/op      | allocs/op |
 | ----- | ---------- | --------- |
-| 256²  | 4,957,786  | 88        |
-| 512²  | 20,579,885 | 91        |
-| 1024² | 75,091,810 | 89        |
+| 256²  | 3,197,406  | 90        |
+| 512²  | 14,466,610 | 90        |
+| 1024² | 71,407,996 | 90        |
 
 ## Notes
 
@@ -59,4 +59,13 @@ The benchmarks live in `poisson/bc_scaling_bench_test.go`.
   power-of-two FFT. The complexity is still O(N log N); choosing `n` such that
   `2(n+1)` is FFT-friendly (e.g. a power of two) removes the penalty.
 - All boundary conditions run at a small, size-independent allocation count per
-  solve (steady-state solves reuse the plan's work buffers).
+  solve (steady-state solves reuse the plan's work buffers). The absolute
+  allocation count scales with `GOMAXPROCS` (one pooled worker per goroutine),
+  not with grid size.
+- **Phase G.3 halved the transform cost.** The DST/DCT axis transforms now embed
+  their real, symmetric extension into a **float64 real-input FFT**
+  (`algo-fft`'s `NewPlanReal64`) instead of a full `complex128` FFT of the same
+  length — no accuracy loss and no extra allocation. Measured same-machine in the
+  `r2r` package (`go test ./r2r -bench Transform`), each forward/inverse
+  transform runs ≈1.3–2.2× faster (typically ~2×), which flows directly into the
+  Dirichlet/Neumann/mixed-BC solve times above.
