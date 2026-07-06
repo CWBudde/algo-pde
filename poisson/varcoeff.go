@@ -241,11 +241,15 @@ func allNullBCs(bcs []BCType) bool {
 }
 
 // faceMean averages two positive cell coefficients onto the face between them.
+// The harmonic branch uses the reciprocal form 2/(1/ai+1/aj) rather than the
+// algebraically equal 2·ai·aj/(ai+aj): the latter overflows to Inf/NaN when the
+// product ai·aj overflows even though both inputs are finite, whereas the
+// reciprocal form never forms that product and stays bounded by 2·min(ai, aj).
 func faceMean(ai, aj float64, arithmetic bool) float64 {
 	if arithmetic {
 		return 0.5 * (ai + aj)
 	}
-	return 2.0 * ai * aj / (ai + aj)
+	return 2.0 / (1.0/ai + 1.0/aj)
 }
 
 // ApplyOperator writes the variable-coefficient operator L_a·src into dst. It is
@@ -258,10 +262,16 @@ func (p *VariableCoeffPlan) ApplyOperator(dst, src []float64) error {
 	if len(dst) != p.size || len(src) != p.size {
 		return ErrSizeMismatch
 	}
+	// The matvec reads neighbours of src while writing dst, so an aliased call
+	// needs an intact copy of src. Borrow a scratch buffer from the pool rather
+	// than allocating, keeping ApplyOperator allocation-free even in a
+	// residual-check loop.
 	if p.size > 0 && &dst[0] == &src[0] {
-		tmp := make([]float64, p.size)
-		copy(tmp, src)
-		src = tmp
+		s := p.getScratch()
+		defer p.pool.put(s)
+		copy(s.r, src)
+		p.applyVarCoeff(dst, s.r)
+		return nil
 	}
 	p.applyVarCoeff(dst, src)
 	return nil
