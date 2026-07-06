@@ -507,7 +507,7 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
       Robin.** Genuine Robin (a·u + b·∂u/∂n = g) is incompatible with this
       solver — its eigenvectors are phase-shifted sinusoids with no closed-form
       eigenvalue and no DFT-based fast transform — so it is documented as out of
-      scope in `poisson/doc.go`. The per-face-asymmetric case that *does* admit a
+      scope in `poisson/doc.go`. The per-face-asymmetric case that _does_ admit a
       fast transform is now supported: two new BC types `DirichletNeumann`
       (Dirichlet low / Neumann high) and `NeumannDirichlet` (Neumann low /
       Dirichlet high), each a single axis diagonalised by a quarter-wave
@@ -550,9 +550,32 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
 ### G.3 Performance
 
 - [ ] SIMD for the eigenvalue-division loop (profile first).
-- [ ] Real-input FFT (or compact DCT algorithms) instead of full complex128
+- [x] Real-input FFT (or compact DCT algorithms) instead of full complex128
       FFT of the 2(N±1) extension — currently ~4× redundant work — without
       the float32 downgrade of the current `WithRealFFT`.
+      → Every `r2r` DST/DCT plan (`dst.go`, `dct.go`, `dst4.go`, `dct4.go`) now
+      embeds its real, symmetric extension into a **float64 real-input FFT**
+      (`algofft.NewPlanReal64`, returning the non-redundant `N/2+1` half-spectrum)
+      instead of a full `complex128` `NewPlan64`. This is the "real-input FFT …
+      without the float32 downgrade" branch of the item: full double precision,
+      no public API change (Forward/Inverse/…Lines signatures are unchanged, so
+      `poisson/axis_transform.go` and all callers are untouched), and **0
+      allocs/op** preserved (`TestInverseAllocFree`). Every forward already read
+      only bins ≤ extendedN/2, so the bin→coefficient formulas are unchanged;
+      only the buffer they read from shrank to the half-spectrum. The DST-II/DCT-II
+      inverses (which already packed real input) switched too. Measured
+      same-machine in `r2r` (`go test ./r2r -bench Transform`): each transform
+      runs ≈1.3–2.2× faster (typically ~2×), flowing into the solver
+      (`BENCHMARKS.md` refreshed). A soundness sweep confirmed algo-fft v0.6.15
+      computes every occurring FFT length correctly — including the sizes the
+      stale `fftSoundSizes` note (`inverse_fft_test.go`) excluded — so no
+      complex-path fallback was needed. `r2r/real_fft_test.go` pins each
+      real-FFT forward against its naive O(N²) reference and a Forward∘Inverse
+      round-trip across those previously-excluded sizes; `r2r/plan_real_bench_test.go`
+      is the before/after harness. **Remaining follow-up:** the DST-IV/DCT-IV `4N`
+      embedding still zero-pads (only the first `N` inputs are non-zero); the
+      deeper "compact DCT algorithm" (an `N`-point complex FFT with pre/post-twiddle)
+      that would also retire that 4× padding is left as a further G.3 opportunity.
 
 ---
 
