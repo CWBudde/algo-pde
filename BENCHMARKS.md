@@ -62,6 +62,17 @@ The benchmarks live in `poisson/bc_scaling_bench_test.go`.
   solve (steady-state solves reuse the plan's work buffers). The absolute
   allocation count scales with `GOMAXPROCS` (one pooled worker per goroutine),
   not with grid size.
+- **The spectral divide no longer calls `runtime.complex128div`.** The per-mode
+  divide `spec /= complex(denom, 0)` has a real denominator, but the compiler
+  emitted the general complex-division runtime helper (Smith's algorithm, a
+  non-inlined call) anyway. Every real-denominator divide now uses a two-real-
+  divide form (`poisson/spectral_divide.go`), which is bit-identical to the old
+  result. CPU profiling of a periodic 1024² solve shows the divide loop's share
+  fall from ~5.8% to ~2.4% of runtime (`complex128div` disappears). The
+  end-to-end effect is a few percent — small because the FFT dominates the solve
+  — which is also why hand-written SIMD for this loop was profiled out as not
+  worthwhile (the FFT itself is already SIMD-accelerated inside `algo-fft`). The
+  solve-time table above is unchanged within run-to-run variance.
 - **Phase G.3 halved the transform cost.** The DST/DCT axis transforms now embed
   their real, symmetric extension into a **float64 real-input FFT**
   (`algo-fft`'s `NewPlanReal64`) instead of a full `complex128` FFT of the same

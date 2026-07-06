@@ -598,7 +598,32 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
 
 ### G.3 Performance
 
-- [ ] SIMD for the eigenvalue-division loop (profile first).
+- [x] SIMD for the eigenvalue-division loop (profile first).
+      → **Profiled first, and the profile retired the SIMD idea in favour of a
+      cheaper scalar fix.** On a pure-periodic 1024² solve (the case where the
+      divide's relative share is largest, since the FFT is a fast power-of-two
+      kernel) the FFT `transformStrided` is ~89% of runtime and is _already_
+      hand-SIMD-optimized (AVX2/NEON) inside the `algo-fft` dependency; the whole
+      eigenvalue-division loop was only ~5.8%, and ~4.4% of total runtime was
+      `runtime.complex128div` — the general complex-division runtime helper the
+      compiler emits for `buf[idx] /= complex(denom, 0)` even though the divisor's
+      imaginary part is always zero. Hand-written SIMD asm would have targeted
+      <6% of a memory-bandwidth-bound loop while introducing the repo's first
+      arch-specific assembly + build-tag + CPU-feature machinery, so it was not
+      pursued. Instead every real-denominator spectral divide (`plan.go`,
+      `periodic_1d/2d/3d/nd.go` — 9 sites) now goes through a tiny inlinable
+      `divByReal`/`divByReal64` (`poisson/spectral_divide.go`) that splits the
+      divide into two real divides. That is bit-identical to `complex128div`'s
+      `z/(d+0i)` (so all residual/exact tests are unchanged and stay green under
+      `-race`), and it eliminates `complex128div` entirely: re-profiling shows the
+      divide loop dropped from 5.81% → 2.36% of runtime (>2× less work there) with
+      `complex128div` gone. The end-to-end effect is a few percent (cleanest
+      low-variance case Periodic 256²: −6.8%, p=0.002), small by design because
+      the divide is a minor share of an FFT-dominated solve. The
+      genuinely-complex divide in `complex_helmholtz.go` is left untouched — its
+      `complex128div` does real work, not wasted on a zero imaginary part. This
+      leaves the deeper compact-DCT algorithm (retiring the DST-IV/DCT-IV 4×
+      zero-padding) as the only remaining G.3 perf ambition.
 - [x] Real-input FFT (or compact DCT algorithms) instead of full complex128
       FFT of the 2(N±1) extension — currently ~4× redundant work — without
       the float32 downgrade of the current `WithRealFFT`.

@@ -391,7 +391,7 @@ func (p *Plan) applyEigenvalues(buf []complex128) error {
 				return ErrResonant
 			}
 
-			buf[idx] /= complex(denom, 0)
+			buf[idx] = divByReal(buf[idx], denom)
 		}
 		return nil
 	})

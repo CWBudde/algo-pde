@@ -250,7 +250,7 @@ func (p *Plan2DPeriodic) divideComplexSpectrum(spec []complex128) error {
 						spec[base+j] = 0
 						continue
 					}
-					spec[base+j] /= complex(denom, 0)
+					spec[base+j] = divByReal(spec[base+j], denom)
 				}
 			}
 			return nil
@@ -271,7 +271,7 @@ func (p *Plan2DPeriodic) divideComplexSpectrum(spec []complex128) error {
 					spec[i*p.ny+j] = 0
 					continue
 				}
-				spec[i*p.ny+j] /= complex(denom, 0)
+				spec[i*p.ny+j] = divByReal(spec[i*p.ny+j], denom)
 			}
 		}
 		return nil
@@ -298,7 +298,7 @@ func (p *Plan2DPeriodic) divideRealSpectrum(rspec []complex64) error {
 						rspec[base+j] = 0
 						continue
 					}
-					rspec[base+j] /= complex(float32(denom), 0)
+					rspec[base+j] = divByReal64(rspec[base+j], float32(denom))
 				}
 			}
 			return nil
@@ -319,7 +319,7 @@ func (p *Plan2DPeriodic) divideRealSpectrum(rspec []complex64) error {
 					rspec[i*p.rhalf+j] = 0
 					continue
 				}
-				rspec[i*p.rhalf+j] /= complex(float32(denom), 0)
+				rspec[i*p.rhalf+j] = divByReal64(rspec[i*p.rhalf+j], float32(denom))
 			}
 		}
 		return nil
