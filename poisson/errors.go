@@ -67,11 +67,20 @@ var (
 		"invalid variable coefficient: length must match the grid and every value must be finite and positive",
 	)
 
-	// ErrNotConverged is returned by VariableCoeffPlan.Solve when the
-	// preconditioned conjugate gradient iteration does not reach the requested
-	// tolerance within the maximum number of iterations. The returned SolveStats
-	// still reports how far it got.
-	ErrNotConverged = errors.New("variable-coefficient solve did not converge within the iteration limit")
+	// ErrNotConverged is returned by VariableCoeffPlan.Solve and MaskedPlan.Solve
+	// when the preconditioned conjugate gradient iteration does not reach the
+	// requested tolerance within the maximum number of iterations. The returned
+	// SolveStats still reports how far it got.
+	ErrNotConverged = errors.New("iterative solve did not converge within the iteration limit")
+
+	// ErrInvalidMask is returned by NewMaskedPlan when the mask is the wrong
+	// length, has no active cells, or leaves the operator singular (an all-active
+	// mask with all-nullspace bounding-box BCs — an unmasked periodic/Neumann
+	// problem that NewPlan with WithSubtractMean already solves).
+	ErrInvalidMask = errors.New(
+		"invalid mask: length must match the grid, at least one cell must be active, " +
+			"and an all-active mask requires a non-nullspace boundary condition",
+	)
 )
 
 // Field and message strings reused across validation errors.

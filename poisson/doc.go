@@ -179,6 +179,41 @@
 // for residual checks. All five boundary conditions are supported and mixable
 // per axis; true Robin conditions remain out of scope.
 //
+// # Masked Domains (Immersed Boundary)
+//
+// NewMaskedPlan solves the Poisson equation on a non-rectangular domain (a disk,
+// an L-shape, a room with an obstacle) embedded in the enclosing rectangular
+// grid:
+//
+//	−Δu = f   inside the domain,   u = 0   on the exterior.
+//
+// A boolean mask sampled at the grid nodes selects the geometry: a true entry
+// marks a cell inside the physical domain (active, where −Δu = f is solved), a
+// false entry a cell outside it (masked/solid, where u is pinned to zero). On
+// the active cells the standard negative-Laplacian stencil is applied with the
+// bounding-box boundary conditions bcs at the rectangle's faces; a masked
+// neighbour is read as a homogeneous Dirichlet (u = 0) ghost, so the immersed
+// boundary is u = 0. The operator is thus block-diagonal — the principal
+// submatrix L_AA of the bounding-box negative Laplacian on the active cells,
+// plus the identity on the masked cells — and is symmetric positive definite
+// whenever at least one cell is masked, so it is inverted by preconditioned
+// conjugate gradient (PCG). The preconditioner is one fast O(N log N) spectral
+// solve of the full rectangle followed by zeroing the masked entries, which
+// keeps the iteration count essentially grid-independent.
+//
+// Solve returns SolveStats (iteration count and final relative residual, both
+// measured over the active cells) and ErrNotConverged if the tolerance is not
+// reached within the iteration limit; the masked cells of the solution are zero.
+// ApplyOperator exposes the masked operator for residual checks. Sample f at the
+// same node coordinates as the underlying spectral plan (see Grid Conventions).
+//
+// The immersed boundary is approximated by the staircase of cell edges, so
+// accuracy at the boundary is first order in h even though the interior stencil
+// is second order. Only a homogeneous Dirichlet immersed boundary (u = 0 on the
+// solid) is supported; inhomogeneous immersed Dirichlet data (u = g) and Neumann
+// / no-flux immersed boundaries (∂u/∂n = 0, sound-hard walls) remain out of
+// scope.
+//
 // # Performance
 //
 // The solver has O(N log N) complexity where N is the total number of grid points.

@@ -569,8 +569,32 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
       strongly variable problem is the natural next step); `c̄` defaults to the
       arithmetic mean — a geometric-mean or two-sided choice could cut iterations
       further on exponential-contrast fields.
-- [ ] Non-rectangular domains via immersed-boundary / masking, using the
+- [x] Non-rectangular domains via immersed-boundary / masking, using the
       spectral solver as the fast inner solve.
+      → `poisson/masked.go` adds `NewMaskedPlan(dim, n, h, bcs, mask, opts…)`
+      solving `−Δu = f` on a non-rectangular domain embedded in the enclosing
+      rectangle. A boolean `mask` selects the geometry (true = active/interior,
+      false = solid/exterior, where `u = 0`); the operator is the block-diagonal
+      `[L_AA, 0; 0, I]` — the principal submatrix of the bounding-box negative
+      Laplacian on the active cells (a masked neighbour reads as a homogeneous
+      Dirichlet ghost) plus the identity on masked cells — which is SPD whenever
+      at least one cell is masked. It is inverted by preconditioned CG using one
+      fast spectral solve of the full rectangle (then zero the masked entries) as
+      the preconditioner, so the iteration count is essentially grid-independent
+      (a disk-in-square converges in 15/20 iters at 32²/64²). `Solve` returns
+      `SolveStats{Iterations, Residual}` and `ErrNotConverged`; `ApplyOperator`
+      exposes the operator for residual checks. The plan is immutable +
+      `residentPool`-backed, so the wrapper adds zero allocations over the inner
+      solves and is concurrency-safe (both pinned by tests). `masked_test.go`
+      covers the fd-reduction, an fd-referenced operator-consistency check,
+      random-RHS residuals for every BC in 1D/2D/3D on a disk/interval mask,
+      operator symmetry + manufactured-solution recovery under nullspace outer
+      BCs, grid-independent convergence, `-race` concurrency, and validation;
+      `masked_alloc_test.go` (`!race`) pins the zero-alloc contract;
+      `examples/masked` solves Poisson on an inscribed disk. **Follow-up:** only a
+      homogeneous Dirichlet immersed boundary (`u = 0`) is supported;
+      inhomogeneous immersed Dirichlet (`u = g`) and Neumann / no-flux
+      (sound-hard-wall) immersed boundaries are the natural next steps.
 
 ### G.3 Performance
 
