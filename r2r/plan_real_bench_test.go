@@ -59,38 +59,50 @@ func benchInverse(b *testing.B, plan forwardInversePlan, n int) {
 	}
 }
 
+// benchPlanBuilders maps each transform kind to its constructor, so the two
+// benchmark drivers share one list and each constructor error is reported
+// (via b.Fatalf) rather than swallowed into a nil plan that panics later.
+func benchPlanBuilders() []struct {
+	kind    string
+	newPlan func(int) (forwardInversePlan, error)
+} {
+	return []struct {
+		kind    string
+		newPlan func(int) (forwardInversePlan, error)
+	}{
+		{"DST1", func(n int) (forwardInversePlan, error) { return NewDSTPlan(n) }},
+		{"DST2", func(n int) (forwardInversePlan, error) { return NewDST2Plan(n) }},
+		{"DCT1", func(n int) (forwardInversePlan, error) { return NewDCTPlan(n) }},
+		{"DCT2", func(n int) (forwardInversePlan, error) { return NewDCT2Plan(n) }},
+		{"DST4", func(n int) (forwardInversePlan, error) { return NewDST4Plan(n) }},
+		{"DCT4", func(n int) (forwardInversePlan, error) { return NewDCT4Plan(n) }},
+	}
+}
+
 func BenchmarkTransformForward(b *testing.B) {
 	for _, n := range benchSizes {
-		dst1, _ := NewDSTPlan(n)
-		dst2, _ := NewDST2Plan(n)
-		dct1, _ := NewDCTPlan(n)
-		dct2, _ := NewDCT2Plan(n)
-		dst4, _ := NewDST4Plan(n)
-		dct4, _ := NewDCT4Plan(n)
-
-		b.Run(sizeName("DST1", n), func(b *testing.B) { benchForward(b, dst1, n) })
-		b.Run(sizeName("DST2", n), func(b *testing.B) { benchForward(b, dst2, n) })
-		b.Run(sizeName("DCT1", n), func(b *testing.B) { benchForward(b, dct1, n) })
-		b.Run(sizeName("DCT2", n), func(b *testing.B) { benchForward(b, dct2, n) })
-		b.Run(sizeName("DST4", n), func(b *testing.B) { benchForward(b, dst4, n) })
-		b.Run(sizeName("DCT4", n), func(b *testing.B) { benchForward(b, dct4, n) })
+		for _, pb := range benchPlanBuilders() {
+			b.Run(sizeName(pb.kind, n), func(b *testing.B) {
+				plan, err := pb.newPlan(n)
+				if err != nil {
+					b.Fatalf("%s(%d): %v", pb.kind, n, err)
+				}
+				benchForward(b, plan, n)
+			})
+		}
 	}
 }
 
 func BenchmarkTransformInverse(b *testing.B) {
 	for _, n := range benchSizes {
-		dst1, _ := NewDSTPlan(n)
-		dst2, _ := NewDST2Plan(n)
-		dct1, _ := NewDCTPlan(n)
-		dct2, _ := NewDCT2Plan(n)
-		dst4, _ := NewDST4Plan(n)
-		dct4, _ := NewDCT4Plan(n)
-
-		b.Run(sizeName("DST1", n), func(b *testing.B) { benchInverse(b, dst1, n) })
-		b.Run(sizeName("DST2", n), func(b *testing.B) { benchInverse(b, dst2, n) })
-		b.Run(sizeName("DCT1", n), func(b *testing.B) { benchInverse(b, dct1, n) })
-		b.Run(sizeName("DCT2", n), func(b *testing.B) { benchInverse(b, dct2, n) })
-		b.Run(sizeName("DST4", n), func(b *testing.B) { benchInverse(b, dst4, n) })
-		b.Run(sizeName("DCT4", n), func(b *testing.B) { benchInverse(b, dct4, n) })
+		for _, pb := range benchPlanBuilders() {
+			b.Run(sizeName(pb.kind, n), func(b *testing.B) {
+				plan, err := pb.newPlan(n)
+				if err != nil {
+					b.Fatalf("%s(%d): %v", pb.kind, n, err)
+				}
+				benchInverse(b, plan, n)
+			})
+		}
 	}
 }
