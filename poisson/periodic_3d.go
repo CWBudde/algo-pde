@@ -167,7 +167,7 @@ func (p *Plan3DPeriodic) Solve(dst, rhs []float64) error {
 						workspace.Complex[base+k] = 0
 						continue
 					}
-					workspace.Complex[base+k] /= complex(denom, 0)
+					workspace.Complex[base+k] = divByReal(workspace.Complex[base+k], denom)
 				}
 			}
 		}
@@ -285,7 +285,7 @@ func (p *Plan3DPeriodic) divideRealSpectrum(rspec []complex64) error {
 						rspec[base+k] = 0
 						continue
 					}
-					rspec[base+k] /= complex(float32(denom), 0)
+					rspec[base+k] = divByReal64(rspec[base+k], float32(denom))
 				}
 			}
 		}

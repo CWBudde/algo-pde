@@ -99,7 +99,7 @@ func (p *Plan1DPeriodic) Solve(dst, rhs []float64) error {
 				workspace.Complex[i] = 0
 				continue
 			}
-			workspace.Complex[i] /= complex(p.eig[i], 0)
+			workspace.Complex[i] = divByReal(workspace.Complex[i], p.eig[i])
 		}
 		return nil
 	}); err != nil {

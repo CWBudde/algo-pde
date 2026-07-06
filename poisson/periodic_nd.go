@@ -262,7 +262,7 @@ func (p *PlanNDPeriodic) applyEigenvalues(ws *ndWorkspace) error {
 			if denom == 0 {
 				data[i] = 0
 			} else {
-				data[i] /= complex(denom, 0)
+				data[i] = divByReal(data[i], denom)
 			}
 
 			ndIncrement(indices, radices)
