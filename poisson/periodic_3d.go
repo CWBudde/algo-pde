@@ -285,7 +285,7 @@ func (p *Plan3DPeriodic) divideRealSpectrum(rspec []complex64) error {
 						rspec[base+k] = 0
 						continue
 					}
-					rspec[base+k] = divByReal64(rspec[base+k], float32(denom))
+					rspec[base+k] = divByReal32(rspec[base+k], float32(denom))
 				}
 			}
 		}
