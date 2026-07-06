@@ -33,12 +33,12 @@ type DST4Plan struct {
 	// Extended FFT size: 4*N for DST-IV
 	extendedN int
 
-	// Underlying complex FFT plan for the extended size
-	fftPlan *algofft.Plan[complex128]
+	// Underlying real-input FFT plan for the extended size (Phase G.3).
+	fftPlan *algofft.PlanRealT[float64, complex128]
 
-	// Pre-allocated buffers
-	fftIn  []complex128 // FFT input buffer
-	fftOut []complex128 // FFT output buffer
+	// Pre-allocated buffers: real (zero-padded) input, half-spectrum output.
+	fftIn  []float64    // real FFT input buffer, length extendedN
+	fftOut []complex128 // half-spectrum output buffer, length extendedN/2+1
 	phase  []complex128 // exp(-i*pi*(2k+1)/(4N)) phase factors
 }
 
@@ -51,7 +51,7 @@ func NewDST4Plan(n int, opts ...Option) (*DST4Plan, error) {
 
 	extendedN := 4 * n
 
-	fftPlan, err := algofft.NewPlan64(extendedN)
+	fftPlan, err := algofft.NewPlanReal64(extendedN)
 	if err != nil {
 		return nil, fmt.Errorf("creating FFT plan: %w", err)
 	}
@@ -61,8 +61,8 @@ func NewDST4Plan(n int, opts ...Option) (*DST4Plan, error) {
 		opts:      applyOptions(opts),
 		extendedN: extendedN,
 		fftPlan:   fftPlan,
-		fftIn:     make([]complex128, extendedN),
-		fftOut:    make([]complex128, extendedN),
+		fftIn:     make([]float64, extendedN),
+		fftOut:    make([]complex128, extendedN/2+1),
 		phase:     quarterWavePhase(n),
 	}, nil
 }
@@ -90,7 +90,7 @@ func (p *DST4Plan) Forward(dst, src []float64) error {
 	}
 
 	for i := range p.n {
-		p.fftIn[i] = complex(src[i], 0)
+		p.fftIn[i] = src[i]
 	}
 
 	if err := p.fftPlan.Forward(p.fftOut, p.fftIn); err != nil {
@@ -134,7 +134,7 @@ func (p *DST4Plan) Inverse(dst, src []float64) error {
 
 // Bytes returns the memory used by the plan in bytes.
 func (p *DST4Plan) Bytes() int {
-	return len(p.fftIn)*16 + len(p.fftOut)*16 + len(p.phase)*16
+	return len(p.fftIn)*8 + len(p.fftOut)*16 + len(p.phase)*16
 }
 
 // DST4Forward computes a one-shot DST-IV transform without reusing a plan.

@@ -28,14 +28,14 @@ type DSTPlan struct {
 	// Extended FFT size: 2*(N+1) for DST-I
 	extendedN int
 
-	// Underlying complex FFT plan for the extended size
-	fftPlan *algofft.Plan[complex128]
+	// Underlying real-input FFT plan for the extended size. The odd extension is
+	// purely real, so a real-to-complex FFT computes the needed bins at full
+	// float64 precision in ~half the work of a complex FFT (Phase G.3).
+	fftPlan *algofft.PlanRealT[float64, complex128]
 
-	// Pre-allocated buffers
-	// Note: We use separate input and output buffers because the algo-fft
-	// library has issues with in-place FFT for certain sizes (e.g., 18).
-	fftIn  []complex128 // FFT input buffer
-	fftOut []complex128 // FFT output buffer
+	// Pre-allocated buffers: real extension in, non-redundant half-spectrum out.
+	fftIn  []float64    // real FFT input buffer, length extendedN
+	fftOut []complex128 // half-spectrum output buffer, length extendedN/2+1
 }
 
 // DST2Plan is a pre-computed Discrete Sine Transform plan (Type II).
@@ -54,12 +54,12 @@ type DST2Plan struct {
 	// Extended FFT size: 2*N for DST-II
 	extendedN int
 
-	// Underlying complex FFT plan for the extended size
-	fftPlan *algofft.Plan[complex128]
+	// Underlying real-input FFT plan for the extended size (Phase G.3).
+	fftPlan *algofft.PlanRealT[float64, complex128]
 
-	// Pre-allocated buffers
-	fftIn  []complex128 // FFT input buffer
-	fftOut []complex128 // FFT output buffer
+	// Pre-allocated buffers: real extension in, non-redundant half-spectrum out.
+	fftIn  []float64    // real FFT input buffer, length extendedN
+	fftOut []complex128 // half-spectrum output buffer, length extendedN/2+1
 	phase  []complex128 // exp(-i*pi*(k+1)/(2N)) phase factors
 }
 
@@ -74,7 +74,7 @@ func NewDSTPlan(n int, opts ...Option) (*DSTPlan, error) {
 	// x[0..n-1] -> [0, x[0], x[1], ..., x[n-1], 0, -x[n-1], ..., -x[0]]
 	extendedN := 2 * (n + 1)
 
-	fftPlan, err := algofft.NewPlan64(extendedN)
+	fftPlan, err := algofft.NewPlanReal64(extendedN)
 	if err != nil {
 		return nil, fmt.Errorf("creating FFT plan: %w", err)
 	}
@@ -84,8 +84,8 @@ func NewDSTPlan(n int, opts ...Option) (*DSTPlan, error) {
 		opts:      applyOptions(opts),
 		extendedN: extendedN,
 		fftPlan:   fftPlan,
-		fftIn:     make([]complex128, extendedN),
-		fftOut:    make([]complex128, extendedN),
+		fftIn:     make([]float64, extendedN),
+		fftOut:    make([]complex128, extendedN/2+1),
 	}, nil
 }
 
@@ -98,7 +98,7 @@ func NewDST2Plan(n int, opts ...Option) (*DST2Plan, error) {
 
 	extendedN := 2 * n
 
-	fftPlan, err := algofft.NewPlan64(extendedN)
+	fftPlan, err := algofft.NewPlanReal64(extendedN)
 	if err != nil {
 		return nil, fmt.Errorf("creating FFT plan: %w", err)
 	}
@@ -115,8 +115,8 @@ func NewDST2Plan(n int, opts ...Option) (*DST2Plan, error) {
 		opts:      applyOptions(opts),
 		extendedN: extendedN,
 		fftPlan:   fftPlan,
-		fftIn:     make([]complex128, extendedN),
-		fftOut:    make([]complex128, extendedN),
+		fftIn:     make([]float64, extendedN),
+		fftOut:    make([]complex128, extendedN/2+1),
 		phase:     phase,
 	}, nil
 }
@@ -151,11 +151,12 @@ func (p *DSTPlan) Forward(dst, src []float64) error {
 	}
 
 	for i := range p.n {
-		p.fftIn[i+1] = complex(src[i], 0)
-		p.fftIn[p.extendedN-1-i] = complex(-src[i], 0)
+		p.fftIn[i+1] = src[i]
+		p.fftIn[p.extendedN-1-i] = -src[i]
 	}
 
-	// FFT with separate input/output buffers (avoids in-place FFT issues)
+	// Real-to-complex FFT: the odd extension is purely real, so the half-spectrum
+	// carries the bins the DST reads (1..n) at full precision.
 	err := p.fftPlan.Forward(p.fftOut, p.fftIn)
 	if err != nil {
 		return fmt.Errorf("FFT forward: %w", err)
@@ -193,8 +194,8 @@ func (p *DST2Plan) Forward(dst, src []float64) error {
 	// Odd extension:
 	// x[0..n-1] -> [x[0], ..., x[n-1], -x[n-1], ..., -x[0]]
 	for i := range p.n {
-		p.fftIn[i] = complex(src[i], 0)
-		p.fftIn[p.extendedN-1-i] = complex(-src[i], 0)
+		p.fftIn[i] = src[i]
+		p.fftIn[p.extendedN-1-i] = -src[i]
 	}
 
 	err := p.fftPlan.Forward(p.fftOut, p.fftIn)
@@ -290,13 +291,13 @@ func (p *DST2Plan) Inverse(dst, src []float64) error {
 
 		if k == n-1 {
 			// Midpoint frequency j = N: cosine maps to (-1)^n, sine vanishes.
-			p.fftIn[n] = complex(sinPart, 0)
+			p.fftIn[n] = sinPart
 			continue
 		}
 
 		j := k + 1
-		p.fftIn[j] = complex((sinPart-cosPart)/2, 0)
-		p.fftIn[p.extendedN-j] = complex((sinPart+cosPart)/2, 0)
+		p.fftIn[j] = (sinPart - cosPart) / 2
+		p.fftIn[p.extendedN-j] = (sinPart + cosPart) / 2
 	}
 
 	if err := p.fftPlan.Forward(p.fftOut, p.fftIn); err != nil {
@@ -312,12 +313,12 @@ func (p *DST2Plan) Inverse(dst, src []float64) error {
 
 // Bytes returns the memory used by the plan in bytes.
 func (p *DSTPlan) Bytes() int {
-	return len(p.fftIn)*16 + len(p.fftOut)*16
+	return len(p.fftIn)*8 + len(p.fftOut)*16
 }
 
 // Bytes returns the memory used by the plan in bytes.
 func (p *DST2Plan) Bytes() int {
-	return len(p.fftIn)*16 + len(p.fftOut)*16 + len(p.phase)*16
+	return len(p.fftIn)*8 + len(p.fftOut)*16 + len(p.phase)*16
 }
 
 // DST1 computes a one-shot DST-I transform without reusing a plan.

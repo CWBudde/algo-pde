@@ -29,14 +29,14 @@ type DCTPlan struct {
 	// Extended FFT size: 2*(N-1) for DCT-I
 	extendedN int
 
-	// Underlying complex FFT plan for the extended size
-	fftPlan *algofft.Plan[complex128]
+	// Underlying real-input FFT plan for the extended size. The even extension is
+	// purely real, so a real-to-complex FFT computes the needed bins at full
+	// float64 precision in ~half the work of a complex FFT (Phase G.3).
+	fftPlan *algofft.PlanRealT[float64, complex128]
 
-	// Pre-allocated buffers
-	// Note: We use separate input and output buffers because the algo-fft
-	// library has issues with in-place FFT for certain sizes.
-	fftIn  []complex128 // FFT input buffer
-	fftOut []complex128 // FFT output buffer
+	// Pre-allocated buffers: real extension in, non-redundant half-spectrum out.
+	fftIn  []float64    // real FFT input buffer, length extendedN
+	fftOut []complex128 // half-spectrum output buffer, length extendedN/2+1
 }
 
 // DCT2Plan is a pre-computed Discrete Cosine Transform plan (Type II).
@@ -55,12 +55,12 @@ type DCT2Plan struct {
 	// Extended FFT size: 2*N for DCT-II
 	extendedN int
 
-	// Underlying complex FFT plan for the extended size
-	fftPlan *algofft.Plan[complex128]
+	// Underlying real-input FFT plan for the extended size (Phase G.3).
+	fftPlan *algofft.PlanRealT[float64, complex128]
 
-	// Pre-allocated buffers
-	fftIn  []complex128 // FFT input buffer
-	fftOut []complex128 // FFT output buffer
+	// Pre-allocated buffers: real extension in, non-redundant half-spectrum out.
+	fftIn  []float64    // real FFT input buffer, length extendedN
+	fftOut []complex128 // half-spectrum output buffer, length extendedN/2+1
 	phase  []complex128 // exp(-i*pi*k/(2N)) phase factors
 }
 
@@ -75,7 +75,7 @@ func NewDCTPlan(n int, opts ...Option) (*DCTPlan, error) {
 	// x[0..n-1] -> [x[0], x[1], ..., x[n-1], x[n-2], ..., x[1]]
 	extendedN := 2 * (n - 1)
 
-	fftPlan, err := algofft.NewPlan64(extendedN)
+	fftPlan, err := algofft.NewPlanReal64(extendedN)
 	if err != nil {
 		return nil, fmt.Errorf("creating FFT plan: %w", err)
 	}
@@ -85,8 +85,8 @@ func NewDCTPlan(n int, opts ...Option) (*DCTPlan, error) {
 		opts:      applyOptions(opts),
 		extendedN: extendedN,
 		fftPlan:   fftPlan,
-		fftIn:     make([]complex128, extendedN),
-		fftOut:    make([]complex128, extendedN),
+		fftIn:     make([]float64, extendedN),
+		fftOut:    make([]complex128, extendedN/2+1),
 	}, nil
 }
 
@@ -99,7 +99,7 @@ func NewDCT2Plan(n int, opts ...Option) (*DCT2Plan, error) {
 
 	extendedN := 2 * n
 
-	fftPlan, err := algofft.NewPlan64(extendedN)
+	fftPlan, err := algofft.NewPlanReal64(extendedN)
 	if err != nil {
 		return nil, fmt.Errorf("creating FFT plan: %w", err)
 	}
@@ -116,8 +116,8 @@ func NewDCT2Plan(n int, opts ...Option) (*DCT2Plan, error) {
 		opts:      applyOptions(opts),
 		extendedN: extendedN,
 		fftPlan:   fftPlan,
-		fftIn:     make([]complex128, extendedN),
-		fftOut:    make([]complex128, extendedN),
+		fftIn:     make([]float64, extendedN),
+		fftOut:    make([]complex128, extendedN/2+1),
 		phase:     phase,
 	}, nil
 }
@@ -156,22 +156,23 @@ func (p *DCTPlan) Forward(dst, src []float64) error {
 	// Position 0..n-1: x[0..n-1]
 	// Position n..2n-3: x[n-2..1] (mirror without endpoints)
 	for i := range p.n {
-		p.fftIn[i] = complex(src[i], 0)
+		p.fftIn[i] = src[i]
 	}
 
 	for i := 1; i < p.n-1; i++ {
-		p.fftIn[p.extendedN-i] = complex(src[i], 0)
+		p.fftIn[p.extendedN-i] = src[i]
 	}
 
 	// Orthonormal analysis weights the endpoint samples by 1/sqrt(2). The even
 	// extension samples the endpoints once (interior points twice), so pre-scaling
 	// them by sqrt(2) here turns their effective weight into 1/sqrt(2).
 	if ortho {
-		p.fftIn[0] *= complex(math.Sqrt2, 0)
-		p.fftIn[p.n-1] *= complex(math.Sqrt2, 0)
+		p.fftIn[0] *= math.Sqrt2
+		p.fftIn[p.n-1] *= math.Sqrt2
 	}
 
-	// FFT with separate input/output buffers (avoids in-place FFT issues)
+	// Real-to-complex FFT: the even extension is purely real; the DCT-I reads the
+	// real parts of bins 0..n-1 from the half-spectrum.
 	err := p.fftPlan.Forward(p.fftOut, p.fftIn)
 	if err != nil {
 		return fmt.Errorf("FFT forward: %w", err)
@@ -212,8 +213,8 @@ func (p *DCT2Plan) Forward(dst, src []float64) error {
 	// Even extension (mirror the sequence, repeating both endpoints):
 	// x[0..n-1] -> [x[0], ..., x[n-1] | x[n-1], ..., x[0]]
 	for i := range p.n {
-		p.fftIn[i] = complex(src[i], 0)
-		p.fftIn[p.extendedN-1-i] = complex(src[i], 0)
+		p.fftIn[i] = src[i]
+		p.fftIn[p.extendedN-1-i] = src[i]
 	}
 
 	err := p.fftPlan.Forward(p.fftOut, p.fftIn)
@@ -314,12 +315,12 @@ func (p *DCT2Plan) Inverse(dst, src []float64) error {
 		sinPart := a * -imag(p.phase[k])
 
 		if k == 0 {
-			p.fftIn[0] = complex(cosPart, 0)
+			p.fftIn[0] = cosPart
 			continue
 		}
 
-		p.fftIn[k] = complex((cosPart+sinPart)/2, 0)
-		p.fftIn[p.extendedN-k] = complex((cosPart-sinPart)/2, 0)
+		p.fftIn[k] = (cosPart + sinPart) / 2
+		p.fftIn[p.extendedN-k] = (cosPart - sinPart) / 2
 	}
 
 	if err := p.fftPlan.Forward(p.fftOut, p.fftIn); err != nil {
@@ -335,12 +336,12 @@ func (p *DCT2Plan) Inverse(dst, src []float64) error {
 
 // Bytes returns the memory used by the plan in bytes.
 func (p *DCTPlan) Bytes() int {
-	return len(p.fftIn)*16 + len(p.fftOut)*16
+	return len(p.fftIn)*8 + len(p.fftOut)*16
 }
 
 // Bytes returns the memory used by the plan in bytes.
 func (p *DCT2Plan) Bytes() int {
-	return len(p.fftIn)*16 + len(p.fftOut)*16 + len(p.phase)*16
+	return len(p.fftIn)*8 + len(p.fftOut)*16 + len(p.phase)*16
 }
 
 // DCT1 computes a one-shot DCT-I transform without reusing a plan.
