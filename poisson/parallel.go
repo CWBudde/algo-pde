@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/grid"
 )
 
 // cancelPollMask sets how often a tight, per-element worker loop polls its

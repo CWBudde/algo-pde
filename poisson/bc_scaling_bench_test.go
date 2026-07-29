@@ -3,9 +3,9 @@ package poisson_test
 import (
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/fd"
-	"github.com/MeKo-Tech/algo-pde/grid"
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/CWBudde/algo-pde/fd"
+	"github.com/CWBudde/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/poisson"
 )
 
 // benchmarkSolve2DBC measures a square 2D solve for a given per-axis boundary

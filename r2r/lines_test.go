@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/grid"
 )
 
 func TestDSTPlan_ForwardLines_2D_Axis0(t *testing.T) {

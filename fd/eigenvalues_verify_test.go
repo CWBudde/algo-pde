@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/bc"
+	"github.com/CWBudde/algo-pde/bc"
 )
 
 // TestEigenvaluesMatchStencil is an independent, non-circular verification that

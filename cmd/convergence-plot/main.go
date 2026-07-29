@@ -21,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/CWBudde/algo-pde/poisson"
 )
 
 // Boundary-condition names, shared across the series table, the dispatch switch,

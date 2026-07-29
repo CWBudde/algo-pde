@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/CWBudde/algo-pde/poisson"
 )
 
 const convergenceMinRate = 1.8

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/bc"
+	"github.com/CWBudde/algo-pde/bc"
 )
 
 func BenchmarkEigenvaluesPeriodic(b *testing.B) {

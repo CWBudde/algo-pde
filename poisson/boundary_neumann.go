@@ -1,6 +1,6 @@
 package poisson
 
-import "github.com/MeKo-Tech/algo-pde/grid"
+import "github.com/CWBudde/algo-pde/grid"
 
 // ApplyNeumannRHS adds inhomogeneous Neumann boundary contributions to rhs.
 // Values represent the derivative along the positive axis direction at each face.

@@ -8,7 +8,7 @@ import (
 	"math"
 	"os"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/CWBudde/algo-pde/poisson"
 )
 
 func main() {

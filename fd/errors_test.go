@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/bc"
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/bc"
+	"github.com/CWBudde/algo-pde/grid"
 )
 
 // bogusBC is a BCType value outside the supported set.

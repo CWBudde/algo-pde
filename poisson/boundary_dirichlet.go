@@ -1,6 +1,6 @@
 package poisson
 
-import "github.com/MeKo-Tech/algo-pde/grid"
+import "github.com/CWBudde/algo-pde/grid"
 
 // ApplyDirichletRHS adds inhomogeneous Dirichlet boundary contributions to rhs
 // for a vertex-centered Dirichlet axis (ghost = the boundary value). The rhs

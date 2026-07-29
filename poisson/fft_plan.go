@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/grid"
 	algofft "github.com/cwbudde/algo-fft"
 )
 

@@ -5,10 +5,10 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/bc"
-	"github.com/MeKo-Tech/algo-pde/fd"
-	"github.com/MeKo-Tech/algo-pde/grid"
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/CWBudde/algo-pde/bc"
+	"github.com/CWBudde/algo-pde/fd"
+	"github.com/CWBudde/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/poisson"
 )
 
 // --- A.3.1 Helmholtz near-resonance -----------------------------------------

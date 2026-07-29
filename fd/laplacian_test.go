@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/bc"
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/bc"
+	"github.com/CWBudde/algo-pde/grid"
 )
 
 // eigTol returns an absolute tolerance scaled to the magnitude of the expected

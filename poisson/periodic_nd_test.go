@@ -5,8 +5,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/grid"
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/CWBudde/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/poisson"
 )
 
 const periodicNDTol = 1e-9

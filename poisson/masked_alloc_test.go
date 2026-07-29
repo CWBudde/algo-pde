@@ -5,7 +5,7 @@ package poisson_test
 import (
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/CWBudde/algo-pde/poisson"
 )
 
 // TestMasked_AllocFree pins the steady-state allocation behaviour of the masked

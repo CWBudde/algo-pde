@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/MeKo-Tech/algo-pde/bc"
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/CWBudde/algo-pde/bc"
+	"github.com/CWBudde/algo-pde/grid"
 )
 
 // resonanceRelTol is the relative-cancellation threshold below which the
