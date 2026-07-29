@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cwbudde/algo-pde/grid"
 	algofft "github.com/cwbudde/algo-fft"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 // fftWorker bundles an FFT plan with the scratch buffers one goroutine needs

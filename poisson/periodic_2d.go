@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	algofft "github.com/cwbudde/algo-fft"
 	"github.com/cwbudde/algo-pde/bc"
 	"github.com/cwbudde/algo-pde/grid"
-	algofft "github.com/cwbudde/algo-fft"
 )
 
 // real2DWorkspace bundles a real FFT plan with its buffers for one Solve call.
