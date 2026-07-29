@@ -1,4 +1,4 @@
-module github.com/MeKo-Tech/algo-pde
+module github.com/cwbudde/algo-pde
 
 go 1.25.0
 

@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/MeKo-Tech/algo-pde/fd"
-	"github.com/MeKo-Tech/algo-pde/grid"
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/fd"
+	"github.com/cwbudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // The residual tests below solve a *random* RHS and assert that reapplying the

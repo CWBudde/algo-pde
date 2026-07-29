@@ -9,7 +9,7 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {

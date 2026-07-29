@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // Implicit diffusion step: u^{n+1} - nu*dt*Δu^{n+1} = u^n

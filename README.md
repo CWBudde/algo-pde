@@ -21,7 +21,7 @@ Fast spectral Poisson and Helmholtz solvers for Go, built on top of `algo-fft`. 
 ## Install
 
 ```bash
-go get github.com/MeKo-Tech/algo-pde
+go get github.com/cwbudde/algo-pde
 ```
 
 ## Quick Start
@@ -32,7 +32,7 @@ package main
 import (
 	"log"
 
-	"github.com/MeKo-Tech/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {

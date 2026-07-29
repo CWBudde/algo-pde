@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/MeKo-Tech/algo-pde/bc"
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/bc"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 // ndWorkspace holds the per-solve buffers for PlanNDPeriodic: the complex

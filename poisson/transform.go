@@ -1,6 +1,6 @@
 package poisson
 
-import "github.com/MeKo-Tech/algo-pde/grid"
+import "github.com/cwbudde/algo-pde/grid"
 
 // AxisTransform defines the interface for axis-wise transforms.
 // Implementations include FFT (periodic), DST (Dirichlet), and DCT (Neumann).

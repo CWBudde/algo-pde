@@ -3,8 +3,8 @@ package fd
 import (
 	"fmt"
 
-	"github.com/MeKo-Tech/algo-pde/bc"
-	"github.com/MeKo-Tech/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/bc"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 // Apply1D applies the 1D negative Laplacian stencil to src and writes into dst.
