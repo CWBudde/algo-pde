@@ -5,7 +5,7 @@ package poisson_test
 import (
 	"testing"
 
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // TestVariableCoeff_AllocFree pins the steady-state allocation behaviour of the

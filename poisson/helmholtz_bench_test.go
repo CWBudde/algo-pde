@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/CWBudde/algo-pde/fd"
-	"github.com/CWBudde/algo-pde/grid"
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/fd"
+	"github.com/cwbudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func BenchmarkHelmholtz2D_Spectral(b *testing.B) {

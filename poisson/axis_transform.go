@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/CWBudde/algo-pde/grid"
-	"github.com/CWBudde/algo-pde/r2r"
+	"github.com/cwbudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/r2r"
 )
 
 type fftAxisTransform struct {

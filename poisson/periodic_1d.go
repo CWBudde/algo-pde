@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/CWBudde/algo-pde/bc"
-	"github.com/CWBudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/bc"
+	"github.com/cwbudde/algo-pde/grid"
 )
 
 // Plan1DPeriodic is a reusable plan for solving 1D periodic Poisson problems.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func main() {

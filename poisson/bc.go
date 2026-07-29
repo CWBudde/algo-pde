@@ -1,6 +1,6 @@
 package poisson
 
-import "github.com/CWBudde/algo-pde/bc"
+import "github.com/cwbudde/algo-pde/bc"
 
 // BCType represents the type of boundary condition. It is an alias for
 // bc.BCType so that the public poisson API (poisson.BCType, poisson.Dirichlet,

@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/CWBudde/algo-pde/grid"
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 const dirichletInhomTol = 1e-10

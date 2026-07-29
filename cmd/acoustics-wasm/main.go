@@ -29,7 +29,7 @@ import (
 	"math"
 	"syscall/js"
 
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // planKey identifies a cached complex-Helmholtz plan. A plan bakes in its grid,

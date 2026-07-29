@@ -6,10 +6,10 @@ import (
 	"math/cmplx"
 	"testing"
 
-	"github.com/CWBudde/algo-pde/bc"
-	"github.com/CWBudde/algo-pde/fd"
-	"github.com/CWBudde/algo-pde/grid"
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/bc"
+	"github.com/cwbudde/algo-pde/fd"
+	"github.com/cwbudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // TestSolveComplex_Residual2D solves (alpha - Δ)u = f for a complex alpha across

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/CWBudde/algo-pde/bc"
-	"github.com/CWBudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/bc"
+	"github.com/cwbudde/algo-pde/grid"
 	algofft "github.com/cwbudde/algo-fft"
 )
 

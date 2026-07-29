@@ -5,8 +5,8 @@ package poisson_test
 import (
 	"testing"
 
-	"github.com/CWBudde/algo-pde/grid"
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // These allocation guards protect the zero-per-solve property of the unified

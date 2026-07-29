@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 func BenchmarkPlanSolve2D_Dirichlet(b *testing.B) {

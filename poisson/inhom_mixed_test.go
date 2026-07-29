@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // TestPlan2D_SolveWithBC_QuarterWavePlanar pins the inhomogeneous per-face

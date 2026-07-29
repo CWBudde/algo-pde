@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/CWBudde/algo-pde/grid"
-	"github.com/CWBudde/algo-pde/poisson"
+	"github.com/cwbudde/algo-pde/grid"
+	"github.com/cwbudde/algo-pde/poisson"
 )
 
 // These tests pin the doc.go contract: plans are safe for concurrent Solve()
