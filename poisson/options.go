@@ -32,9 +32,11 @@ type Options struct {
 	// qualify (power-of-two extents, even last axis).
 	//
 	// WARNING: this is a single-vs-double precision trade, not just a layout
-	// change. algo-fft's real transforms operate on float32 buffers, so the
-	// whole solve runs in single precision and the result carries only ~1e-6
-	// relative accuracy instead of the ~1e-14 of the default complex128 path.
+	// change. This path deliberately drives algo-fft's real transforms in their
+	// float32/complex64 instantiation, so the whole solve runs in single
+	// precision and the result carries only ~1e-6 relative accuracy instead of
+	// the ~1e-14 of the default complex128 path. (algo-fft >= v0.7 also offers
+	// float64 real transforms; single precision remains this option's point.)
 	// Enable it only when that precision is acceptable (e.g. real-time visuals).
 	// See WithFloat32, whose name states the trade-off outright.
 	UseRealFFT bool

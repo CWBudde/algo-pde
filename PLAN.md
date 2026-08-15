@@ -60,11 +60,12 @@ falsifies the O(N log N) claim.
       → `DST2Plan.Inverse`/`DCT2Plan.Inverse` now pack the weighted
       coefficients into a single **real** 2N-point FFT (cosine part
       even-symmetric, sine part odd-symmetric around the midpoint) and read
-      `Re(FFT)+Im(FFT)`. Real FFT input is deliberate: algo-fft's mixed-radix
-      kernel returns wrong results for 2N ∈ {40,80,160,320,200,400}
-      (n ∈ {20,40,80,160,100,200}) — see `fftSoundSizes` in
-      `r2r/inverse_fft_test.go`; that upstream defect breaks the (real-only)
-      Forward identically, so the inverse is correct wherever Forward is.
+      `Re(FFT)+Im(FFT)`. Real FFT input is deliberate. Historically an algo-fft
+      mixed-radix kernel returned wrong results for 2N ∈ {40,80,160,200,320,400}
+      (n ∈ {20,40,80,100,160,200}), which broke the (real-only) Forward
+      identically, so the inverse was correct wherever Forward was. That
+      upstream defect is fixed — see `fftSoundSizes` in
+      `r2r/inverse_fft_test.go`, which now covers those sizes again.
       `TestD{S,C}T2PlanInverse_MatchesNaive` pins the new path against the old
       O(N²) formula across all FFT-sound sizes.
 - [x] Eliminate the per-call allocation in the aliased `Inverse(buf, buf)`
@@ -640,10 +641,12 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
       inverses (which already packed real input) switched too. Measured
       same-machine in `r2r` (`go test ./r2r -bench Transform`): each transform
       runs ≈1.3–2.2× faster (typically ~2×), flowing into the solver
-      (`BENCHMARKS.md` refreshed). A soundness sweep confirmed algo-fft v0.6.15
+      (`BENCHMARKS.md` refreshed). A soundness sweep confirmed algo-fft
       computes every occurring FFT length correctly — including the sizes the
       stale `fftSoundSizes` note (`inverse_fft_test.go`) excluded — so no
-      complex-path fallback was needed. `r2r/real_fft_test.go` pins each
+      complex-path fallback was needed. (Those exclusions have since been
+      lifted outright: the factor-5 sizes were re-verified against both
+      v0.6.15 and v0.8.0 and are back under test.) `r2r/real_fft_test.go` pins each
       real-FFT forward against its naive O(N²) reference and a Forward∘Inverse
       round-trip across those previously-excluded sizes; `r2r/plan_real_bench_test.go`
       is the before/after harness. **Remaining follow-up:** the DST-IV/DCT-IV `4N`

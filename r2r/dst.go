@@ -31,7 +31,7 @@ type DSTPlan struct {
 	// Underlying real-input FFT plan for the extended size. The odd extension is
 	// purely real, so a real-to-complex FFT computes the needed bins at full
 	// float64 precision in ~half the work of a complex FFT (Phase G.3).
-	fftPlan *algofft.PlanRealT[float64, complex128]
+	fftPlan *algofft.PlanReal[float64, complex128]
 
 	// Pre-allocated buffers: real extension in, non-redundant half-spectrum out.
 	fftIn  []float64    // real FFT input buffer, length extendedN
@@ -55,7 +55,7 @@ type DST2Plan struct {
 	extendedN int
 
 	// Underlying real-input FFT plan for the extended size (Phase G.3).
-	fftPlan *algofft.PlanRealT[float64, complex128]
+	fftPlan *algofft.PlanReal[float64, complex128]
 
 	// Pre-allocated buffers: real extension in, non-redundant half-spectrum out.
 	fftIn  []float64    // real FFT input buffer, length extendedN

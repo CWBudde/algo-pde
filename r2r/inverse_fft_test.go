@@ -65,13 +65,13 @@ func naiveDCT2Inverse(src []float64, ortho bool) []float64 {
 	return out
 }
 
-// fftSoundSizes are transform lengths whose 2N-point FFT is computed correctly
-// by the upstream algo-fft library. Sizes with 2N in {40,80,160,320,200,400}
-// (i.e. n in {20,40,80,160,100,200}) are excluded because algo-fft's
-// mixed-radix kernel returns wrong results there for both real and complex
-// input, which breaks the DST-II/DCT-II Forward identically — it is not a
-// defect of the inverse implemented here.
-var fftSoundSizes = []int{1, 2, 3, 4, 7, 8, 15, 16, 31, 32, 63, 64, 127, 128, 129, 150, 255, 256}
+// fftSoundSizes are the transform lengths exercised against the naive
+// reference. This list used to exclude n in {20,40,80,100,160,200} (2N in
+// {40,80,160,200,320,400}) because an old algo-fft mixed-radix kernel returned
+// wrong results for factor-5 lengths. That defect is gone: the excluded sizes
+// were re-verified against both algo-fft v0.6.15 and v0.8.0 and pass, so they
+// are back in the list and the factor-5 lengths are covered again.
+var fftSoundSizes = []int{1, 2, 3, 4, 7, 8, 15, 16, 20, 31, 32, 40, 63, 64, 80, 100, 127, 128, 129, 150, 160, 200, 255, 256}
 
 func TestDST2PlanInverse_MatchesNaive(t *testing.T) {
 	sizes := fftSoundSizes

@@ -11,9 +11,10 @@ import (
 // was n in {20,40,80,100,160,200} (extendedN=2n in {40,80,160,200,320,400});
 // the DST-I/DCT-I/DST-IV/DCT-IV excluded sizes fall out of the same 2(n±1) and
 // 4n embeddings, so this single set exercises every previously-suspect FFT
-// length across the six transforms. algo-fft v0.6.15 computes all of them
+// length across the six transforms. algo-fft v0.8.0 computes all of them
 // correctly, and the real-input FFT introduced for Phase G.3 must match its
-// naive reference at each one.
+// naive reference at each one. (The exclusions this set was built to shadow
+// have since been lifted outright — see fftSoundSizes in inverse_fft_test.go.)
 var realFFTSizes = []int{
 	2, 3, 5, 7, 8, 10, 16, 17, 19, 20, 21, 25, 32, 39, 40, 50,
 	64, 79, 80, 99, 100, 128, 159, 160, 199, 200, 256,

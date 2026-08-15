@@ -14,7 +14,7 @@ import (
 // its own instance (algo-fft < v0.6.13 additionally had a Clone that shared a
 // stateful row plan; full construction sidesteps that entirely).
 type real2DWorkspace struct {
-	rfft  *algofft.PlanReal2D
+	rfft  *algofft.PlanReal2D[float32, complex64]
 	rbuf  []float32
 	rspec []complex64
 }
@@ -173,7 +173,7 @@ func (p *Plan2DPeriodic) UsedRealFFT() bool {
 }
 
 func (p *Plan2DPeriodic) newRealWorkspace() (*real2DWorkspace, error) {
-	rfft, err := algofft.NewPlanReal2D(p.nx, p.ny)
+	rfft, err := algofft.NewPlanReal2D32(p.nx, p.ny)
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,7 @@ import (
 // its own instance (algo-fft < v0.6.13 additionally had a Clone that shared a
 // stateful width plan; full construction sidesteps that entirely).
 type real3DWorkspace struct {
-	rfft  *algofft.PlanReal3D
+	rfft  *algofft.PlanReal3D[float32, complex64]
 	rbuf  []float32
 	rspec []complex64
 }
@@ -213,7 +213,7 @@ func (p *Plan3DPeriodic) UsedRealFFT() bool {
 }
 
 func (p *Plan3DPeriodic) newRealWorkspace() (*real3DWorkspace, error) {
-	rfft, err := algofft.NewPlanReal3D(p.nx, p.ny, p.nz)
+	rfft, err := algofft.NewPlanReal3D32(p.nx, p.ny, p.nz)
 	if err != nil {
 		return nil, err
 	}

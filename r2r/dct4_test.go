@@ -5,11 +5,12 @@ import (
 	"testing"
 )
 
-// fftSoundSizes4 are transform lengths whose 4N-point FFT (used by the type-IV
-// quarter-wave transforms) is computed correctly by upstream algo-fft. The
-// known-bad FFT sizes ({40,80,160,320,200,400}) all carry a factor of 5, so any
-// n divisible by 5 is excluded; the sizes below keep 4N free of that factor.
-var fftSoundSizes4 = []int{1, 2, 3, 4, 7, 8, 16, 31, 32, 63, 64, 127, 128, 129, 256}
+// fftSoundSizes4 are the transform lengths exercised for the type-IV
+// quarter-wave transforms, whose 4N-point FFT once tripped an algo-fft
+// mixed-radix defect on factor-5 lengths. Every n divisible by 5 used to be
+// excluded for that reason; the defect is gone (re-verified against both
+// algo-fft v0.6.15 and v0.8.0), so factor-5 lengths are covered again.
+var fftSoundSizes4 = []int{1, 2, 3, 4, 5, 7, 8, 10, 15, 16, 20, 25, 31, 32, 40, 50, 63, 64, 80, 100, 127, 128, 129, 160, 200, 256}
 
 // dct4Reference evaluates the DCT-IV by direct O(N^2) summation, an independent
 // reference for the FFT-based DCT4Plan.Forward.

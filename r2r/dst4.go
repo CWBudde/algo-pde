@@ -34,7 +34,7 @@ type DST4Plan struct {
 	extendedN int
 
 	// Underlying real-input FFT plan for the extended size (Phase G.3).
-	fftPlan *algofft.PlanRealT[float64, complex128]
+	fftPlan *algofft.PlanReal[float64, complex128]
 
 	// Pre-allocated buffers: real (zero-padded) input, half-spectrum output.
 	fftIn  []float64    // real FFT input buffer, length extendedN
