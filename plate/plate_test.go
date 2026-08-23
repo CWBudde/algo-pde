@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"testing"
+
+	"github.com/cwbudde/algo-pde/eigen"
 )
 
 func rectangularModel(nx, ny int) *Model {
@@ -232,5 +234,33 @@ func BenchmarkPlateSolveRefinement(b *testing.B) {
 			}
 			b.ReportMetric(frequency, "first-mode-Hz")
 		})
+	}
+}
+
+// TestSingleTriangleHasNoSpuriousMode pins the shear stabilization: the
+// one-point shear term alone leaves the element with rank five, so a clamped
+// single-triangle model would keep a zero-energy twisting mode and report a
+// non-positive structural eigenvalue.
+func TestSingleTriangleHasNoSpuriousMode(t *testing.T) {
+	nodes := [3]Node{{X: 0.11, Y: 0.07}, {X: 0.31, Y: 0.09}, {X: 0.17, Y: 0.27}}
+	material := rectangularModel(3, 3).Material
+	ke, _ := plateElement(nodes, material)
+	// Clamp the first node: the remaining six degrees of freedom carry no rigid
+	// body motion, so a spurious mode is the only way this block can be singular.
+	const free = 6
+	builder := eigen.NewSymmetricBuilder(free)
+	trace := 0.0
+	for i := range free {
+		for j := i; j < free; j++ {
+			builder.Add(i, j, ke[3+i][3+j])
+		}
+		trace += ke[3+i][3+i]
+	}
+	result, err := eigen.Solve(builder.Build(), nil, eigen.Options{NumEigenpairs: 1, Tolerance: 1e-9, MaxIterations: 400, Seed: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if smallest := result.Eigenvalues[0]; smallest < 1e-8*trace {
+		t.Fatalf("clamped single-triangle stiffness has a spurious mode: smallest eigenvalue %g, trace %g", smallest, trace)
 	}
 }

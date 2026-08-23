@@ -123,6 +123,7 @@ func plateElement(nodes [3]Node, material OrthotropicMaterial) ([][]float64, [][
 	ke := zeroMatrix(9)
 	addBtDB(ke, bendingB, d, area)
 	addBtDB(ke, shearB, shear, area)
+	addShearStabilization(ke, shear, area, material.Thickness)
 	me := zeroMatrix(9)
 	translational := material.Density * material.Thickness * area / 12
 	rotary := material.Density * material.Thickness * material.Thickness * material.Thickness * area / 144
@@ -138,6 +139,41 @@ func plateElement(nodes [3]Node, material OrthotropicMaterial) ([][]float64, [][
 		}
 	}
 	return ke, me
+}
+
+// addShearStabilization restores the part of the shear energy that the
+// one-point (centroid) shear term drops. Without it the three bending rows and
+// the two centroid shear rows span only rank five of the nine element degrees
+// of freedom, so a twisting rotation field combined with a matching linear w
+// deflection costs no energy at all; that spurious mode shows up as a
+// non-positive structural eigenvalue on coarse meshes.
+//
+// With linear w and rotations the shear strain is gamma(x) = grad(w) - theta(x)
+// and its deviation from the element mean is -sum_i (N_i - 1/3) * theta_i, which
+// involves the rotation degrees of freedom only. Exact integration gives
+//
+//	int (N_i - 1/3)(N_j - 1/3) dA = A/18 for i == j and -A/36 otherwise.
+//
+// Adding that with weight one would be full integration and would reintroduce
+// shear locking, so it is scaled by t^2/(t^2+A): vanishing for thin plates on
+// coarse meshes where locking is the danger, approaching full integration once
+// the element is refined to the plate thickness. The mode is penalized either
+// way, only its stiffness is kept small where it has to be.
+func addShearStabilization(ke, shear [][]float64, area, thickness float64) {
+	weight := thickness * thickness / (thickness*thickness + area)
+	for i := range 3 {
+		for j := range 3 {
+			coefficient := -area / 36
+			if i == j {
+				coefficient = area / 18
+			}
+			for p := range 2 {
+				for q := range 2 {
+					ke[3*i+1+p][3*j+1+q] += weight * coefficient * shear[p][q]
+				}
+			}
+		}
+	}
 }
 
 func bendingMatrix(m OrthotropicMaterial) [][]float64 {
