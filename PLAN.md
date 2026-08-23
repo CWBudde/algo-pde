@@ -527,7 +527,9 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
       transform). `imag(α) != 0` acts as a damping shift (never resonant); real α
       keeps the `ErrResonant` guard. Zero extra per-solve allocation vs the real
       path. `poisson/complex_helmholtz.go` + `_test.go` (residual for all BCs,
-      real-path agreement, damping-vs-resonance, validation, alloc parity).
+      real-path agreement, damping-vs-resonance, validation, alloc parity
+      (`!race`, because race/coverage instrumentation distorts allocation
+      counts)).
 - [x] Robin / per-face asymmetric BCs.
       → Decided: **implement the fast-transform-compatible subset, drop true
       Robin.** Genuine Robin (a·u + b·∂u/∂n = g) is incompatible with this
