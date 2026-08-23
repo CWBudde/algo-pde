@@ -6,6 +6,9 @@ disable = [
     'depguard',
     'err113',
     'exhaustruct',
+    # v2.12 renamed the implementation; keep the intentional numerical-library
+    # policy above stable across golangci-lint upgrades.
+    'exhaustruct_v5',
     'godoclint',
     'gomoddirectives',
     # gomodguard is deprecated (v2.12.0); replaced by gomodguard_v2, enabled below.
@@ -43,6 +46,9 @@ enable = [
     "revive",
     "gomodguard_v2",
 ]
+
+[linters.settings.tagliatelle.case.rules]
+json = 'snake'
 
 [linters.settings.revive]
 [[linters.settings.revive.rules]]

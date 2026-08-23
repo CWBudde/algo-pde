@@ -7,6 +7,31 @@ build-out (grid, r2r transforms, fd operators, periodic/Dirichlet/Neumann/mixed
 solvers, inhomogeneous BC, Helmholtz, WASM demo) is done and lives in git
 history. What follows is only what is **ahead of us**, ordered by priority.
 
+## Phase 11.5: Structural body modes
+
+Provide the offline structural solver needed by algo-piano without coupling the
+two Go modules. This is a generalized structural eigenproblem, not a Helmholtz
+solve: K phi = omega^2 M phi.
+
+- [x] Add deterministic generalized symmetric eigensolving with sparse matrix
+      operators, mass orthonormality, residual reporting, and preconditioning.
+- [x] Add an orthotropic triangular plate model with homogeneous or
+      per-triangle material assignment, clamped/simply-supported constraints
+      and rib/bridge line stiffness and mass.
+- [x] Project bridge force to area-averaged normal velocity and export the
+      versioned body-modal-transfer-v1 JSON interchange artifact.
+- [x] Add the offline plate-modes command, deterministic model hashing,
+      solver-option-aware sidecar cache reuse, modal-coverage checks,
+      documentation, tests, and benchmarks.
+      → Implemented as new `eigen` and `plate` packages plus `cmd/plate-modes`.
+      The plate element is explicitly a three-DOF Mindlin-Reissner triangle
+      with centroid reduced shear integration—not DKT and not a relabeled
+      Laplacian. The 4×4/5×5/7×7 refinement regression and benchmark guard
+      against catastrophic shear locking, while callers remain responsible for
+      production mesh-convergence studies. This adds exported API and is
+      intended for the next minor release (v0.3.0), after downstream contract
+      integration is reviewed.
+
 The review's verdict, for context: the numerical core (transform kernels,
 eigenvalue formulas, boundary-lifting algebra) is verified correct. What is
 broken is the contract layer around it — documentation claims that are false,
@@ -502,7 +527,9 @@ history (`PLAN.md` @ 3acff0c, Phase 13).
       transform). `imag(α) != 0` acts as a damping shift (never resonant); real α
       keeps the `ErrResonant` guard. Zero extra per-solve allocation vs the real
       path. `poisson/complex_helmholtz.go` + `_test.go` (residual for all BCs,
-      real-path agreement, damping-vs-resonance, validation, alloc parity).
+      real-path agreement, damping-vs-resonance, validation, alloc parity
+      (`!race`, because race/coverage instrumentation distorts allocation
+      counts)).
 - [x] Robin / per-face asymmetric BCs.
       → Decided: **implement the fast-transform-compatible subset, drop true
       Robin.** Genuine Robin (a·u + b·∂u/∂n = g) is incompatible with this
