@@ -86,6 +86,56 @@ func TestRibAddsStiffnessAndMass(t *testing.T) {
 	}
 }
 
+func TestPerTriangleMaterialsAffectAssembly(t *testing.T) {
+	homogeneous := rectangularModel(4, 4)
+	base, err := Assemble(homogeneous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	soft, stiff := homogeneous.Material, homogeneous.Material
+	stiff.Young1 *= 2
+	stiff.Young2 *= 2
+	stiff.Shear12 *= 2
+	stiff.Shear13 *= 2
+	stiff.Shear23 *= 2
+	stiff.LossFactor *= 1.5
+	model := rectangularModel(4, 4)
+	model.Material = OrthotropicMaterial{}
+	model.Materials = []OrthotropicMaterial{soft, stiff}
+	model.TriangleMaterials = make([]int, len(model.Mesh.Triangles))
+	for i := len(model.TriangleMaterials) / 2; i < len(model.TriangleMaterials); i++ {
+		model.TriangleMaterials[i] = 1
+	}
+	graded, err := Assemble(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := make([]float64, len(base.FreeDOFs))
+	for i := range v {
+		v[i] = math.Sin(float64(i+1) * 0.41)
+	}
+	if quadratic(graded.Stiffness, v) <= quadratic(base.Stiffness, v) {
+		t.Fatal("stiffer triangle region did not increase stiffness energy")
+	}
+	if quadratic(graded.LossStiffness, v) <= quadratic(base.LossStiffness, v) {
+		t.Fatal("higher-loss triangle region did not increase loss energy")
+	}
+}
+
+func TestPerTriangleMaterialValidation(t *testing.T) {
+	model := rectangularModel(4, 4)
+	model.Materials = []OrthotropicMaterial{model.Material}
+	model.Material = OrthotropicMaterial{}
+	if err := model.Validate(); err == nil {
+		t.Fatal("Validate accepted materials without triangle_materials")
+	}
+	model.TriangleMaterials = make([]int, len(model.Mesh.Triangles))
+	model.TriangleMaterials[0] = 1
+	if err := model.Validate(); err == nil {
+		t.Fatal("Validate accepted an out-of-range triangle material")
+	}
+}
+
 func TestSolveModesAndMeshRefinement(t *testing.T) {
 	frequencies := make([]float64, 0, 3)
 	for _, size := range []int{4, 5, 7} {

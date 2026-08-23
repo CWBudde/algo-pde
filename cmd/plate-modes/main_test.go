@@ -82,6 +82,17 @@ func TestRunWritesStrictArtifactAndReusesIt(t *testing.T) {
 	if !strings.Contains(stdout.String(), "reused") {
 		t.Fatalf("second run did not reuse artifact: %s", stdout.String())
 	}
+	stdout.Reset()
+	changed := append(append([]string(nil), args...), "-seed", "99")
+	if err := run(changed, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(stdout.String(), "reused") {
+		t.Fatalf("changed solver options incorrectly reused cache: %s", stdout.String())
+	}
+	if _, err := os.Stat(outputPath + ".cache.json"); err != nil {
+		t.Fatalf("cache sidecar: %v", err)
+	}
 }
 
 func TestReadModelRejectsUnknownField(t *testing.T) {
@@ -91,5 +102,21 @@ func TestReadModelRejectsUnknownField(t *testing.T) {
 	}
 	if _, err := readModel(path); err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("error = %v, want unknown field", err)
+	}
+}
+
+func TestRunRejectsNonFiniteSolverOptionBeforeWriting(t *testing.T) {
+	directory := t.TempDir()
+	outputPath := filepath.Join(directory, "transfer.json")
+	err := run([]string{
+		"-model", filepath.Join(directory, "does-not-need-to-exist.json"),
+		"-out", outputPath,
+		"-tolerance", "+Inf",
+	}, &bytes.Buffer{}, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "tolerance must be finite") {
+		t.Fatalf("error = %v, want non-finite tolerance rejection", err)
+	}
+	if _, statErr := os.Stat(outputPath); !os.IsNotExist(statErr) {
+		t.Fatalf("output was written for invalid options: %v", statErr)
 	}
 }

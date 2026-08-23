@@ -60,11 +60,16 @@ type BridgeSource struct {
 }
 
 type Model struct {
-	Mesh     Mesh                `json:"mesh"`
-	Material OrthotropicMaterial `json:"material"`
-	Ribs     []Rib               `json:"ribs,omitempty"`
-	Boundary Boundary            `json:"boundary"`
-	Source   BridgeSource        `json:"source"`
+	Mesh Mesh `json:"mesh"`
+	// Material is the convenient homogeneous-plate form. Materials plus
+	// TriangleMaterials selects a material per triangle instead; the two forms
+	// are mutually exclusive so the physical model is never ambiguous.
+	Material          OrthotropicMaterial   `json:"material,omitempty"`
+	Materials         []OrthotropicMaterial `json:"materials,omitempty"`
+	TriangleMaterials []int                 `json:"triangle_materials,omitempty"`
+	Ribs              []Rib                 `json:"ribs,omitempty"`
+	Boundary          Boundary              `json:"boundary"`
+	Source            BridgeSource          `json:"source"`
 }
 
 func (m *Model) Validate() error {
@@ -72,22 +77,26 @@ func (m *Model) Validate() error {
 		return errors.New("plate: mesh needs at least three nodes and one triangle")
 	}
 	finitePositive := func(v float64) bool { return v > 0 && !math.IsInf(v, 0) && !math.IsNaN(v) }
-	mat := m.Material
-	if !finitePositive(mat.Young1) || !finitePositive(mat.Young2) || !finitePositive(mat.Shear12) ||
-		!finitePositive(mat.Density) || !finitePositive(mat.Thickness) {
-		return errors.New("plate: material moduli, density, and thickness must be finite and positive")
+	materials, err := m.resolvedMaterials()
+	if err != nil {
+		return err
 	}
-	if mat.Shearkappa() <= 0 || math.IsNaN(mat.Shearkappa()) || math.IsInf(mat.Shearkappa(), 0) ||
-		mat.Poisson12 < -0.99 || mat.Poisson12 >= 0.99 || math.IsNaN(mat.Poisson12) ||
-		mat.LossFactor < 0 || math.IsNaN(mat.LossFactor) || math.IsInf(mat.LossFactor, 0) ||
-		math.IsNaN(mat.GrainAngleDeg) || math.IsInf(mat.GrainAngleDeg, 0) {
-		return errors.New("plate: invalid Poisson ratio, loss factor, or shear correction")
+	for i, mat := range materials {
+		if err := validateMaterial(mat); err != nil {
+			return fmt.Errorf("plate: material %d: %w", i, err)
+		}
 	}
-	if (mat.Shear13 != 0 && !finitePositive(mat.Shear13)) || (mat.Shear23 != 0 && !finitePositive(mat.Shear23)) {
-		return errors.New("plate: transverse shear moduli must be finite and positive when supplied")
-	}
-	if 1-mat.Poisson12*mat.Poisson12*mat.Young2/mat.Young1 <= 0 {
-		return errors.New("plate: orthotropic plane-stress matrix is not positive definite")
+	if len(m.Materials) > 0 {
+		if len(m.TriangleMaterials) != len(m.Mesh.Triangles) {
+			return fmt.Errorf("plate: triangle_materials has %d entries, want %d", len(m.TriangleMaterials), len(m.Mesh.Triangles))
+		}
+		for triangle, material := range m.TriangleMaterials {
+			if material < 0 || material >= len(m.Materials) {
+				return fmt.Errorf("plate: triangle_materials[%d]=%d is outside [0,%d)", triangle, material, len(m.Materials))
+			}
+		}
+	} else if len(m.TriangleMaterials) != 0 {
+		return errors.New("plate: triangle_materials requires materials")
 	}
 	for i, n := range m.Mesh.Nodes {
 		if math.IsNaN(n.X) || math.IsNaN(n.Y) || math.IsInf(n.X, 0) || math.IsInf(n.Y, 0) {
@@ -146,6 +155,47 @@ func (m *Model) Validate() error {
 		return fmt.Errorf("plate: bridge source weights sum to %g, want 1", sum)
 	}
 	return nil
+}
+
+func validateMaterial(mat OrthotropicMaterial) error {
+	finitePositive := func(v float64) bool { return v > 0 && !math.IsInf(v, 0) && !math.IsNaN(v) }
+	if !finitePositive(mat.Young1) || !finitePositive(mat.Young2) || !finitePositive(mat.Shear12) ||
+		!finitePositive(mat.Density) || !finitePositive(mat.Thickness) {
+		return errors.New("moduli, density, and thickness must be finite and positive")
+	}
+	if mat.Shearkappa() <= 0 || math.IsNaN(mat.Shearkappa()) || math.IsInf(mat.Shearkappa(), 0) ||
+		mat.Poisson12 < -0.99 || mat.Poisson12 >= 0.99 || math.IsNaN(mat.Poisson12) ||
+		mat.LossFactor < 0 || math.IsNaN(mat.LossFactor) || math.IsInf(mat.LossFactor, 0) ||
+		math.IsNaN(mat.GrainAngleDeg) || math.IsInf(mat.GrainAngleDeg, 0) {
+		return errors.New("invalid Poisson ratio, loss factor, or shear correction")
+	}
+	if (mat.Shear13 != 0 && !finitePositive(mat.Shear13)) || (mat.Shear23 != 0 && !finitePositive(mat.Shear23)) {
+		return errors.New("transverse shear moduli must be finite and positive when supplied")
+	}
+	if 1-mat.Poisson12*mat.Poisson12*mat.Young2/mat.Young1 <= 0 {
+		return errors.New("orthotropic plane-stress matrix is not positive definite")
+	}
+	return nil
+}
+
+func (m *Model) resolvedMaterials() ([]OrthotropicMaterial, error) {
+	if len(m.Materials) > 0 {
+		if m.Material != (OrthotropicMaterial{}) {
+			return nil, errors.New("plate: material and materials are mutually exclusive")
+		}
+		return m.Materials, nil
+	}
+	if m.Material == (OrthotropicMaterial{}) {
+		return nil, errors.New("plate: material or materials is required")
+	}
+	return []OrthotropicMaterial{m.Material}, nil
+}
+
+func (m *Model) materialForTriangle(triangle int) OrthotropicMaterial {
+	if len(m.Materials) == 0 {
+		return m.Material
+	}
+	return m.Materials[m.TriangleMaterials[triangle]]
 }
 
 func (m OrthotropicMaterial) Shearkappa() float64 {

@@ -171,7 +171,7 @@ type ic0Preconditioner struct {
 // NewIC0Preconditioner constructs a zero-fill incomplete Cholesky factor of
 // A+shift*I. It returns an error if a positive pivot cannot be formed.
 func NewIC0Preconditioner(a *SparseSymmetric, shift float64) (Preconditioner, error) {
-	if shift < 0 || math.IsNaN(shift) {
+	if shift < 0 || math.IsNaN(shift) || math.IsInf(shift, 0) {
 		return nil, errors.New("eigen: IC(0) shift must be finite and non-negative")
 	}
 	n := a.n

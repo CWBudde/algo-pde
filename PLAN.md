@@ -15,12 +15,14 @@ solve: K phi = omega^2 M phi.
 
 - [x] Add deterministic generalized symmetric eigensolving with sparse matrix
       operators, mass orthonormality, residual reporting, and preconditioning.
-- [x] Add an orthotropic triangular plate model with clamped/simply-supported
-      constraints and rib/bridge line stiffness and mass.
+- [x] Add an orthotropic triangular plate model with homogeneous or
+      per-triangle material assignment, clamped/simply-supported constraints
+      and rib/bridge line stiffness and mass.
 - [x] Project bridge force to area-averaged normal velocity and export the
       versioned body-modal-transfer-v1 JSON interchange artifact.
-- [x] Add the offline plate-modes command, deterministic model hashing, cache
-      reuse, modal-coverage checks, documentation, tests, and benchmarks.
+- [x] Add the offline plate-modes command, deterministic model hashing,
+      solver-option-aware sidecar cache reuse, modal-coverage checks,
+      documentation, tests, and benchmarks.
       → Implemented as new `eigen` and `plate` packages plus `cmd/plate-modes`.
       The plate element is explicitly a three-DOF Mindlin-Reissner triangle
       with centroid reduced shear integration—not DKT and not a relabeled

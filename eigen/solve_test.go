@@ -81,6 +81,13 @@ func TestSolveNonConvergenceReturnsBestResult(t *testing.T) {
 	}
 }
 
+func TestSolveRejectsInfiniteTolerance(t *testing.T) {
+	a := diagonal([]float64{1, 2, 3})
+	if _, err := Solve(a, nil, Options{NumEigenpairs: 1, Tolerance: math.Inf(1)}); err == nil {
+		t.Fatal("Solve accepted an infinite tolerance")
+	}
+}
+
 func TestIC0Preconditioner(t *testing.T) {
 	b := NewSymmetricBuilder(3)
 	b.Add(0, 0, 4)

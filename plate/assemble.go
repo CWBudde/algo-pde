@@ -43,15 +43,16 @@ func Assemble(model *Model) (*System, error) {
 	lb := eigen.NewSymmetricBuilder(len(free))
 	areaWeights := make([]float64, len(model.Mesh.Nodes))
 
-	for _, tri := range model.Mesh.Triangles {
+	for triangleIndex, tri := range model.Mesh.Triangles {
+		material := model.materialForTriangle(triangleIndex)
 		var nodes [3]Node
 		for i := range 3 {
 			nodes[i] = model.Mesh.Nodes[tri[i]]
 		}
-		ke, me := plateElement(nodes, model.Material)
+		ke, me := plateElement(nodes, material)
 		assembleElement(kb, ke, triDOFs(tri), globalToFree, 1)
 		assembleElement(mb, me, triDOFs(tri), globalToFree, 1)
-		assembleElement(lb, ke, triDOFs(tri), globalToFree, model.Material.LossFactor)
+		assembleElement(lb, ke, triDOFs(tri), globalToFree, material.LossFactor)
 		area := triangleArea(nodes[0], nodes[1], nodes[2])
 		for _, node := range tri {
 			areaWeights[node] += area / 3

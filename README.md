@@ -143,14 +143,15 @@ go run ./cmd/plate-modes \
   -cover-frequency 5000
 ```
 
-The input JSON follows `plate.Model`: SI-valued nodes/triangles, one
-`OrthotropicMaterial`, clamped and/or simply-supported node sets, optional
-ribs, and a normalized distributed bridge source. By default the command
+The input JSON follows `plate.Model`: SI-valued nodes/triangles, either one
+homogeneous `OrthotropicMaterial` or a material index per triangle, clamped
+and/or simply-supported node sets, optional ribs, and a normalized distributed
+bridge source. By default the command
 requires the highest solved mode to reach 5 kHz; increase `-modes` when it does
-not. An existing artifact with the same canonical model SHA-256, source, mode
-count, and frequency coverage is reused. Use `-force` after changing solver
-tolerance, iteration limit, seed, or preconditioner shift because those
-settings are intentionally absent from the strict interchange contract.
+not. An existing artifact is reused only when its adjacent `.cache.json`
+sidecar matches the canonical model SHA-256 and every solver/coverage option.
+Use `-force` to bypass that cache. Solver metadata stays in the sidecar rather
+than weakening the strict interchange contract below.
 
 The emitted JSON has exactly these top-level fields:
 

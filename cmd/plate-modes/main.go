@@ -16,6 +16,24 @@ import (
 	"github.com/cwbudde/algo-pde/plate"
 )
 
+const cacheSchemaVersion = 1
+
+// cacheRecord deliberately lives beside, rather than inside, the transfer
+// artifact. The latter is a strict cross-repository acoustic contract; this
+// sidecar records every solver input that can change the generated modes.
+type cacheRecord struct {
+	SchemaVersion  int     `json:"schema_version"`
+	Solver         string  `json:"solver"`
+	ModelSHA256    string  `json:"model_sha256"`
+	SourceID       string  `json:"source_id"`
+	ModeCount      int     `json:"mode_count"`
+	Tolerance      float64 `json:"tolerance"`
+	MaxIterations  int     `json:"max_iterations"`
+	Seed           uint64  `json:"seed"`
+	ICShift        float64 `json:"ic_shift"`
+	CoverFrequency float64 `json:"cover_frequency_hz"`
+}
+
 func main() {
 	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -41,6 +59,18 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if *modelPath == "" || *outputPath == "" {
 		return errors.New("plate-modes: -model and -out are required")
 	}
+	if *modeCount <= 0 {
+		return errors.New("plate-modes: -modes must be positive")
+	}
+	if !(*tolerance > 0) || math.IsNaN(*tolerance) || math.IsInf(*tolerance, 0) {
+		return errors.New("plate-modes: -tolerance must be finite and positive")
+	}
+	if *maxIterations <= 0 {
+		return errors.New("plate-modes: -max-iterations must be positive")
+	}
+	if *icShift < 0 || math.IsNaN(*icShift) || math.IsInf(*icShift, 0) {
+		return errors.New("plate-modes: -ic-shift must be finite and non-negative")
+	}
 	if *coverFrequency < 0 || math.IsNaN(*coverFrequency) || math.IsInf(*coverFrequency, 0) {
 		return errors.New("plate-modes: -cover-frequency must be finite and non-negative")
 	}
@@ -52,8 +82,15 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	cache := cacheRecord{
+		SchemaVersion: cacheSchemaVersion, Solver: "generalized-lobpcg-mindlin-v1",
+		ModelSHA256: modelHash, SourceID: model.Source.ID, ModeCount: *modeCount,
+		Tolerance: *tolerance, MaxIterations: *maxIterations, Seed: *seed,
+		ICShift: *icShift, CoverFrequency: *coverFrequency,
+	}
 	if !*force {
-		if cached, cacheErr := readArtifact(*outputPath); cacheErr == nil && cacheMatches(cached, modelHash, model.Source.ID, *modeCount, *coverFrequency) {
+		if cached, cacheErr := readArtifact(*outputPath); cacheErr == nil &&
+			cacheMatches(cached, cache) && cacheSidecarMatches(*outputPath+".cache.json", cache) {
 			fmt.Fprintf(stdout, "reused %s (%d transfer modes)\n", *outputPath, len(cached.Modes))
 			return nil
 		}
@@ -76,6 +113,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 	}
 	if err := writeArtifact(*outputPath, artifact); err != nil {
 		return err
+	}
+	if err := writeJSONAtomic(*outputPath+".cache.json", cache); err != nil {
+		return fmt.Errorf("plate-modes: write cache sidecar: %w", err)
 	}
 	fmt.Fprintf(stdout, "wrote %s (%d transfer modes, %d iterations)\n", *outputPath, len(artifact.Modes), result.Iterations)
 	return nil
@@ -159,14 +199,32 @@ func lowerHexSHA256(value string) bool {
 	return true
 }
 
-func cacheMatches(artifact *plate.ModalTransfer, modelHash, sourceID string, modeCount int, coverFrequency float64) bool {
-	if artifact.ModelSHA256 != modelHash || artifact.SourceID != sourceID || len(artifact.Modes) < modeCount {
+func cacheMatches(artifact *plate.ModalTransfer, cache cacheRecord) bool {
+	if artifact.ModelSHA256 != cache.ModelSHA256 || artifact.SourceID != cache.SourceID || len(artifact.Modes) == 0 {
 		return false
 	}
-	return coverFrequency == 0 || artifact.Modes[len(artifact.Modes)-1].FrequencyHz >= coverFrequency
+	return cache.CoverFrequency == 0 || artifact.Modes[len(artifact.Modes)-1].FrequencyHz >= cache.CoverFrequency
 }
 
 func writeArtifact(path string, artifact *plate.ModalTransfer) error {
+	return writeJSONAtomic(path, artifact)
+}
+
+func cacheSidecarMatches(path string, want cacheRecord) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var got cacheRecord
+	if decoder.Decode(&got) != nil || requireEOF(decoder) != nil {
+		return false
+	}
+	return got == want
+}
+
+func writeJSONAtomic(path string, value any) error {
 	directory := filepath.Dir(path)
 	temporary, err := os.CreateTemp(directory, ".plate-modes-*.json")
 	if err != nil {
@@ -182,7 +240,7 @@ func writeArtifact(path string, artifact *plate.ModalTransfer) error {
 	}()
 	encoder := json.NewEncoder(temporary)
 	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(artifact); err != nil {
+	if err := encoder.Encode(value); err != nil {
 		return fmt.Errorf("plate-modes: encode output: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {

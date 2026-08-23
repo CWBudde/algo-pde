@@ -48,7 +48,7 @@ func Solve(a, b Operator, options Options) (*Result, error) {
 	if tol == 0 {
 		tol = 1e-8
 	}
-	if !(tol > 0) || math.IsNaN(tol) {
+	if !(tol > 0) || math.IsNaN(tol) || math.IsInf(tol, 0) {
 		return nil, errors.New("eigen: tolerance must be finite and positive")
 	}
 	maxIter := options.MaxIterations
