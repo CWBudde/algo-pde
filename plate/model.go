@@ -76,7 +76,6 @@ func (m *Model) Validate() error {
 	if len(m.Mesh.Nodes) < 3 || len(m.Mesh.Triangles) == 0 {
 		return errors.New("plate: mesh needs at least three nodes and one triangle")
 	}
-	finitePositive := func(v float64) bool { return v > 0 && !math.IsInf(v, 0) && !math.IsNaN(v) }
 	materials, err := m.resolvedMaterials()
 	if err != nil {
 		return err
@@ -86,6 +85,22 @@ func (m *Model) Validate() error {
 			return fmt.Errorf("plate: material %d: %w", i, err)
 		}
 	}
+	if err := m.validateMaterialAssignment(); err != nil {
+		return err
+	}
+	if err := m.validateMesh(); err != nil {
+		return err
+	}
+	if err := m.validateBoundary(); err != nil {
+		return err
+	}
+	if err := m.validateRibs(); err != nil {
+		return err
+	}
+	return m.validateSource()
+}
+
+func (m *Model) validateMaterialAssignment() error {
 	if len(m.Materials) > 0 {
 		if len(m.TriangleMaterials) != len(m.Mesh.Triangles) {
 			return fmt.Errorf("plate: triangle_materials has %d entries, want %d", len(m.TriangleMaterials), len(m.Mesh.Triangles))
@@ -98,6 +113,10 @@ func (m *Model) Validate() error {
 	} else if len(m.TriangleMaterials) != 0 {
 		return errors.New("plate: triangle_materials requires materials")
 	}
+	return nil
+}
+
+func (m *Model) validateMesh() error {
 	for i, n := range m.Mesh.Nodes {
 		if math.IsNaN(n.X) || math.IsNaN(n.Y) || math.IsInf(n.X, 0) || math.IsInf(n.Y, 0) {
 			return fmt.Errorf("plate: node %d has non-finite coordinates", i)
@@ -113,6 +132,10 @@ func (m *Model) Validate() error {
 			return fmt.Errorf("plate: triangle %d is degenerate", i)
 		}
 	}
+	return nil
+}
+
+func (m *Model) validateBoundary() error {
 	seen := make(map[int]string)
 	for _, node := range m.Boundary.Clamped {
 		if node < 0 || node >= len(m.Mesh.Nodes) {
@@ -132,6 +155,10 @@ func (m *Model) Validate() error {
 	if len(seen) == 0 {
 		return errors.New("plate: at least one boundary node is required")
 	}
+	return nil
+}
+
+func (m *Model) validateRibs() error {
 	for i, rib := range m.Ribs {
 		if rib.NodeA < 0 || rib.NodeA >= len(m.Mesh.Nodes) || rib.NodeB < 0 || rib.NodeB >= len(m.Mesh.Nodes) || rib.NodeA == rib.NodeB {
 			return fmt.Errorf("plate: rib %d has invalid endpoints", i)
@@ -141,6 +168,10 @@ func (m *Model) Validate() error {
 			return fmt.Errorf("plate: rib %d has invalid properties", i)
 		}
 	}
+	return nil
+}
+
+func (m *Model) validateSource() error {
 	if m.Source.ID == "" || len(m.Source.Nodes) == 0 {
 		return errors.New("plate: bridge source needs an id and weighted nodes")
 	}
@@ -158,7 +189,6 @@ func (m *Model) Validate() error {
 }
 
 func validateMaterial(mat OrthotropicMaterial) error {
-	finitePositive := func(v float64) bool { return v > 0 && !math.IsInf(v, 0) && !math.IsNaN(v) }
 	if !finitePositive(mat.Young1) || !finitePositive(mat.Young2) || !finitePositive(mat.Shear12) ||
 		!finitePositive(mat.Density) || !finitePositive(mat.Thickness) {
 		return errors.New("moduli, density, and thickness must be finite and positive")
@@ -176,6 +206,10 @@ func validateMaterial(mat OrthotropicMaterial) error {
 		return errors.New("orthotropic plane-stress matrix is not positive definite")
 	}
 	return nil
+}
+
+func finitePositive(v float64) bool {
+	return v > 0 && !math.IsInf(v, 0) && !math.IsNaN(v)
 }
 
 func (m *Model) resolvedMaterials() ([]OrthotropicMaterial, error) {

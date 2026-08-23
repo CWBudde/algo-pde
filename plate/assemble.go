@@ -125,7 +125,7 @@ func plateElement(nodes [3]Node, material OrthotropicMaterial) ([][]float64, [][
 	addBtDB(ke, shearB, shear, area)
 	me := zeroMatrix(9)
 	translational := material.Density * material.Thickness * area / 12
-	rotary := material.Density * math.Pow(material.Thickness, 3) * area / 144
+	rotary := material.Density * material.Thickness * material.Thickness * material.Thickness * area / 144
 	for a := range 3 {
 		for b := range 3 {
 			coefficient := 1.0
@@ -146,7 +146,8 @@ func bendingMatrix(m OrthotropicMaterial) [][]float64 {
 	q11, q22 := m.Young1/denom, m.Young2/denom
 	q12, q66 := m.Poisson12*m.Young2/denom, m.Shear12
 	c, s := math.Cos(m.GrainAngleDeg*math.Pi/180), math.Sin(m.GrainAngleDeg*math.Pi/180)
-	c2, s2, c4, s4 := c*c, s*s, math.Pow(c, 4), math.Pow(s, 4)
+	c2, s2 := c*c, s*s
+	c4, s4 := c2*c2, s2*s2
 	cs2 := c2 * s2
 	qb11 := q11*c4 + 2*(q12+2*q66)*cs2 + q22*s4
 	qb22 := q11*s4 + 2*(q12+2*q66)*cs2 + q22*c4
@@ -154,7 +155,7 @@ func bendingMatrix(m OrthotropicMaterial) [][]float64 {
 	qb16 := (q11-q12-2*q66)*c*c*c*s - (q22-q12-2*q66)*c*s*s*s
 	qb26 := (q11-q12-2*q66)*c*s*s*s - (q22-q12-2*q66)*c*c*c*s
 	qb66 := (q11+q22-2*q12-2*q66)*cs2 + q66*(c4+s4)
-	factor := math.Pow(m.Thickness, 3) / 12
+	factor := m.Thickness * m.Thickness * m.Thickness / 12
 	return [][]float64{{factor * qb11, factor * qb12, factor * qb16}, {factor * qb12, factor * qb22, factor * qb26}, {factor * qb16, factor * qb26, factor * qb66}}
 }
 
@@ -175,7 +176,7 @@ func ribElement(a, b Node, rib Rib) ([][]float64, [][]float64) {
 	dx, dy := b.X-a.X, b.Y-a.Y
 	length := math.Hypot(dx, dy)
 	tx, ty := dx/length, dy/length
-	area, inertia := rib.Width*rib.Height, rib.Width*math.Pow(rib.Height, 3)/12
+	area, inertia := rib.Width*rib.Height, rib.Width*rib.Height*rib.Height*rib.Height/12
 	ke, me := zeroMatrix(6), zeroMatrix(6)
 	// Euler-Bernoulli curvature is the line derivative of the plate slope in
 	// the rib direction. The plate shear term couples that slope to w.

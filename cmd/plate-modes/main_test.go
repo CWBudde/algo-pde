@@ -13,7 +13,7 @@ import (
 
 func commandModel() plate.Model {
 	const n = 4
-	var nodes []plate.Node
+	nodes := make([]plate.Node, 0, n*n)
 	for y := range n {
 		for x := range n {
 			nodes = append(nodes, plate.Node{X: float64(x) / (n - 1), Y: 0.8 * float64(y) / (n - 1)})

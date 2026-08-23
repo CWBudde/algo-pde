@@ -176,7 +176,7 @@ func NewIC0Preconditioner(a *SparseSymmetric, shift float64) (Preconditioner, er
 	}
 	n := a.n
 	p := &ic0Preconditioner{diag: make([]float64, n), rows: make([][]factorEntry, n), cols: make([][]factorEntry, n)}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for q := a.rowPtr[i]; q < a.rowPtr[i+1]; q++ {
 			j := a.cols[q]
 			if j >= i {

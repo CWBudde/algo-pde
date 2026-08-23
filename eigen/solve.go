@@ -124,7 +124,7 @@ func rayleighRitz(a, b Operator, basis [][]float64, count int) ([]float64, [][]f
 		a.MulVec(av[j], q[j])
 		h[j] = make([]float64, m)
 	}
-	for i := 0; i < m; i++ {
+	for i := range m {
 		for j := i; j < m; j++ {
 			h[i][j] = dot(q[i], av[j])
 			h[j][i] = h[i][j]
@@ -138,7 +138,7 @@ func rayleighRitz(a, b Operator, basis [][]float64, count int) ([]float64, [][]f
 	sort.SliceStable(order, func(i, j int) bool { return values[order[i]] < values[order[j]] })
 	outValues := make([]float64, count)
 	out := make([][]float64, count)
-	for p := 0; p < count; p++ {
+	for p := range count {
 		idx := order[p]
 		outValues[p] = values[idx]
 		out[p] = make([]float64, a.Dim())
@@ -176,7 +176,7 @@ func residualsFor(a, b Operator, x [][]float64, values []float64, tol float64) (
 
 func appendMOrthonormal(q *[][]float64, v []float64, b Operator, threshold float64) bool {
 	bv := make([]float64, len(v))
-	for pass := 0; pass < 2; pass++ {
+	for range 2 {
 		b.MulVec(bv, v)
 		for _, u := range *q {
 			alpha := dot(u, bv)
@@ -201,9 +201,9 @@ func jacobiSymmetric(a [][]float64) ([]float64, [][]float64) {
 		v[i][i] = 1
 	}
 	limit := 100 * n * n
-	for sweep := 0; sweep < limit; sweep++ {
+	for range limit {
 		p, q, largest := 0, 0, 0.0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			for j := i + 1; j < n; j++ {
 				if math.Abs(a[i][j]) > largest {
 					p, q, largest = i, j, math.Abs(a[i][j])
@@ -224,7 +224,7 @@ func jacobiSymmetric(a [][]float64) ([]float64, [][]float64) {
 		a[p][p] = app - t*apq
 		a[q][q] = aqq + t*apq
 		a[p][q], a[q][p] = 0, 0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if i == p || i == q {
 				continue
 			}
@@ -232,7 +232,7 @@ func jacobiSymmetric(a [][]float64) ([]float64, [][]float64) {
 			a[i][p], a[p][i] = c*aip-s*aiq, c*aip-s*aiq
 			a[i][q], a[q][i] = s*aip+c*aiq, s*aip+c*aiq
 		}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			vip, viq := v[i][p], v[i][q]
 			v[i][p] = c*vip - s*viq
 			v[i][q] = s*vip + c*viq
