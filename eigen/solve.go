@@ -193,6 +193,11 @@ func appendMOrthonormal(q *[][]float64, v []float64, b Operator, threshold float
 	return true
 }
 
+// jacobiSymmetric diagonalizes a dense symmetric matrix with cyclic Jacobi
+// sweeps. A sweep touches every off-diagonal pair once, so one sweep costs
+// O(n^3) and convergence is quadratic; searching for the largest pivot before
+// every rotation instead would add an O(n^2) scan per rotation and make the
+// projected solve O(n^4) for the subspace sizes used here.
 func jacobiSymmetric(a [][]float64) ([]float64, [][]float64) {
 	n := len(a)
 	v := make([][]float64, n)
@@ -200,42 +205,43 @@ func jacobiSymmetric(a [][]float64) ([]float64, [][]float64) {
 		v[i] = make([]float64, n)
 		v[i][i] = 1
 	}
-	limit := 100 * n * n
-	for range limit {
-		p, q, largest := 0, 0, 0.0
-		for i := range n {
-			for j := i + 1; j < n; j++ {
-				if math.Abs(a[i][j]) > largest {
-					p, q, largest = i, j, math.Abs(a[i][j])
+	const maxSweeps = 60
+	for range maxSweeps {
+		rotated := false
+		for p := range n {
+			for q := p + 1; q < n; q++ {
+				if math.Abs(a[p][q]) <= 1e-14*(1+math.Abs(a[p][p])+math.Abs(a[q][q])) {
+					continue
+				}
+				rotated = true
+				tau := (a[q][q] - a[p][p]) / (2 * a[p][q])
+				t := 1 / (math.Abs(tau) + math.Sqrt(1+tau*tau))
+				if tau < 0 {
+					t = -t
+				}
+				c := 1 / math.Sqrt(1+t*t)
+				s := t * c
+				app, aqq, apq := a[p][p], a[q][q], a[p][q]
+				a[p][p] = app - t*apq
+				a[q][q] = aqq + t*apq
+				a[p][q], a[q][p] = 0, 0
+				for i := range n {
+					if i == p || i == q {
+						continue
+					}
+					aip, aiq := a[i][p], a[i][q]
+					a[i][p], a[p][i] = c*aip-s*aiq, c*aip-s*aiq
+					a[i][q], a[q][i] = s*aip+c*aiq, s*aip+c*aiq
+				}
+				for i := range n {
+					vip, viq := v[i][p], v[i][q]
+					v[i][p] = c*vip - s*viq
+					v[i][q] = s*vip + c*viq
 				}
 			}
 		}
-		if largest <= 1e-14*(1+math.Abs(a[p][p])+math.Abs(a[q][q])) {
+		if !rotated {
 			break
-		}
-		tau := (a[q][q] - a[p][p]) / (2 * a[p][q])
-		t := 1 / (math.Abs(tau) + math.Sqrt(1+tau*tau))
-		if tau < 0 {
-			t = -t
-		}
-		c := 1 / math.Sqrt(1+t*t)
-		s := t * c
-		app, aqq, apq := a[p][p], a[q][q], a[p][q]
-		a[p][p] = app - t*apq
-		a[q][q] = aqq + t*apq
-		a[p][q], a[q][p] = 0, 0
-		for i := range n {
-			if i == p || i == q {
-				continue
-			}
-			aip, aiq := a[i][p], a[i][q]
-			a[i][p], a[p][i] = c*aip-s*aiq, c*aip-s*aiq
-			a[i][q], a[q][i] = s*aip+c*aiq, s*aip+c*aiq
-		}
-		for i := range n {
-			vip, viq := v[i][p], v[i][q]
-			v[i][p] = c*vip - s*viq
-			v[i][q] = s*vip + c*viq
 		}
 	}
 	values := make([]float64, n)
