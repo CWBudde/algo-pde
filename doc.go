@@ -32,6 +32,8 @@
 //   - r2r: Real-to-real transforms (DST/DCT) via FFT
 //   - grid: Grid shapes, strides, and indexing utilities
 //   - fd: Finite difference operators and eigenvalues
+//   - eigen: Sparse generalized symmetric eigenproblems
+//   - plate: Orthotropic structural plate modes and transfer projection
 //
 // # Example
 //

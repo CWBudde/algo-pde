@@ -88,6 +88,8 @@ For an implicit Euler diffusion step `u^{n+1} - nu*dt*Delta u^{n+1} = u^n`, set
 - `r2r/`: DST/DCT transforms and plans.
 - `grid/`: Shape, stride, indexing utilities.
 - `fd/`: Finite-difference eigenvalues and validation helpers.
+- `eigen/`: Sparse generalized symmetric eigenproblems with IC(0)/Jacobi preconditioning.
+- `plate/`: Orthotropic structural plate modes, stiffeners, and transfer projection.
 - `examples/`: End-to-end examples (inhomogeneous BCs, diffusion step).
 
 ## Usage Notes
@@ -112,6 +114,62 @@ The demo showcases:
 - Click-to-place-source and a 40–600 Hz frequency sweep at 256×192 resolution
 
 See [demo/README.md](demo/README.md) for details and [.github/DEPLOYMENT.md](.github/DEPLOYMENT.md) for GitHub Pages setup.
+
+## Offline structural plate modes
+
+The `plate` package is separate from the regular-grid acoustic solvers. It
+assembles the structural generalized eigenproblem
+
+```
+K phi = omega^2 M phi
+```
+
+on a caller-supplied triangular mesh. Each node has transverse displacement and
+two rotation degrees of freedom. The element is a low-order
+Mindlin-Reissner triangle with centroid (reduced) shear integration,
+orthotropic bending/shear properties, consistent translational and rotary mass,
+and optional Euler-Bernoulli line ribs. Reduced shear integration limits the
+worst thin-plate locking of a fully integrated linear triangle; it does not turn
+the element into DKT, and production models should demonstrate mesh convergence.
+
+`plate-modes` solves once offline and writes the transfer artifact consumed by
+algo-piano:
+
+```bash
+go run ./cmd/plate-modes \
+  -model soundboard.json \
+  -out body-modal-transfer.json \
+  -modes 256 \
+  -cover-frequency 5000
+```
+
+The input JSON follows `plate.Model`: SI-valued nodes/triangles, one
+`OrthotropicMaterial`, clamped and/or simply-supported node sets, optional
+ribs, and a normalized distributed bridge source. By default the command
+requires the highest solved mode to reach 5 kHz; increase `-modes` when it does
+not. An existing artifact with the same canonical model SHA-256, source, mode
+count, and frequency coverage is reused. Use `-force` after changing solver
+tolerance, iteration limit, seed, or preconditioner shift because those
+settings are intentionally absent from the strict interchange contract.
+
+The emitted JSON has exactly these top-level fields:
+
+```json
+{
+  "schema_version": 1,
+  "transfer_kind": "bridge_force_to_area_velocity",
+  "model_sha256": "<64 lowercase hex digits>",
+  "input_unit": "N*s",
+  "output_unit": "m/s",
+  "source_id": "bridge",
+  "modes": [{ "frequency_hz": 123.4, "loss_factor": 0.02, "residue": -0.001 }]
+}
+```
+
+Residues are signed force-to-area-averaged-velocity modal residues for
+mass-normalized modes. Numerically degenerate clusters are collapsed by summing
+their residues and trace-averaging loss, making the exported transfer invariant
+to rotations of the eigensolver basis inside an exactly degenerate subspace.
 
 ## Development
 
